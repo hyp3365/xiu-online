@@ -37,3 +37,15 @@ test("ticks and player actions mutate only the server-owned state", () => {
   assert.equal(settings.state.cultSet.low, 125);
   assert.equal(settings.state.cultSet.high, 450);
 });
+
+test("server module ticks complete due first-time gongfa learning", () => {
+  const engine = new GameEngine();
+  const start = 1_800_000_100_000;
+  const state = engine.createState("功法结算测试", start);
+  state.gfLearn = { id: "regression:test", k: "gf", ms: 5_000, end: start + 5_000 };
+
+  const settled = engine.advance(state, start + 10_000);
+  assert.equal(settled.state.gfLearn, null);
+  assert.equal(settled.state.gongfa["regression:test"], 1);
+  assert.ok(settled.logs.some(entry => entry.m.includes("习得功法")));
+});

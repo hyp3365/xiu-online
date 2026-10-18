@@ -186,9 +186,16 @@ const G = {
     this._lastTick = this.s.last && this.s.last <= Date.now() ? this.s.last : Date.now();   // v208 接着离线补算后的结算时间
     this.render(); this.renderLog(); this.bars();
     if (this._remoteRenderTimer) clearInterval(this._remoteRenderTimer);
+    if (this._barFrame) cancelAnimationFrame(this._barFrame);
+    const animateBars = () => {
+      if (this._stopped || !this.s) { this._barFrame = 0; return; }
+      this.bars();
+      this._barFrame = requestAnimationFrame(animateBars);
+    };
+    this._barFrame = requestAnimationFrame(animateBars);
     this._remoteRenderTimer = setInterval(() => {
       if (this._stopped || !this.s) return;
-      this.render(); this.renderLog(); this.bars();
+      this.render(); this.renderLog();
       if (this.tribOpen) this.showTrib();
     }, 1000);
   },

@@ -115,6 +115,11 @@ export class GameEngine {
     this.G.render = function () {};
     this.G.renderLog = function () {};
     this.G.bars = function () {};
+    // The browser build deliberately disables local ticks; restore the original
+    // module scheduler here so the authoritative server completes timed systems.
+    this.G.tickAll = function (offline) {
+      for (const module of this.modules) if (module.tick) module.tick.call(this, offline);
+    };
     this.G.modal = function () {};
     this.G.closeModal = function () {};
     this.G.setSync = function () {};
