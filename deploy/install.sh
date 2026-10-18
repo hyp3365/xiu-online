@@ -11,9 +11,9 @@ SERVICE=xiu-online-test
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq ca-certificates curl git nginx >/dev/null
-PUBLIC_IP="${XIU_PUBLIC_IP:-$(curl -4fsS --max-time 8 https://api.ipify.org || true)}"
+PUBLIC_IP="$(curl -4fsS --max-time 8 https://api.ipify.org || true)"
 if [[ ! "$PUBLIC_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-  echo "无法确定公网 IPv4；请设置 XIU_PUBLIC_IP 后重新运行安装器。" >&2
+  echo "无法自动探测服务器公网 IPv4；请检查服务器的出网连接后重试。" >&2
   exit 1
 fi
 if ! command -v node >/dev/null || [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || echo 0)" -lt 20 ]; then
@@ -27,6 +27,7 @@ else
   [ ! -e "$DIR" ] || { echo "$DIR 已存在但不是 Git 仓库，停止以免覆盖。" >&2; exit 1; }
   git clone --depth 1 --branch main "$REPO" "$DIR"
 fi
+
 id xiu-online >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin xiu-online
 install -d -o xiu-online -g xiu-online -m 0750 "$DATA_DIR"
 (cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
@@ -52,5 +53,5 @@ nginx -t
 systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
 curl -fsS http://127.0.0.1:18301/health >/dev/null
-printf '\n安装完成：\n  IP 测试入口（HTTP）：http://%s/\n  HTTPS 入口（配置好站点后）：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$PUBLIC_IP" "$SERVICE"
+printf '\n安装完成：\n  测试入口（HTTP）：http://%s/\n  HTTPS 入口（配置好站点后）：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$PUBLIC_IP" "$SERVICE"
 echo '注意：IP 测试入口使用明文 HTTP，仅限临时测试；请用一次性测试账号和密码，不要输入常用密码。'

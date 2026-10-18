@@ -4,31 +4,25 @@
 
 ## 部署、访问与运维速查
 
-当前测试服务器公网 IPv4：`54.252.143.152`。安装完成后可直接访问：
+安装器和更新器会自动探测当前服务器的公网 IPv4，并据此配置 Nginx；**安装、更新命令都不需要填写 IP**。直接访问当前服务器：
 
-- 游戏根入口：<http://54.252.143.152/>（自动跳转到测试服）
-- 测试服页面：<http://54.252.143.152/xiuxian-test/>
+- 游戏根入口：`http://<服务器公网IP>/`（自动跳转到测试服）
+- 测试服页面：`http://<服务器公网IP>/xiuxian-test/`
 
 ### 安装
 
-在 Debian/Ubuntu 服务器上以 root 执行；安装器会自动配置 Node 服务和 Nginx IP 站点：
+Debian/Ubuntu 服务器上执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | env XIU_PUBLIC_IP=54.252.143.152 bash
+curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | sudo bash
 ```
 
-若当前用户不是 root：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | sudo env XIU_PUBLIC_IP=54.252.143.152 bash
-```
-
-安装器默认也会尝试从 `api.ipify.org` 探测公网 IPv4。若服务器有多个公网地址或探测结果不正确，请显式设置 `XIU_PUBLIC_IP`。安装范围只涉及 `/opt/xiu-online`、`/var/lib/xiu-online`、systemd 服务 `xiu-online-test`、本机 API 端口 `18301` 和 `/xiuxian-test/`，不会覆盖原版 `/opt/xiu`、`/var/lib/xiu`、`xiu-server` 或 `/xiuxian/`。
+安装器会自动配置 Node 服务和 Nginx IP 站点。安装范围只涉及 `/opt/xiu-online`、`/var/lib/xiu-online`、systemd 服务 `xiu-online-test`、本机 API 端口 `18301` 和 `/xiuxian-test/`，不会覆盖原版 `/opt/xiu`、`/var/lib/xiu`、`xiu-server` 或 `/xiuxian/`。
 
 ### 更新
 
 ```bash
-sudo env XIU_PUBLIC_IP=54.252.143.152 xiu-online-update
+sudo xiu-online-update
 ```
 
 更新会从 GitHub 拉取 `main`、重启测试服并刷新 Nginx IP 站点配置。检查服务：
@@ -46,9 +40,19 @@ sudo xiu-online-uninstall
 
 卸载会删除测试服代码和 `/var/lib/xiu-online` 数据库，**数据删除不可恢复**；不会删除原版游戏或原版存档。
 
+## 打包 APK 时设置服务器地址
+
+**唯一需要手动维护的 APK 服务器地址是仓库根目录 `server-url.txt`。** 打包 APK 前，将它改成目标服务器地址，例如：
+
+```text
+http://你的服务器公网IP/xiuxian-test/
+```
+
+安装器和更新器会独立探测它们所在服务器的公网 IPv4，所以不用修改安装命令或 Nginx 配置。构建 APK 的工作流会读取 `server-url.txt` 作为 APK 默认服务地址。
+
 ## Nginx 反代地址
 
-IP 入口由 `deploy/nginx-xiuxian-ip.conf` 提供，安装器会把模板中的公网 IP 替换为 `XIU_PUBLIC_IP` 并安装为独立的 Nginx 虚拟主机。网页、API 和 WebSocket 使用同源访问：
+安装器会自动探测当前机器公网 IPv4，并用其生成 `deploy/nginx-xiuxian-ip.conf` 对应的 Nginx 虚拟主机。网页、API 和 WebSocket 使用同源访问：
 
 | 公网路径 | 服务器目标 |
 | --- | --- |
@@ -59,7 +63,7 @@ IP 入口由 `deploy/nginx-xiuxian-ip.conf` 提供，安装器会把模板中的
 
 Node API 只绑定 `127.0.0.1:18301`，不要把 `18301` 端口直接暴露到公网。若改用域名和 HTTPS，请将 `deploy/nginx-xiuxian.conf` include 到对应 HTTPS `server {}` 中，并让页面/API/WebSocket 使用同源 HTTPS/WSS。
 
-**安全提示：**当前 IP 测试入口使用 HTTP 明文传输，账号和密码可被同网络路径上的人读取；只用一次性测试账号和密码，不要填写常用密码或真实数据。`server-url.txt` 当前也指向此 HTTP 测试地址，仅适合临时测试版 APK。正式使用前请配置域名和 HTTPS。
+**安全提示：**当前 IP 测试入口使用 HTTP 明文传输，账号和密码可被同网络路径上的人读取；只用一次性测试账号和密码，不要填写常用密码或真实数据。正式使用前请配置域名和 HTTPS。
 
 ## 设置页与自动保存
 
