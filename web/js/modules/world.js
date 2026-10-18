@@ -1026,9 +1026,8 @@ G.module({
     },
     // 管理员：网页里更新游戏（服务器拉取 GitHub 最新代码，完成后刷新页面）
     async webUpdate() {
-      if (this.updating || !confirm("从 GitHub 拉取最新代码并重启存档服务？（会先同步一次存档）")) return;
+      if (this.updating || !confirm("从 GitHub 拉取最新代码并重启存档服务？在线玩家会短暂断线并重连。")) return;
       this.updating = true; this.render();
-      try { await this.save(true); } catch (e) {}
       try { await API.adminUpdate(); } catch (e) { this.updating = false; this.log("更新失败：" + e.message, "bad"); return this.render(); }
       const t0 = Date.now(), poll = async () => {
         try { const j = await API.adminInfo(); this.adminInfo = j;
@@ -1151,7 +1150,7 @@ G.module({
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>` : "";
     return tabs + upd + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
-      <div class="btns"><button onclick="G.save(true)">立即同步</button><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
+      <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
       <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>`;
   },
 });
