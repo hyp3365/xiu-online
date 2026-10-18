@@ -1,0 +1,30 @@
+plugins { id "com.android.application" }
+
+// 版本号：GitHub 打包时自动用运行次数，每次打包 +1，安装新包会直接覆盖旧包
+def runNo = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace "com.xiu.game"
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.xiu.game"
+        minSdk 21
+        targetSdk 34
+        versionCode runNo
+        versionName "1.0." + runNo
+    }
+    signingConfigs {
+        rel {
+            storeFile file("../xiu.keystore")
+            storePassword "xiu123456"
+            keyAlias "xiu"
+            keyPassword "xiu123456"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.rel
+        }
+    }
+}

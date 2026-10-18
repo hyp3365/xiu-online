@@ -1,0 +1,7 @@
+[Unit]
+Description=Xiu (问道长生) update from web
+# 网页「设置 → 游戏更新」按钮触发：等于 sudo xiu-update，输出写到 /var/lib/xiu/update.log
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/local/bin/xiu-update > /var/lib/xiu/update.log 2>&1'

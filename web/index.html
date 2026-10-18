@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>问道长生 · 文字修仙</title>
+<link rel="stylesheet" href="css/style.css?v=208">
+</head>
+<body class="nologin">
+<div id="boot">问道长生<small>加载中…</small></div>
+<div id="app">
+  <div class="bar-img bar-top"></div>
+  <!-- 顶部：道号、境界、灵石、贡献、功德（修为条在修炼页突破按钮下面） -->
+  <header id="top">
+    <div class="top-line"><b id="p-name"></b><span id="p-realm"></span></div>
+    <div class="res3 small"><span>灵石 <b id="p-stone"></b></span><span>贡献 <b id="p-contrib"></b></span><span>功德 <b id="p-merit"></b></span></div>
+  </header>
+
+  <!-- 中间：当前标签页内容 -->
+  <main id="view"></main>
+
+  <!-- 修行日志 -->
+  <div id="log-wrap"><div id="log"></div></div>
+
+  <!-- 底部标签 -->
+  <nav id="tabs">
+    <button data-tab="cultivate" class="active"><img src="img/icons/nav_cultivate.png?v=1" alt="">修炼</button>
+    <button data-tab="bag"><img src="img/icons/nav_bag.png?v=1" alt="">背包</button>
+    <button data-tab="gongfa"><img src="img/icons/nav_gongfa.png?v=1" alt="">功法</button>
+    <button data-tab="sect"><img src="img/icons/nav_sect.png?v=1" alt="">门派</button>
+    <button data-tab="cave"><img src="img/icons/nav_cave.png?v=1" alt="">洞府</button>
+    <button data-tab="world"><img src="img/icons/nav_world.png?v=1" alt="">世界</button>
+  </nav>
+  <div class="bar-img bar-bot"></div>
+</div>
+
+<!-- 浮动提示（非修炼页显示消息） -->
+<div id="toast"></div>
+
+<!-- 弹窗 -->
+<div id="trib" class="trib hidden"></div>
+<div id="modal" class="modal hidden"><div class="modal-box" id="modal-box"></div></div>
+
+<!-- 加载顺序：数据 → 核心 → 模块（模块的 tick 按这里的顺序执行） -->
+<!-- 数值设置（改平衡只改这个） -->
+<script>
+  // 数值文件写错（语法错误）时在页面顶部提示是哪个文件、第几行
+  window.addEventListener("error", function (e) {
+    if (!e.filename) return;
+    var b = document.getElementById("cfg-err") || document.body.insertBefore(Object.assign(document.createElement("div"), { id: "cfg-err" }), document.body.firstChild);
+    b.style.cssText = "background:#7a1f1f;color:#fff;padding:8px;font-size:13px;white-space:pre-wrap";
+    b.textContent += "脚本错误：" + e.filename.split("/").slice(-2).join("/").split("?")[0] + " 第 " + e.lineno + " 行：" + e.message + "\n";
+  });
+</script>
+<script src="js/config/realm.js?v=208"></script>
+<script src="js/config/player.js?v=208"></script>
+<script src="js/config/array.js?v=208"></script>
+<script src="js/config/mobs.js?v=208"></script>
+<script src="js/config/explore.js?v=208"></script>
+<script src="js/config/drops.js?v=208"></script>
+<script src="js/config/worldmaps.js?v=208"></script>
+<script src="js/config/xingjun.js?v=208"></script>
+<script src="js/config/battle.js?v=208"></script>
+<script src="js/config/equip.js?v=208"></script>
+<script src="js/config/start.js?v=208"></script>
+<script src="js/config/bag.js?v=208"></script>
+<script src="js/config/gongfa.js?v=208"></script>
+<script src="js/config/lingen.js?v=208"></script>
+<script src="js/config/items.js?v=208"></script>
+<script src="js/config/alchemy.js?v=208"></script>
+<script src="js/config/furnace.js?v=208"></script>
+<script src="js/config/forge.js?v=208"></script>
+<script src="js/config/garden.js?v=208"></script>
+<script src="js/config/trib.js?v=208"></script>
+<script src="js/config/servant.js?v=208"></script>
+<script src="js/config/sect.js?v=208"></script>
+<script src="js/config/wudao.js?v=208"></script>
+<script src="js/config/craftsman.js?v=208"></script>
+<script src="js/config/mijing.js?v=208"></script>
+<script src="js/config/lingdi.js?v=208"></script>
+<script src="js/config/body.js?v=208"></script>
+<script src="js/config/names.js?v=208"></script>
+<script src="js/config/shenshi.js?v=208"></script>
+<script src="js/config/wudaoshi.js?v=208"></script>
+<!-- 自定义物品、坊市、宗门宝库（不是数值文件） -->
+<script src="js/content/items.js?v=208"></script>
+<script src="js/data/names.js?v=208"></script>
+<script src="js/data/realms.js?v=208"></script>
+<script src="js/data/pills.js?v=208"></script>
+<script src="js/data/cave.js?v=208"></script>
+<script src="js/data/sects.js?v=208"></script>
+<script src="js/data/gongfa.js?v=208"></script>
+<script src="js/data/items.js?v=208"></script>
+<script src="js/data/maps.js?v=208"></script>
+<script src="js/data/jiegf.js?v=208"></script>
+<script src="js/data/craft.js?v=208"></script>
+<script src="js/data/forge.js?v=208"></script>
+<script src="js/data/refstats.js?v=208"></script>
+<script src="js/data/mobs.js?v=208"></script>
+
+<script src="js/core/util.js?v=208"></script>
+<script src="js/core/api.js?v=208"></script>
+<script src="js/core/game.js?v=208"></script>
+
+<script src="js/modules/player.js?v=208"></script>
+<script src="js/modules/cave.js?v=208"></script>
+<script src="js/modules/bag.js?v=208"></script>
+<script src="js/modules/custom.js?v=208"></script>
+<script src="js/modules/gongfa.js?v=208"></script>
+<script src="js/modules/sect.js?v=208"></script>
+<script src="js/modules/cultivate.js?v=208"></script>
+<script src="js/modules/trib.js?v=208"></script>
+<script src="js/modules/body.js?v=208"></script>
+<script src="js/modules/world.js?v=208"></script>
+<script src="js/modules/xingjun.js?v=208"></script>
+<script src="js/modules/lingen.js?v=208"></script>
+<script src="js/modules/craft.js?v=208"></script>
+<script src="js/modules/wudao.js?v=208"></script>
+<script src="js/modules/shenshi.js?v=208"></script>
+<script src="js/modules/wudaoshi.js?v=208"></script>
+<script src="js/modules/garden.js?v=208"></script>
+<script src="js/modules/servant.js?v=208"></script>
+<script src="js/modules/gift.js?v=208"></script>
+<script src="js/modules/accounts.js?v=208"></script>
+<script src="js/modules/battleset.js?v=208"></script>
+<script src="js/modules/account.js?v=208"></script>
+<script src="js/core/fastsim.js?v=208"></script>
+
+<script>G.init();</script>
+</body>
+</html>
