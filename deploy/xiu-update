@@ -30,6 +30,6 @@ curl -fsS http://127.0.0.1:18301/health
 for D in /etc/nginx/conf.d/central_vps_users/*/ /etc/nginx/snippets/; do
   [ -f "${D}xiu-online-test.conf" ] && install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" "${D}xiu-online-test.conf"
 done
-if [ -f /etc/nginx/conf.d/xiu-online-ip-test.conf ]; then install -m 0644 "$DIR/deploy/nginx-xiuxian-ip.conf" /etc/nginx/conf.d/xiu-online-ip-test.conf; fi
+install -m 0644 "$DIR/deploy/nginx-xiuxian-ip.conf" /etc/nginx/conf.d/xiu-online-ip-test.conf
 if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then systemctl reload nginx; fi
 printf '\n更新完成。IP 测试入口：http://56.69.168.157/（HTTP，仅供临时测试）\n'
