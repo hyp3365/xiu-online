@@ -1,11 +1,8 @@
-# 打包安卓安装包：改了 server-url.txt、android/ 或图片 web/img 会自动打包；也可在 Actions 页面点 Run workflow 手动打包
+# 打包安卓安装包：仅在 Actions 页面手动点击 Run workflow 执行
 # 打好的 apk 在仓库 Releases 的「安卓安装包」里下载
 name: 打包APK
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["server-url.txt", "android/**", "web/img/**", ".github/workflows/apk.yml"]
 permissions:
   contents: write
 concurrency: { group: apk, cancel-in-progress: true }
