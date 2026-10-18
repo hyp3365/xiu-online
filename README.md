@@ -1,47 +1,48 @@
-# 问道长生：服务器版
+# 问道长生：服务器权威版（测试服）
 
-本仓库将游戏网页和存档服务部署到 Debian / Ubuntu 服务器。网页由 Nginx 提供，Python 标准库实现的 API 服务由 systemd 常驻运行，玩家账号、登录令牌、礼包和存档保存在服务器 SQLite 数据库中；客户端无需本地安装服务器。
+本仓库将原有浏览器游戏改为服务器权威运行：Node.js 服务端加载 `web/js/config/`、`web/js/data/`、`web/js/modules/` 与快速结算逻辑；服务器负责玩家状态、随机结果、时间推进、探索/雷劫及玩家操作校验。浏览器保留原有界面和数值展示，通过 WebSocket 接收服务器快照并发送白名单操作，不再本地结算或上传存档。
 
-## 一键安装
+测试服使用**新的空数据库**，不导入旧存档。仓库中的部署脚本只使用 `/opt/xiu-online`、`/var/lib/xiu-online`、systemd 服务 `xiu-online-test`、端口 `18301` 和 URL 前缀 `/xiuxian-test/`，不会覆盖原版 `/opt/xiu`、`/var/lib/xiu`、`xiu-server` 或 `/xiuxian/`。
 
-准备一台 Debian / Ubuntu 服务器，并确保已安装 Nginx 且站点的 HTTPS / 域名配置完成。然后执行：
+## 运行测试
+
+要求 Node.js 20 或更新版本。安装依赖并启动 API/WebSocket 服务：
+
+```bash
+cd server
+npm ci
+XIU_HOST=127.0.0.1 XIU_PORT=18301 XIU_DATA_DIR=./data npm start
+```
+
+健康检查：
+
+```bash
+curl http://127.0.0.1:18301/health
+```
+
+测试：
+
+```bash
+cd server
+npm test
+```
+
+生产反向代理需将网页路径 `/xiuxian-test/` 指向 `web/`，并将 `/xiuxian-test/api/` 转发到 `127.0.0.1:18301/api/`，保留 WebSocket Upgrade。HTTPS 页面必须通过同源 HTTPS/WSS 访问。
+
+## 部署到现有 Debian/Ubuntu 服务器
+
+确认服务器已配置 Nginx HTTPS 站点后，可用以下命令部署独立测试服：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | sudo bash
 ```
 
-安装脚本从本仓库部署代码，注册并启动 `xiu-server` systemd 服务，在本机 `127.0.0.1:18300` 运行 API，并配置 Nginx 反代。游戏网页入口为 `https://你的域名/xiuxian/`。若服务器尚无可用 Nginx `server {}`，请按安装输出提示将 `include snippets/xiuxian.conf;` 加入站点配置后重载 Nginx。
+安装器会创建新的服务和空数据库。游戏入口为 `https://你的域名/xiuxian-test/`；首次注册账号成为管理员。请尽早在管理界面关闭注册。`server-url.txt` 是 APK 构建的默认服务入口。
 
-首次注册的账号默认为管理员。请尽早通过管理界面关闭开放注册，并妥善保管管理员账号。
-
-## 服务与数据
-
-- 服务端：`server/server.py`，仅使用 Python 标准库。
-- systemd 服务：`xiu-server`，监听地址和端口默认是 `127.0.0.1:18300`。
-- 数据库：`/var/lib/xiu/xiu.db`；更新游戏不会删除玩家存档。
-- Nginx：网页路径 `/xiuxian/`，API 路径 `/xiuxian/api/`。
-- Android 包：构建工作流使用根目录 `server-url.txt` 作为服务地址；如要为另一台服务器构建 APK，请将其中地址改为该服务器的 HTTPS 游戏入口。
-
-## 更新
-
-推送代码到本仓库的 `main` 分支后，在已安装服务器运行：
+更新必须由管理员手动执行：
 
 ```bash
-sudo xiu-update
+sudo xiu-online-update
 ```
 
-更新程序会从该服务器工作目录的 GitHub `origin` 拉取新代码、重启存档服务并刷新网页资源；数据库保存在 `/var/lib/xiu/xiu.db`。
-
-## 卸载
-
-卸载会删除所有玩家存档，操作不可恢复。
-
-```bash
-sudo xiu-uninstall
-```
-
-如果未安装卸载命令：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/uninstall.sh | sudo bash
-```
+卸载命令 `sudo xiu-online-uninstall` 只删除本仓库测试服，不会删除原版游戏或原版存档。卸载测试服的数据删除不可恢复。

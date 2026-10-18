@@ -178,9 +178,9 @@ G.module({
       if (k) { A[k] = !A[k]; this.openCultSet(); }
       this.after();
     },
-    cultSetSave(k) {
+    cultSetSave(k, low, high) {
       const c = this.s.cultSet, v = id => $(id) && $(id).value;
-      c.low = Math.max(0, Math.floor(+v("#cs-low") || 0)); c.high = Math.max(0, Math.floor(+v("#cs-high") || 0));
+      c.low = Math.max(0, Math.floor(+(low === undefined ? v("#cs-low") : low) || 0)); c.high = Math.max(0, Math.floor(+(high === undefined ? v("#cs-high") : high) || 0));
       if (k === "on") { c.on = !c.on; c.went = false; this.openCultSet(); }
       this.after();
     },

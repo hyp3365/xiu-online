@@ -1,0 +1,39 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { GameEngine } from "../game-engine.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const actions = JSON.parse(fs.readFileSync(path.join(HERE, "../action-whitelist.json"), "utf8"));
+
+test("server runtime loads the existing game modules and whitelisted handlers", () => {
+  const engine = new GameEngine();
+  assert.equal(engine.G.modules.length, 22);
+  assert.ok(engine.G.runTicks);
+  assert.ok(actions.length > 80);
+  for (const name of actions) {
+    assert.equal(typeof engine.G[name], "function", `missing handler ${name}`);
+    assert.notEqual(engine.G[name].constructor.name, "AsyncFunction", `async UI handler should not be whitelisted: ${name}`);
+  }
+  assert.ok(!actions.includes("gdCreate"));
+});
+
+test("ticks and player actions mutate only the server-owned state", () => {
+  const engine = new GameEngine();
+  const start = 1_800_000_000_000;
+  const state = engine.createState("服务端测试", start);
+  const settled = engine.advance(state, start + 20_000);
+  assert.equal(settled.processedTicks, 2);
+  assert.equal(settled.state.last, start + 20_000);
+  assert.equal(settled.state.name, "服务端测试");
+
+  const changed = engine.act(settled.state, "toggleAuto", [], start + 20_001);
+  assert.equal(changed.state.auto, true);
+  assert.equal(changed.state.last, start + 20_000);
+
+  const settings = engine.act(changed.state, "cultSetSave", [undefined, "125", "450"], start + 20_002);
+  assert.equal(settings.state.cultSet.low, 125);
+  assert.equal(settings.state.cultSet.high, 450);
+});

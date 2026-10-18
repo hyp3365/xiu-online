@@ -1,104 +1,34 @@
 #!/bin/bash
-# =====================================================================
-# 快捷更新命令：sudo xiu-update
-#   从 GitHub 拉取最新代码 → 重启存档服务 → 重新加载 nginx
-#   网页文件直接从 /opt/xiu/web 读取，拉下来就生效。
-#   存档在 /var/lib/xiu，更新不会影响玩家数据。
-# =====================================================================
-set -e
-DIR=/opt/xiu
+# 手动更新 xiu-online 测试服；不会访问或修改原版 xiu 仓库和服务。
+set -euo pipefail
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
-
-echo ">>> 拉取最新代码..."
-# 强制拉取仓库最新代码（不管本地有什么改动、不管版本号）
-git -C "$DIR" fetch --depth 1 origin HEAD
+DIR=/opt/xiu-online
+SERVICE=xiu-online-test
+printf '>>> 拉取 hyp3699/xiu-online 的 main 分支\n'
+git -C "$DIR" fetch --depth 1 origin main
 git -C "$DIR" reset --hard FETCH_HEAD
-git -C "$DIR" log -1 --format="当前版本：%h  %s  (%cd)" --date=format:'%Y-%m-%d %H:%M'
-
-# 自动给网页文件打缓存版本号：每个 js/css 用自己内容的哈希当 ?v=，图片用图片目录的哈希
-#   改了哪个文件，玩家刷新就重新下载哪个；不用再手动改 ?v=数字
-python3 - "$DIR" <<'PY' && echo "网页缓存版本号已自动更新" || echo "自动版本号失败（不影响更新，沿用 index.html 里的 ?v=）"
-import os, re, subprocess, sys
-d = sys.argv[1]; web = os.path.join(d, "web")
-git = lambda *a: subprocess.run(["git", "-c", "safe.directory=*", "-C", d, *a], capture_output=True, text=True, check=True).stdout.strip()
-forge = os.path.join(web, "js/data/forge.js")
-if os.path.exists(forge):
-    s = open(forge, encoding="utf-8").read()
-    s = re.sub(r'DATA\.IMG_V = [^;]*;', 'DATA.IMG_V = "%s";' % git("rev-parse", "HEAD:web/img")[:8], s, count=1)
-    open(forge, "w", encoding="utf-8").write(s)
-# 图片清单 img_ver.txt（每行「图片路径 哈希」）：安装版 APK 按它逐张比对，只有服务器上换过的图才重新下载
-lst = []
-for line in git("-c", "core.quotepath=false", "ls-files", "-s", "web/img").splitlines():
-    meta, path = line.split("\t", 1); lst.append(path[8:] + " " + meta.split()[1][:8])
-open(os.path.join(web, "img_ver.txt"), "w", encoding="utf-8").write("\n".join(lst) + "\n")
-p = os.path.join(web, "index.html"); s = open(p, encoding="utf-8").read()
-def ver(m):
-    f = os.path.join(web, m.group(2))
-    return m.group(1) + "?v=" + (git("hash-object", f)[:8] if os.path.isfile(f) else "0") + '"'
-s = re.sub(r'((?:src|href)="([^"?:]+))\?v=[^"]*"', ver, s)
-open(p, "w", encoding="utf-8").write(s)
+(cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
+# 给静态脚本生成内容哈希版本，避免测试服客户端继续使用旧缓存。
+python3 - "$DIR/web" <<'PY'
+import hashlib, pathlib, re, sys
+web = pathlib.Path(sys.argv[1]); index = web / "index.html"
+text = index.read_text(encoding="utf-8")
+def update(match):
+    prefix, rel = match.group(1), match.group(2)
+    file = web / rel
+    version = hashlib.sha256(file.read_bytes()).hexdigest()[:10] if file.is_file() else "0"
+    return f'{prefix}?v={version}"'
+text = re.sub(r'((?:src|href)="([^"?:]+))\?v=[^"]*"', update, text)
+index.write_text(text, encoding="utf-8")
 PY
-
-# 更新命令本身有变化：装上新的，重新运行一遍
-if ! cmp -s "$DIR/deploy/xiu-update" /usr/local/bin/xiu-update; then
-  install -m 755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-update
-  exec /usr/local/bin/xiu-update "$@"
-fi
-
-# 网页更新：root 运行的一次性服务 + 只允许 xiu 用户启动它的 sudo 规则
-if ! cmp -s "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-web-update.service; then
-  cp "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-web-update.service
-  systemctl daemon-reload
-fi
-SUDO_RULE="xiu ALL=(root) NOPASSWD: $(command -v systemctl) start --no-block xiu-web-update.service"
-if [ "$(cat /etc/sudoers.d/xiu-update 2>/dev/null)" != "$SUDO_RULE" ] && command -v visudo >/dev/null; then
-  echo "$SUDO_RULE" > /tmp/xiu-sudo && visudo -cf /tmp/xiu-sudo >/dev/null && install -m 440 /tmp/xiu-sudo /etc/sudoers.d/xiu-update
-  rm -f /tmp/xiu-sudo
-fi
-if ! cmp -s "$DIR/deploy/xiu-server.service" /etc/systemd/system/xiu-server.service; then
-  cp "$DIR/deploy/xiu-server.service" /etc/systemd/system/xiu-server.service
-  systemctl daemon-reload
-fi
-
-# 卸载命令
-install -m 755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-uninstall
-
-# 日志瘦身：server.log / update.log 超过 1MB 只保留最后 200KB
-for L in /var/lib/xiu/server.log /var/lib/xiu/update.log; do
-  [ -f "$L" ] && [ "$(stat -c %s "$L")" -gt 1048576 ] && { tail -c 204800 "$L" > "$L.tmp" && cat "$L.tmp" > "$L"; rm -f "$L.tmp"; }
-done
-
-echo ">>> 重启存档服务..."
-systemctl restart xiu-server
-sleep 1
-systemctl is-active --quiet xiu-server && echo "存档服务运行中" || { echo "存档服务启动失败："; tail -n 20 /var/lib/xiu/server.log 2>/dev/null || journalctl -u xiu-server -n 20 --no-pager; exit 1; }
-
-# nginx 配置（v243 修复：以前备份 xiuxian.conf.bak 放在 nginx 配置目录里，会被 include * 一起读进去 → location 重复，nginx 起不来）
-#   备份放 /var/lib/xiu/nginx-bak；新配置先写成隐藏临时文件再 mv（原子替换，中途断电/中断也不会留下半个文件）
-#   检查不通过就还原；还原后仍不通过就把 nginx -t 的报错打印出来
-BAK=/var/lib/xiu/nginx-bak; mkdir -p "$BAK"
-ngx_test() { nginx -t >/tmp/xiu-ngx-test 2>&1; }
+install -m 0644 "$DIR/deploy/xiu-server.service" "/etc/systemd/system/${SERVICE}.service"
+systemctl daemon-reload
+systemctl restart "$SERVICE"
+systemctl is-active --quiet "$SERVICE"
+for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
+curl -fsS http://127.0.0.1:18301/health
 for D in /etc/nginx/conf.d/central_vps_users/*/ /etc/nginx/snippets/; do
-  [ -d "$D" ] || continue
-  # 清掉以前留在配置目录里的备份 / 临时文件
-  for F in "$D"xiuxian.conf.bak* "$D".xiuxian.conf.tmp*; do [ -e "$F" ] && rm -f "$F" && echo "已清理残留：$F"; done
-  NGX="${D}xiuxian.conf"
-  [ -f "$NGX" ] || continue
-  # 配置被写坏（空文件 / 不完整）也直接用仓库里的重新装
-  if ! cmp -s "$DIR/deploy/nginx-xiuxian.conf" "$NGX"; then
-    cp "$NGX" "$BAK/$(echo "$D" | tr '/' '_')xiuxian.conf"
-    install -m 644 "$DIR/deploy/nginx-xiuxian.conf" "${D}.xiuxian.conf.tmp"
-    mv -f "${D}.xiuxian.conf.tmp" "$NGX"
-    if ngx_test; then echo "nginx 配置已更新"
-    else
-      grep -q xiuxian /tmp/xiu-ngx-test && { cp "$BAK/$(echo "$D" | tr '/' '_')xiuxian.conf" "${D}.xiuxian.conf.tmp" && mv -f "${D}.xiuxian.conf.tmp" "$NGX"; echo "nginx 新配置检查失败，已还原"; }
-    fi
-  fi
+  [ -f "${D}xiu-online-test.conf" ] && install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" "${D}xiu-online-test.conf"
 done
-
-if ngx_test; then
-  if systemctl is-active --quiet nginx; then systemctl reload nginx; else systemctl start nginx && echo "nginx 已启动"; fi
-else
-  echo "nginx 配置检查不通过（不是本次更新改坏的也会显示），报错："; cat /tmp/xiu-ngx-test
-fi
-echo ">>> 更新完成！刷新网页即可。"
+if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then systemctl reload nginx; fi
+printf '\n更新完成。入口：https://你的域名/xiuxian-test/\n'

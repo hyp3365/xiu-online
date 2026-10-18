@@ -1,22 +1,27 @@
 [Unit]
-Description=Xiu (问道长生) save server
+Description=Xiu Online authoritative game server (test instance)
 After=network.target
+Wants=network.target
 
 [Service]
-User=xiu
-Group=xiu
-Environment=XIU_DB=/var/lib/xiu/xiu.db
+Type=simple
+User=xiu-online
+Group=xiu-online
+WorkingDirectory=/opt/xiu-online/server
+Environment=NODE_ENV=production
 Environment=XIU_HOST=127.0.0.1
-Environment=XIU_PORT=18300
-# 多线程时 glibc 默认会开很多内存池，限制成 2 个，常驻内存更小
+Environment=XIU_PORT=18301
+Environment=XIU_DATA_DIR=/var/lib/xiu-online
 Environment=MALLOC_ARENA_MAX=2
-Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/usr/bin/python3 /opt/xiu/server/server.py
-Restart=always
+ExecStart=/usr/bin/node /opt/xiu-online/server/server.mjs
+Restart=on-failure
 RestartSec=3
-# 日志只写到数据目录的一个文件（不进系统日志），xiu-update 时超过 1MB 自动只保留最后 200KB
-StandardOutput=append:/var/lib/xiu/server.log
-StandardError=append:/var/lib/xiu/server.log
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/xiu-online
 
 [Install]
 WantedBy=multi-user.target

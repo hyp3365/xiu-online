@@ -138,11 +138,8 @@ G.module({
       if (!code || this.giftBusy) return;
       this.giftBusy = true; this.render();
       try {
-        const j = await API.giftRedeem(code), got = [], lost = [];
-        for (const it of j.items || []) (this.giftGive(it) ? got : lost).push(this.giftLabel(it));
-        this.log(`礼包码兑换成功，获得 ${got.join("、") || "无"}${lost.length ? `（背包已满，遗失 ${lost.join("、")}）` : ""}。`, "gold");
+        await API.giftRedeem(code);
         this.giftCode = "";
-        this.dirty(); this.after(); try { await this.save(true); } catch (e) {}
       } catch (e) { this.log("兑换失败：" + e.message, "bad"); }
       this.giftBusy = false; this.render();
     },

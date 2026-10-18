@@ -1,50 +1,45 @@
 #!/bin/bash
-# =====================================================================
-# 问道长生 · 一键安装（Debian/Ubuntu，需 root 或 sudo）
-# 用法：curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | sudo bash
-# 做了什么：
-#   1. 安装 git、python3
-#   2. 把仓库克隆到 /opt/xiu
-#   3. 安装存档服务 xiu-server（systemd，监听 127.0.0.1:18300）
-#   4. 安装快捷更新命令 xiu-update
-#   5. 给 nginx 加 /xiuxian/ 网页和 /xiuxian/api/ 接口
-# =====================================================================
-set -e
+# xiu-online 独立测试服安装器（Debian/Ubuntu，需 root 或 sudo）。
+# 只使用 /opt/xiu-online、/var/lib/xiu-online、xiu-online-test、18301 和 /xiuxian-test/；
+# 不停止、不覆盖原版 xiu-server、/opt/xiu、/var/lib/xiu 或 /xiuxian/。
+set -euo pipefail
+[ "$(id -u)" = 0 ] || exec sudo -E bash "$0" "$@"
 REPO="${XIU_REPO:-https://github.com/hyp3699/xiu-online.git}"
-DIR=/opt/xiu
-
-apt-get update -qq && apt-get install -y -qq git python3 >/dev/null
-
+DIR=/opt/xiu-online
+DATA_DIR=/var/lib/xiu-online
+SERVICE=xiu-online-test
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq ca-certificates curl git nginx >/dev/null
+if ! command -v node >/dev/null || [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || echo 0)" -lt 20 ]; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt-get install -y -qq nodejs >/dev/null
+fi
 if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" pull --ff-only
+  git -C "$DIR" fetch --depth 1 origin main
+  git -C "$DIR" reset --hard FETCH_HEAD
 else
-  rm -rf "$DIR" && git clone --depth 1 "$REPO" "$DIR"
+  [ ! -e "$DIR" ] || { echo "$DIR 已存在但不是 Git 仓库，停止以免覆盖。" >&2; exit 1; }
+  git clone --depth 1 --branch main "$REPO" "$DIR"
 fi
-
-# 存档目录
-mkdir -p /var/lib/xiu
-id xiu >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin xiu
-chown -R xiu:xiu /var/lib/xiu
-
-# systemd 服务
-cp "$DIR/deploy/xiu-server.service" /etc/systemd/system/xiu-server.service
+id xiu-online >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin xiu-online
+install -d -o xiu-online -g xiu-online -m 0750 "$DATA_DIR"
+(cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
+install -m 0644 "$DIR/deploy/xiu-server.service" "/etc/systemd/system/${SERVICE}.service"
 systemctl daemon-reload
-systemctl enable --now xiu-server
-systemctl restart xiu-server
-
-# 更新命令
-install -m 755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-update
-install -m 755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-uninstall
-
-# nginx：优先放进现有的 IP 站点（HTTPS），没有就放到默认站点
-NGX_DIR=$(ls -d /etc/nginx/conf.d/central_vps_users/*/ 2>/dev/null | head -1)
+systemctl enable --now "$SERVICE"
+install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
+install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+NGX_DIR=$(find /etc/nginx/conf.d/central_vps_users -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null || true)
 if [ -n "$NGX_DIR" ]; then
-  cp "$DIR/deploy/nginx-xiuxian.conf" "${NGX_DIR}xiuxian.conf"
+  install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" "$NGX_DIR/xiu-online-test.conf"
 else
-  mkdir -p /etc/nginx/snippets
-  cp "$DIR/deploy/nginx-xiuxian.conf" /etc/nginx/snippets/xiuxian.conf
-  echo ">>> 请在 nginx 的 server{} 里加入一行：include snippets/xiuxian.conf;"
+  install -d /etc/nginx/snippets
+  install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" /etc/nginx/snippets/xiu-online-test.conf
+  echo ">>> 请在 HTTPS 站点的 server{} 中加入：include snippets/xiu-online-test.conf;"
 fi
-nginx -t && { systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx; }
-
-echo "安装完成。以后更新只需运行：sudo xiu-update；卸载：sudo xiu-uninstall"
+nginx -t
+systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
+for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
+curl -fsS http://127.0.0.1:18301/health >/dev/null
+printf '\n安装完成：\n  游戏入口：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$SERVICE"

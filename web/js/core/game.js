@@ -79,23 +79,8 @@ const G = {
     }
     return s;
   },
-  save(force) {
-    if (this._stopped) return;
-    this.s.last = this._lastTick || Date.now();   // v208 存上次结算的时间（不是现在）：离线补算从这里接着算，不丢不足 10 秒的聚灵
-    this._saveStr = JSON.stringify(this.s);   // 只转换一次：本地备份和上传服务器用同一份
-    localStorage.setItem("xiu_local_" + API.user, this._saveStr); // 本地备份
-    this._dirtySave = true;
-    if (force || Date.now() - this._lastUpload > 30000) this.upload();
-  },
-  async upload() {
-    if (!API.token || !this._dirtySave) return;
-    this._dirtySave = false; this._lastUpload = Date.now();
-    try { await API.upload(this._saveStr || JSON.stringify(this.s)); this.setSync("已同步"); }
-    catch (e) {
-      if (e.status === 409) return this.kicked();
-      this._dirtySave = true; this.setSync("同步失败"); if (/登录/.test(e.message)) this.relogin();
-    }
-  },
+  save() { /* 服务器持有唯一权威存档；禁止浏览器保存或上传状态。 */ },
+  async upload() { /* 兼容旧 UI 调用，不再上传客户端状态。 */ },
   // 账号在别的设备进入了游戏：本设备停止运行和上传，点按钮重新读取服务器上的最新进度
   kicked() {
     this._stopped = true; this._lockModal = true;
@@ -104,29 +89,10 @@ const G = {
   setSync(t) { const el = $("#sync"); if (el) el.textContent = t; },
 
   /* ---------- 每 10 秒的结算 ---------- */
-  tickAll(offline) {
-    for (const m of this.modules) if (m.tick) m.tick.call(this, offline);
-  },
+  tickAll() { /* 浏览器不能执行游戏 tick；Node 服务端运行原始 tickAll。 */ },
 
   // 离线补算：离开多久就补多久，不封顶
-  offline() {
-    const sec = (Date.now() - this.s.last) / 1000;
-    let n = Math.floor(sec / DATA.TICK);
-    if (n < 1) return;
-    const before = { exp: this.s.exp, ling: this.s.ling, stone: this.s.stone, contrib: this.s.contrib || 0, kills: this.s.kills || 0, bag: this.bagCount() };
-    // 离线账本：探索结算（world.js giveLoot）、事务堂（sect.js affairReward）往这里记
-    this._off = { exRuns: 0, exStone: 0, exItems: {}, exLost: 0, afN: 0, afStone: 0, afContrib: 0, cq: { runs: 0, stone: 0, exItems: {} }, allItems: {}, learn: [], gfUp: {} };   // v173 出窍、学会、功法升层
-    this.silent = true;
-    const MAX = 3e6; // 安全上限（约 347 天），防止浏览器卡死
-    const runs = Math.min(n, MAX);
-    const t0 = this.s.last;
-    this.runTicks(t0, runs);   // 见 core/fastsim.js：事件之间的纯数值结算直接计算，结果和逐个结算一样
-    this.silent = false;
-    this.s.last = Date.now() - (sec % DATA.TICK) * 1000;
-    const o = this._off; this._off = null;
-    this.offlineReport(sec, before, o);
-    this.dirty();
-  },
+  offline() { /* 离线结算由服务器根据其时钟完成。 */ },
   // 背包里每种物品的数量（按名字），用来算离线新增
   bagCount() { const m = {}; for (const it of this.s.bag) { const k = this.itemName(it); m[k] = (m[k] || 0) + (it.n || 1); } return m; },
   // 离线收益明细：写进信息栏 + 弹窗
@@ -164,25 +130,7 @@ const G = {
   },
 
   /* ---------- 主循环（每 0.2 秒检查一次） ---------- */
-  loop() {
-    if (this._stopped || this._hold) return;   // v245 刚切回前台：先让画面显示出来，再补算离开期间的结算
-    const now = Date.now(), T = DATA.TICK * 1000;
-    if (now - this._lastTick >= T) {
-      // 浏览器切到后台会暂停/降频定时器：按实际经过时间补齐漏掉的结算，不再丢修为、气血、灵气
-      const n = Math.min(Math.floor((now - this._lastTick) / T), 3e6);
-      if (n > 1) {
-        this.silent = true;
-        try { this.runTicks(this._lastTick, n - 1); }
-        finally { this._simNow = 0; this.silent = false; }
-        this.dirty();
-      }
-      this._lastTick = now - (now - this._lastTick) % T;
-      this.tickAll(false);
-      this.save();
-      this.render();
-    }
-    this.bars();
-  },
+  loop() { if (!this._stopped) { this.render(); this.bars(); } },
 
   // 进度条：每一帧按时间直接算宽度（不用 CSS 过渡），页面每秒重绘也不会一顿一顿
   bars() {
@@ -204,14 +152,7 @@ const G = {
   tickPct() { return Math.min(100, (Date.now() - this._lastTick) / (DATA.TICK * 10)); },
 
   /* ---------- 操作后统一调用：重算属性、存档、刷新 ---------- */
-  after() {
-    this.dirty();
-    const st = this.stats();
-    this.s.hp = Math.min(this.s.hp, st.hp);
-    this.s.mana = Math.min(this.s.mana, st.mana);
-    this.save();
-    this.render();
-  },
+  after() { this.dirty(); this.render(); },
 
   /* ---------- 界面 ---------- */
   render() {
@@ -243,23 +184,13 @@ const G = {
   start() {
     this.dirty();
     this._lastTick = this.s.last && this.s.last <= Date.now() ? this.s.last : Date.now();   // v208 接着离线补算后的结算时间
-    this.save(true); this.render(); this.renderLog();
-    setInterval(() => this.loop(), 200);
-    const frame = () => { if (!this._stopped) this.bars(); requestAnimationFrame(frame); };
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(frame);
-    // 倒计时刷新（只在有倒计时的页面）
-    setInterval(() => { if (this.s && this.s.explore && !this._hold) this.advanceExplore(); }, 1000); // 自动探索每秒走一步
-    setInterval(() => { if (this.s && this.s.trib) this.advanceTrib(); if (this.tribOpen) this.showTrib(); }, 1000); // 雷劫每秒一回合
-    setInterval(() => { if ((this.tab === "gongfa" && this.s.gfStudy) || (this.tab === "sect" && (this.sectTab === "affair" || this.sectTab === "alchemy" || (this.sectTab === "gfroom" && this.freeGfOn()))) || (this.tab === "world" && this.s.explore) || this.tab === "cave" || this.s.gfLearn || this.s.danStudy || this.s.forgeStudy) this.render(); }, 1000);
-    // 切到后台 / 关闭页面时立即上传
-    document.addEventListener("visibilitychange", () => { if (document.hidden && !this._stopped) { this.save(); API.beacon(this._saveStr); } else if (!document.hidden && !this._stopped) {
-      // v245 切回前台：先画一帧（不黑屏），下一轮再补算离开期间的修炼 / 探索并上传
-      this._hold = true;
-      const go = () => setTimeout(() => { this._hold = false; this.loop(); if (this.s && this.s.explore) this.advanceExplore(); this.save(true); }, 30);
-      if (typeof requestAnimationFrame === "function") requestAnimationFrame(go); else go();
-      setTimeout(() => { if (this._hold) { this._hold = false; this.loop(); } }, 1500);   // 保险：rAF 没触发也会继续
-    } });
-    window.addEventListener("pagehide", () => { if (!this._stopped) { this.save(); API.beacon(this._saveStr); } });
+    this.render(); this.renderLog(); this.bars();
+    if (this._remoteRenderTimer) clearInterval(this._remoteRenderTimer);
+    this._remoteRenderTimer = setInterval(() => {
+      if (this._stopped || !this.s) return;
+      this.render(); this.renderLog(); this.bars();
+      if (this.tribOpen) this.showTrib();
+    }, 1000);
   },
 
   init() {

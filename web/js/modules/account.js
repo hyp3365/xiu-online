@@ -42,22 +42,21 @@ G.module({
       }
       this._lockModal = false; this.closeModal();
       if (!data) return this.intro();
-      this.s = this.migrate(data);
-      this.fabaoNames();   // 法宝名字跟着 config/names.js
-      this.offline();
+      this.s = data;
+      this.dirty();
+      this._lastTick = data.last || Date.now();
       document.body.classList.remove("nologin");
       this.start();
     },
-    relogin() { API.logout(); this.loginForm("登录已过期，请重新登录（进度已保存在本机，登录后会同步）。"); },
+    relogin() { API.logout(); this.loginForm("登录已过期，请重新登录（游戏进度保存在服务器）。"); },
     logout() {
-      this.save(true);
-      setTimeout(() => { API.logout(); location.reload(); }, 500);
+      API.logout();
+      setTimeout(() => location.reload(), 100);
     },
     restart() {
       if (!confirm("确定删除这个账号的存档，从头开始？")) return;
       this._stopped = true;
-      localStorage.removeItem("xiu_local_" + API.user);
-      API.upload(null).then(() => location.reload());
+      API.resetCharacter().then(() => location.reload()).catch(e => { this._stopped = false; this.modal(`<h2>重置失败</h2><p>${e.message}</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`); });
     },
 
     // 创建角色（不再随机灵根；灵根在「灵根」页用灵石提升）
@@ -66,14 +65,13 @@ G.module({
       this.modal(`<h2>踏入仙途</h2><p>凡人寿不过百，你于山野间偶得一卷残破古经，自此心生问道之念。</p>
         <p>道号<input id="name-input" maxlength="8" placeholder="例如：青云子"></p>
         <div class="btns"><button class="primary" id="start-btn">开始修仙</button></div>`);
-      $("#start-btn").onclick = () => {
+      $("#start-btn").onclick = async () => {
         const name = ($("#name-input").value || "").trim() || "无名散修";
-        this.s = this.newSave(name);
-        this._lockModal = false; this.closeModal(); document.body.classList.remove("nologin");
-        this.dirty(); const st = this.stats(); this.s.hp = st.hp; this.s.mana = st.mana;
-        this.log(`${name}，自此踏上仙途。赠你聚气丹三枚、${CFG.start.book ? CFG.start.book.name : "练气诀"}一本。`, "gold");
-        this.log("提示：修炼页开启“自动修炼”，聚灵阵会为你聚集灵气；离线也会继续修炼。", "sys");
-        this.start();
+        try {
+          this.s = await API.createCharacter(name);
+          this._lockModal = false; this.closeModal(); document.body.classList.remove("nologin");
+          this.dirty(); this.start();
+        } catch (e) { this.modal(`<h2>创建失败</h2><p>${e.message}</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`); }
       };
     },
   },
