@@ -38,8 +38,11 @@ else
   install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" /etc/nginx/snippets/xiu-online-test.conf
   echo ">>> 请在 HTTPS 站点的 server{} 中加入：include snippets/xiu-online-test.conf;"
 fi
+# 独立的公网 IP HTTP server block；HTTP 80 已可达，IP 根路径会跳到 /xiuxian-test/。
+install -m 0644 "$DIR/deploy/nginx-xiuxian-ip.conf" /etc/nginx/conf.d/xiu-online-ip-test.conf
 nginx -t
 systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
 curl -fsS http://127.0.0.1:18301/health >/dev/null
-printf '\n安装完成：\n  游戏入口：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$SERVICE"
+printf '\n安装完成：\n  IP 测试入口（HTTP）：http://56.69.168.157/\n  HTTPS 入口（配置好站点后）：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$SERVICE"
+echo '注意：IP 测试入口使用明文 HTTP，仅限临时测试；请用一次性测试账号和密码，不要输入常用密码。'
