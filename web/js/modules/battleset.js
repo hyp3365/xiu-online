@@ -36,16 +36,40 @@ G.module({
       if (i < 0 || j < 0 || j >= L.length) return;
       [L[i], L[j]] = [L[j], L[i]]; b.order = L; this.dirty(); this.render();
     },
-    bsetFoe(k, v) { this.bsetGet().foe[k] = v; this.dirty(); this.render(); },
-    bsetRound(i, v) { this.bsetGet().r[i] = v; this.dirty(); this.render(); },
+    bsetFoe(k, v) {
+      if (!['mob', 'elite', 'boss', 'xj'].includes(k) || !['norm', 'atk'].includes(v)) throw new Error('无效的对手战斗方式');
+      this.bsetGet().foe[k] = v; this.dirty(); this.render();
+    },
+    bsetRound(i, v) {
+      i = Number(i);
+      if (!Number.isInteger(i) || i < 0 || i > 2) throw new Error('无效的回合设置');
+      const choices = new Set(['auto', 'atk', ...this.bsetActs().map(a => a.key)]);
+      if (!choices.has(v)) throw new Error('无效的回合设置');
+      this.bsetGet().r[i] = v; this.dirty(); this.render();
+    },
     // 现在法术栏、法宝栏里生效的招式 [{ key, name, shield }]
     bsetActs() {
       const s = this.s, n = this.slotCount(), out = [];
       s.spellSlots.slice(0, n).forEach(id => { const g = id && DATA.spellInfo(id, s.gongfa[id]); if (g) out.push({ key: "sp:" + id, name: `法术·${g.name}` }); });
-      s.fabao.slice(0, n).forEach((e, i) => { if (e && e.attrs) { const f = DATA.fabaoInfo(e); out.push({ key: "fb:" + i, name: `法宝·${f.name}`, shield: !!f.shield }); } });
+      s.fabao.slice(0, n).forEach((e, i) => { if (e && e.attrs) { const f = DATA.fabaoInfo(e); out.push({ key: "fb:" + i, name: `法宝·${f.name}` }); } });
       return out;
     },
-    bsetSet(k, v) { const b = this.bsetGet(); b[k] = k === "lowPct" || k === "goHp" || k === "goMp" ? Math.max(0, Math.min(100, Math.floor(+v || 0))) : v; this.dirty(); this.render(); },
+    bsetSet(k, v) {
+      const b = this.bsetGet();
+      if (!['mode', 'lowPct', 'lowKey', 'goHp', 'goMp'].includes(k)) throw new Error('无效的战斗设置');
+      if (k === 'mode') {
+        if (!['rot', 'sp', 'fb', 'max', 'cheap', 'list', 'atk'].includes(v)) throw new Error('无效的战斗方式');
+        b.mode = v;
+      } else if (k === 'lowKey') {
+        if (typeof v !== 'string' || (v && !this.bsetActs().some(a => a.key === v))) throw new Error('无效的保命招式');
+        b.lowKey = v;
+      } else {
+        const n = Number(v);
+        if (!Number.isFinite(n)) throw new Error('无效的战斗阈值');
+        b[k] = Math.max(0, Math.min(100, Math.floor(n)));
+      }
+      this.dirty(); this.render();
+    },
     bsetToggle(key) { const b = this.bsetGet(), i = b.off.indexOf(key); if (i >= 0) b.off.splice(i, 1); else b.off.push(key); this.dirty(); this.render(); },
     // 游戏风格的下拉选择（代替浏览器自带的 select）：key 唯一名字，opts [[值, 显示]]，cur 当前值，fn(值) 选中后调用
     selBox(key, opts, cur, fn) {

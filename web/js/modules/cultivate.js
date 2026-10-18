@@ -139,11 +139,11 @@ G.module({
       const s = this.s, c = s.cultSet, T = this.cultTargets(), a = s.array;
       this.modal(`<h2>修炼设置</h2>
         <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵石高于上限，停止探索回来修炼。</p>
-        <div class="line"><div>自动探索 / 挖矿</div><button class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
+        <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>灵石高于</div><input id="cs-high" type="number" min="0" value="${c.high}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>前往</div><button class="sm" onclick="G.atPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
-        <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill();G.openCultSet()">${a.autoRefill ? "开" : "关"}</button></div>
+        <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefill ? "开" : "关"}</button></div>
         <h3 style="margin-top:14px">自动执行任务</h3>
         ${this.autoTaskHtml(T)}
         <div class="btns"><button class="primary" onclick="G.closeModal()">确定</button></div>`);
@@ -209,8 +209,8 @@ G.module({
           const cnt = s.bag.filter(x => x.t === "pill" && x.type === t && this.canUsePill(x.g)).reduce((a, x) => a + x.n, 0);
           if (!on && !cnt) return "";   // v42：没生效、也没有能吃的就不显示
           return `<div class="line"><div><img src="${DATA.pillIcon(t)}" alt="" style="width:30px;height:30px;float:left;margin-right:6px">${DATA.pills[t].name}<small>${on ? `+${Math.round(b.pct)}%，剩余 ${b.left} 次修炼` : "未生效"} · 可用 ${cnt} 枚</small></div>
-          <div><button class="sm" onclick="G.manualPill('${t}');G.openBoost()" ${i < 0 ? "disabled" : ""}>服用</button>
-          <button class="sm ${s.autoPill[t] ? "on" : ""}" onclick="G.toggleAutoPill('${t}');G.openBoost()">自动${s.autoPill[t] ? "开" : "关"}</button></div></div>`;
+          <div><button data-refresh="openBoost" class="sm" onclick="G.manualPill('${t}')" ${i < 0 ? "disabled" : ""}>服用</button>
+          <button data-refresh="openBoost" class="sm ${s.autoPill[t] ? "on" : ""}" onclick="G.toggleAutoPill('${t}')">自动${s.autoPill[t] ? "开" : "关"}</button></div></div>`;
         }).join("")}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },

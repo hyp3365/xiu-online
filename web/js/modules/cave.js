@@ -70,16 +70,16 @@ G.module({
     openLingStone() {
       this.modal(`<h2>兑换灵石<small> ${U.fmt(DATA.array.LING_STONE)} 灵气 = 1 灵石</small></h2>
         <div class="line"><div>灵气</div><b>${U.fmt(this.s.ling)}</b></div><div class="line"><div>灵石</div><b>${U.fmt(this.s.stone)}</b></div>
-        <div class="btns"><button onclick="G.lingToStone(1);G.openLingStone()">换1灵石</button><button onclick="G.lingToStone(100);G.openLingStone()">换100灵石</button>
-        <button onclick="G.lingToStone(10000);G.openLingStone()">换1万灵石</button><button class="primary" onclick="G.lingToStone();G.openLingStone()">全部兑换</button>
+        <div class="btns"><button data-refresh="openLingStone" onclick="G.lingToStone(1)">换1灵石</button><button data-refresh="openLingStone" onclick="G.lingToStone(100)">换100灵石</button>
+        <button data-refresh="openLingStone" onclick="G.lingToStone(10000)">换1万灵石</button><button class="primary" data-refresh="openLingStone" onclick="G.lingToStone()">全部兑换</button>
         <button onclick="G.closeModal()">关闭</button></div>`);
     },
     openBuyLing() {
       const a = this.s.array;
       this.modal(`<h2>补充灵气<small> 1 灵石 = ${U.fmt(this.lingPerStone())} 灵气</small></h2>
         <div class="line"><div>灵气</div><b>${U.fmt(this.s.ling)} / ${U.fmt(this.lingCap())}</b></div><div class="line"><div>灵石</div><b>${U.fmt(this.s.stone)}</b></div>
-        <div class="btns"><button onclick="G.buyLing(100);G.openBuyLing()">用 100 灵石</button><button class="primary" onclick="G.buyLing('fill');G.openBuyLing()">补满</button>
-        <button class="${a.autoRefill ? "on" : ""}" style="flex-basis:100%" onclick="G.toggleRefill();G.openBuyLing()">灵气不足时自动用灵石补充：${a.autoRefill ? "开" : "关"}</button>
+        <div class="btns"><button data-refresh="openBuyLing" onclick="G.buyLing(100)">用 100 灵石</button><button class="primary" data-refresh="openBuyLing" onclick="G.buyLing('fill')">补满</button>
+        <button data-refresh="openBuyLing" class="${a.autoRefill ? "on" : ""}" style="flex-basis:100%" onclick="G.toggleRefill()">灵气不足时自动用灵石补充：${a.autoRefill ? "开" : "关"}</button>
         <button onclick="G.closeModal()">关闭</button></div>`);
     },
     /* ---------- 灵珠格：点空格放入背包里的灵珠，点灵珠强化 ---------- */

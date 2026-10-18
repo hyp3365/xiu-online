@@ -16,6 +16,9 @@ const API = {
   _wrapped: new Set(),
   _originalActions: new Map(),
   _pending: new Map(),
+  _clickedButton: null,
+  _clickTracking: false,
+  _actionToastTimer: 0,
   _socket: null,
   _connectPromise: null,
   _reconnectTimer: null,
@@ -78,6 +81,7 @@ const API = {
 
   installActions(names) {
     this.actions = Array.isArray(names) ? names.filter(x => typeof x === "string") : [];
+    this.trackButtonClicks();
     for (const name of this.actions) {
       if (this._wrapped.has(name) || typeof G[name] !== "function") continue;
       const original = G[name];
@@ -88,6 +92,41 @@ const API = {
       });
       this._wrapped.add(name);
     }
+  },
+
+  trackButtonClicks() {
+    if (this._clickTracking || typeof document === "undefined") return;
+    document.addEventListener("click", event => {
+      const button = event.target && event.target.closest ? event.target.closest("button") : null;
+      if (!button) return;
+      this._clickedButton = button;
+      Promise.resolve().then(() => { if (this._clickedButton === button) this._clickedButton = null; });
+    }, true);
+    this._clickTracking = true;
+  },
+
+  markButtonPending(button) {
+    if (!button || button.disabled) return { button: null, wasDisabled: true };
+    button.classList.add("pending");
+    button.disabled = true;
+    return { button, wasDisabled: false };
+  },
+
+  finishButtonPending(pending) {
+    if (!pending || !pending.button) return;
+    pending.button.classList.remove("pending");
+    if (pending.button.isConnected && !pending.wasDisabled) pending.button.disabled = false;
+  },
+
+  showActionFeedback(text, tone = "sys") {
+    this.setSync(text);
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+    toast.textContent = text;
+    toast.dataset.tone = tone;
+    toast.classList.add("show");
+    clearTimeout(this._actionToastTimer);
+    this._actionToastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
   },
 
   captureActionArgs(name, args) {
@@ -140,10 +179,14 @@ const API = {
       socket.onmessage = event => this.onSocketMessage(event.data);
       socket.onclose = event => {
         if (this._socket === socket) this._socket = null;
-        for (const [id, pending] of this._pending) { clearTimeout(pending.timer); pending.reject(new Error("与服务器断开连接，请重试")); this._pending.delete(id); }
+        for (const [id, pending] of this._pending) {
+          clearTimeout(pending.timer); this.finishButtonPending(pending);
+          pending.reject(new Error("与服务器断开连接，请重试")); this._pending.delete(id);
+        }
         if (event.code === 4001 && typeof G !== "undefined" && G.kicked) G.kicked();
         else if (this.token && this.serverState && event.code !== 1000) {
           this.setSync("连接中断，正在重连…");
+          this.showActionFeedback("连接中断，正在重连…", "bad");
           clearTimeout(this._reconnectTimer);
           this._reconnectTimer = setTimeout(() => this.connectSocket().catch(() => {}), 1500);
         }
@@ -160,24 +203,38 @@ const API = {
       this.setSync("已同步到服务器");
       return;
     }
-    if (message.type === "error" && !message.id) { this.setSync(message.error || "服务器操作失败"); return; }
+    if (message.type === "error" && !message.id) {
+      this.showActionFeedback(message.error || "服务器操作失败", "bad"); return;
+    }
     if (message.type !== "result") return;
     const pending = this._pending.get(message.id);
     if (!pending) return;
     clearTimeout(pending.timer); this._pending.delete(message.id);
+    this.finishButtonPending(pending);
     this.applyState(message);
-    if (!message.ok) { pending.reject(new Error(message.error || "操作失败")); return; }
-    this.afterRemoteAction(pending.name, pending.args);
+    if (!message.ok) {
+      const error = message.error || "操作失败";
+      this.showActionFeedback(error, "bad");
+      pending.reject(new Error(error)); return;
+    }
+    this.showActionFeedback("操作已同步到服务器", "good");
+    this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result);
     pending.resolve(message);
   },
 
-  afterRemoteAction(name, args) {
+  afterRemoteAction(name, args, refresh, result) {
     // These actions combine a server state change with a purely visual transition.
     if (name === "startTrib") { G.tribOpen = true; if (G.tribRender) G.tribRender(true); }
     if (name === "tribPut") { G.closeModal(); if (G.tribOpen && G.tribRender) G.tribRender(true); }
     if (name === "tribUse" && G.tribRender) G.tribRender(false);
     if (name === "startChuqiao") { G.closeModal(); G.exploreOpen = true; G.render(); }
-    if (name === "cultSetSave" && args[0] === "on" && G.openCultSet) G.openCultSet();
+    if (["autoTaskSet", "atPickSet"].includes(name) && G.openCultSet) G.openCultSet();
+    if (["learnBook", "learnGfBook", "learnBlueprint", "learnRingBp", "installFurnace", "equipItem", "unequip", "sellItem", "slotSpell", "swapFabao", "unslotSpell", "useStone", "useFurnace", "eatDan", "eatQl", "plantField", "clearField"].includes(name) && G.closeModal) G.closeModal();
+    if (name === "craftFurnace" && args[2] === "fabao" && G.closeModal) G.closeModal();
+    if (name === "spellJy" && G.openSpellJy) G.openSpellJy(args[0]);
+    if (name === "doEnhance" && G.openEnhance) G.openEnhance(args[0]);
+    if (name === "doReset" && G.openReset) { G._locks = Array.isArray(result && result.locks) ? result.locks : G._locks || []; G.openReset(args[0]); }
+    if (refresh && typeof G[refresh] === "function") G[refresh]();
     if (name === "closeTrib") {
       G.tribOpen = false;
       const trib = document.getElementById("trib");
@@ -188,15 +245,39 @@ const API = {
   },
 
   async sendAction(name, args) {
-    if (!this._socket || this._socket.readyState !== WebSocket.OPEN) await this.connectSocket();
+    const button = this._clickedButton;
+    this._clickedButton = null;
+    const buttonPending = this.markButtonPending(button);
+    const refresh = button && button.dataset ? button.dataset.refresh || "" : "";
+    this.showActionFeedback("正在同步操作…", "sys");
+    try {
+      if (!this._socket || this._socket.readyState !== WebSocket.OPEN) await this.connectSocket();
+    } catch (error) {
+      this.finishButtonPending(buttonPending);
+      this.showActionFeedback(error.message || "无法连接游戏服务器", "bad");
+      throw error;
+    }
     const socket = this._socket;
-    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("游戏服务器暂不可用");
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      this.finishButtonPending(buttonPending);
+      const error = new Error("游戏服务器暂不可用");
+      this.showActionFeedback(error.message, "bad");
+      throw error;
+    }
     const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now().toString(36)}-${(++this._actionCounter).toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { this._pending.delete(id); reject(new Error("服务器响应超时，请稍后查看状态")); }, 15_000);
-      this._pending.set(id, { resolve, reject, timer, name, args });
+      const timer = setTimeout(() => {
+        const pending = this._pending.get(id);
+        this._pending.delete(id); this.finishButtonPending(pending);
+        const error = new Error("服务器响应超时，请稍后查看状态");
+        this.showActionFeedback(error.message, "bad"); reject(error);
+      }, 15_000);
+      this._pending.set(id, { resolve, reject, timer, name, args, refresh, ...buttonPending });
       try { socket.send(JSON.stringify({ type: "action", id, action: name, args })); }
-      catch (error) { clearTimeout(timer); this._pending.delete(id); reject(error); }
+      catch (error) {
+        clearTimeout(timer); this._pending.delete(id); this.finishButtonPending(buttonPending);
+        this.showActionFeedback(error.message || "发送操作失败", "bad"); reject(error);
+      }
     });
   },
 

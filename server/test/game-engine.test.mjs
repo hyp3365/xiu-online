@@ -20,6 +20,22 @@ test("server runtime loads the existing game modules and whitelisted handlers", 
   assert.ok(!actions.includes("gdCreate"));
 });
 
+test("button-driven study, purchase, garden, and out-of-body actions are authoritative", () => {
+  const required = ["buyGongfa", "learnBlueprint", "learnCc", "learnForge", "learnGfBook", "learnGongfa", "learnJieGf", "learnMifa", "learnRecipe", "learnRingBp", "openField", "stopChuqiao"];
+  for (const name of required) assert.ok(actions.includes(name), `missing server action ${name}`);
+
+  const engine = new GameEngine();
+  const start = 1_800_000_200_000;
+  const state = engine.createState("灵田操作测试", start);
+  state.stone = 1_000_000_000;
+  const opened = engine.act(state, "openField", [], start + 1);
+  assert.equal(opened.state.fields.length, 1);
+
+  assert.throws(() => engine.act(opened.state, "clearField", [0, false], start + 2), /请先确认铲除灵田/);
+  const cleared = engine.act(opened.state, "clearField", [0, true], start + 3);
+  assert.equal(cleared.state.fields[0].g, -1);
+});
+
 test("ticks and player actions mutate only the server-owned state", () => {
   const engine = new GameEngine();
   const start = 1_800_000_000_000;

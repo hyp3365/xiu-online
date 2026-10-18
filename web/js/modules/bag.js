@@ -280,7 +280,7 @@ G.module({
       if (e.slot === "fabao") return `${(DATA.fabaoTypes[e.ft] || {}).shield ? "护盾值" : "附加伤害"} +${U.fmt(n * DATA.fbEnhPer(e))}`;
       return e.attrs.filter(a => a.m && DATA.eqEnhPer(e, a.k) > 0).map(a => `${DATA.attrNames[a.k]} +${U.fmt(n * DATA.eqEnhPer(e, a.k))}`).join("、");
     },
-    openEnhance(src) { const e = this.resetTarget(src); if (!this.canEnhance(e)) return; this._enhObj = e; this.drawEnhance(); },
+    openEnhance(src) { const e = this.resetTarget(src); if (!this.canEnhance(e)) return; this._enhSource = src; this._enhObj = e; this.drawEnhance(); },
     drawEnhance() {
       const e = this._enhObj; if (!e) return;
       const c = this.enhCost(e), n = e.enh || 0, ys = this.ysFor(e);
@@ -288,11 +288,12 @@ G.module({
         <p class="desc">${DATA.HX} ${U.fmt(this.fireCount())} · ${DATA.li(DATA.smIcon("ys", ys))}${DATA.smName("ys", ys)} ${U.fmt(this.smCount("ys", ys))} · 失败只扣材料，不掉强化等级。升阶时强化等级 −20%（最少 −1）。${e.slot === "fabao" ? "" : "只加主属性，暴击不加。"}</p>
         <div class="line"><div>强化 +${n}<small>${this.enhText(e, n)} → ${this.enhText(e, n + 1)}<br>
           <span class="${this.fireCount() >= c.fire ? "" : "q5"}">${DATA.HX} ${c.fire}</span>${c.jj ? `、<span class="${this.smCount(c.sk, c.sf) >= c.jj ? "" : "q5"}">${DATA.li(DATA.smIcon(c.sk, c.sf))}${DATA.smName(c.sk, c.sf)} ${c.jj}</span>` : ""} · 成功率 ${this.ratePct(this.enhRate(e))}</small></div>
-          <button class="sm" onclick="G.doEnhance()" ${this.enhHave(c) ? "" : "disabled"}>强化</button></div>
+          <button class="sm" onclick="G.doEnhance('${this._enhSource}')" ${this.enhHave(c) ? "" : "disabled"}>强化</button></div>
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
-    doEnhance() {
-      const e = this._enhObj; if (!this.canEnhance(e)) return;
+    doEnhance(src) {
+      const e = this.resetTarget(src); if (!this.canEnhance(e)) return;
+      this._enhSource = src; this._enhObj = e;
       const c = this.enhCost(e);
       if (!this.enhHave(c)) return this.log("材料不足。", "sys");
       this.takeFire(c.fire); if (c.jj) this.takeSm(c.sk, c.jj, c.sf);
@@ -340,7 +341,8 @@ G.module({
     // 洗练弹窗：点属性切换锁定（记住装备对象本身，背包重新排序也不会找错）
     openReset(src) {
       const e = this.resetTarget(src); if (!e || !e.attrs) return;
-      if (this._resetObj !== e) this._locks = [];
+      if (this._resetSource !== src) this._locks = [];
+      this._resetSource = src;
       this._resetObj = e; this.drawReset();
     },
     drawReset() {
@@ -353,14 +355,15 @@ G.module({
           <button class="sm ${L.includes(i) ? "active" : ""}" onclick="G.toggleLock(${i})">${L.includes(i) ? "已锁定" : "锁定"}</button></div>`).join("") +
         `<p>消耗${DATA.HX} <b>${cost}</b>（拥有 ${this.fireCount()}）</p>
         ${wash ? `<p class="desc">炼制、购买得到的法宝属性最高绿色，紫色、金色只能洗练得到。</p>` : ""}
-        <div class="btns"><button class="primary" onclick="G.doReset()" ${this.fireCount() >= cost && this.canWash(e, L) ? "" : "disabled"}>${nm}</button><button onclick="G.closeModal()">关闭</button></div>`);
+        <div class="btns"><button class="primary" onclick="G.doReset('${this._resetSource}',${JSON.stringify(L)})" ${this.fireCount() >= cost && this.canWash(e, L) ? "" : "disabled"}>${nm}</button><button onclick="G.closeModal()">关闭</button></div>`);
     },
     // v164 全部锁定时，附加属性没满（< 附加属性上限）也能洗练：再洗出新的附加属性补到满
     canWash(e, L) { return L.length < e.attrs.length || DATA.washRange(e, L)[1] > 0; },
     toggleLock(i) { const L = this._locks || (this._locks = []), j = L.indexOf(i); j >= 0 ? L.splice(j, 1) : L.push(i); this.drawReset(); },
-    doReset() {
-      const e = this._resetObj; if (!e || !e.attrs) return;
-      const L = this._locks || [], cost = DATA.resetCost(e, L.length);
+    doReset(src, locks = []) {
+      const e = this.resetTarget(src); if (!e || !e.attrs) return;
+      const L = Array.isArray(locks) ? [...new Set(locks.map(Number).filter(i => Number.isInteger(i) && i >= 0 && i < e.attrs.length))] : [];
+      const cost = DATA.resetCost(e, L.length);
       if (!this.canWash(e, L)) return;
       if (!this.takeFire(cost)) return this.log(`${DATA.HX}不足。`, "sys");
       const keep = L.map(i => e.attrs[i]);
@@ -368,6 +371,7 @@ G.module({
       this._locks = keep.map(a => e.attrs.indexOf(a)).filter(i => i >= 0);   // 条数变了，锁定的序号跟着属性走
       this.log(`消耗${DATA.HX} ${cost}，洗练了${this.itemName({ t: "eq", e })}的属性。`, "good");
       this.after(); this.drawReset();
+      return { locks: this._locks };
     },
     equipItem(i) {
       const s = this.s, it = s.bag[i], e = it.e;

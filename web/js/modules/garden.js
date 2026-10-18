@@ -74,7 +74,7 @@ G.module({
       this.modal(`<h2>${f.g < 0 ? "空地" : DATA.herbs[f.g]}</h2>${info}
         <h3 style="margin-top:8px">${f.g < 0 ? "种植" : "更换种植"}</h3>
         <div class="room-grid">${seeds}</div>
-        <div class="btns">${f.g >= 0 ? `<button onclick="G.clearField(${i})">铲除</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
+        <div class="btns">${f.g >= 0 ? `<button onclick="if(confirm('铲除后本季作物作废，确定？'))G.clearField(${i},true)">铲除</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
     },
     plantField(i, g) {
       const f = this.s.fields[i];
@@ -86,9 +86,10 @@ G.module({
       else { f.next = f.g === g ? null : g; this.log(f.next == null ? "已取消换种。" : `本季结束后改种${DATA.herbs[g]}。`, "sys"); }
       this.closeModal(); this.after();
     },
-    clearField(i) {
-      if (!confirm("铲除后本季作物作废，确定？")) return;
-      Object.assign(this.s.fields[i], { g: -1, start: 0, next: null, wait: false });
+    clearField(i, confirmed) {
+      if (confirmed !== true) throw new Error("请先确认铲除灵田");
+      const field = this.s.fields[i]; if (!field) return;
+      Object.assign(field, { g: -1, start: 0, next: null, wait: false });
       this.closeModal(); this.after();
     },
   },

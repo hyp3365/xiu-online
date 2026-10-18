@@ -45,7 +45,7 @@ G.module({
             return `<div class="line"><div>${d}域<small>首领 ${DATA.regionBoss(sel, r)} · ${ok ? "已通过历练" : "未历练"}</small></div>
               ${lock ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(sel))}</button>` : !unl || !this.regionOpen(sel, r) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x && x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r},true)" ${s.explore && s.explore.cq ? "disabled" : ""}>${x && x.once ? "停止" : "历练"}</button>
               <button class="sm ${x && !x.once && !x.cq ? "on" : ""}" onclick="G.toggleExplore(${sel},${r})" ${ok && !(s.explore && s.explore.cq) ? "" : "disabled"}>${x && !x.once && !x.cq ? "停止" : "探索"}</button>
-              <button class="sm ${x && x.cq ? "on" : ""}" onclick="G.openChuqiao(${sel},${r})" ${x && x.cq || ok && s.cqLearn && !(s.explore && s.explore.cq) ? "" : "disabled"}>${x && x.cq ? "停止" : "出窍"}</button></div>`}</div>`;
+              <button class="sm ${x && x.cq ? "on" : ""}" onclick="G.${x && x.cq ? "stopChuqiao" : "openChuqiao"}(${sel},${r})" ${x && x.cq || ok && s.cqLearn && !(s.explore && s.explore.cq) ? "" : "disabled"}>${x && x.cq ? "停止" : "出窍"}</button></div>`}</div>`;
           }).join("") + (map.w === "fan" ? this.kuangLine(sel) : "") + `</div>`;
     },
     /* ---------- 凡界灵矿（config/explore.js 的 KUANG）：不用历练，不遇怪，只挖灵石；探索中 x.kuang = 1、x.reg = -1 ---------- */
@@ -54,7 +54,7 @@ G.module({
       const s = this.s, K = CFG.explore.KUANG, x = s.explore && s.explore.kuang && s.explore.map === a ? s.explore : null, cq = s.explore && s.explore.cq;
       return `<div class="line"><div>${this.kuangName(a)}<small>${K.DESC}</small></div>
         ${!this.realmOK(DATA.mapReq(a)) ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(a))}</button>` : !this.mapOpen(a) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x && !x.cq ? "on" : ""}" onclick="G.toggleKuang(${a})" ${cq ? "disabled" : ""}>${x && !x.cq ? "停止" : "探索"}</button>
-        <button class="sm ${x && x.cq ? "on" : ""}" onclick="G.openChuqiao(${a},-1)" ${x && x.cq || s.cqLearn && !cq ? "" : "disabled"}>${x && x.cq ? "停止" : "出窍"}</button></div>`}</div>`;
+        <button class="sm ${x && x.cq ? "on" : ""}" onclick="G.${x && x.cq ? "stopChuqiao" : "openChuqiao"}(${a},-1)" ${x && x.cq || s.cqLearn && !cq ? "" : "disabled"}>${x && x.cq ? "停止" : "出窍"}</button></div>`}</div>`;
     },
     kuangPlan() { return "k".repeat(CFG.explore.KUANG.TIME); },
     // 每步灵石 = 当前地图北域一次探索平均灵石 ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）
@@ -629,9 +629,12 @@ G.module({
       this.after();
     },
     /* ---------- 元婴出窍（config/sect.js 的 CFG.chuqiao）：自动探索指定次数，期间可以继续修炼 ---------- */
+    stopChuqiao(a, r) {
+      const x = this.s.explore;
+      if (x && x.cq && x.map === a && (x.reg || 0) === r) { this.stopExplore("结束出窍"); return this.after(); }
+    },
     openChuqiao(a, r) {
       const s = this.s, C = CFG.chuqiao, x = s.explore;
-      if (x && x.cq && x.map === a && (x.reg || 0) === r) { this.stopExplore("结束出窍"); return this.after(); }
       if (this.cqBusy()) return;
       if (!s.cqLearn) return this.log(`需先在宗门宝库兑换${C.NAME}。`, "sys");
       if (this.cqLeftToday() <= 0) return this.log("今天的出窍次数已用完。", "sys");

@@ -136,8 +136,9 @@ const G = {
   bars() {
     if (!this.s) return;
     const now = Date.now();
-    // 修炼进度条（10 秒走满）
-    const pct = this.tickPct() + "%";
+    // 进度是显示预测，不负责结算；按服务器周期取模，避免等下一份快照时卡在满格。
+    const cycleMs = DATA.TICK * 1000, phaseMs = this.tickElapsedMs(now);
+    const pct = (cycleMs > 0 ? phaseMs / cycleMs * 100 : 0) + "%";
     const tb = $("#tick-bar");
     if (tb) tb.style.width = this.isCultivating() && this.canCultivate() ? pct : "0%";
     const gb = $("#gather-bar"); // 洞府聚灵阵进度条（一直聚灵）
@@ -145,11 +146,15 @@ const G = {
     const bb = $("#body-bar"); // 肉身修炼进度条（自动修炼且能修炼时 10 秒走满）
     if (bb) bb.style.width = this.bodyActive() ? pct : "0%";
     const tl = $("#tick-left");  // 本次修炼倒计时
-    if (tl) tl.textContent = Math.max(0, Math.ceil(DATA.TICK - (now - this._lastTick) / 1000)) + " 秒";
+    if (tl) tl.textContent = (cycleMs > 0 ? Math.ceil((cycleMs - phaseMs) / 1000) : 0) + " 秒";
   },
 
-  // 本次 10 秒周期走了百分之几（进度条用；页面重绘时也直接用这个宽度，避免进度条被重置）
-  tickPct() { return Math.min(100, (Date.now() - this._lastTick) / (DATA.TICK * 10)); },
+  // 当前服务器结算周期内的显示时间；只绘制进度，不在浏览器执行状态结算。
+  tickElapsedMs(now = Date.now()) {
+    const cycleMs = DATA.TICK * 1000;
+    return cycleMs > 0 ? Math.max(0, now - this._lastTick) % cycleMs : 0;
+  },
+  tickPct() { return this.tickElapsedMs() / (DATA.TICK * 10); },
 
   /* ---------- 操作后统一调用：重算属性、存档、刷新 ---------- */
   after() { this.dirty(); this.render(); },

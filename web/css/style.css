@@ -38,6 +38,8 @@ button:active{background:#3a3027}
 button.primary{background:#5b4627;border-color:#e9c46a;color:#fff3d6}
 button.on{background:#2f4a35;border-color:#8fd19e;color:#d8ffe0}
 button:disabled{opacity:.4}
+button.pending,button:disabled.pending{opacity:.85;cursor:wait;filter:saturate(.75)}
+button.pending::after{content:" …";color:#e9c46a}
 /* 进度条叠在文字下面（学习功法、炼丹、炼器） */
 .pg{position:relative;overflow:hidden;border-radius:4px}
 .pg>.pgf{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#b08a3e55,#e9c46a77);pointer-events:none}
@@ -105,6 +107,8 @@ button.sel i{font-style:normal;color:#c9a45c;font-size:12px}
 /* 浮动提示 */
 #toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);max-width:90%;background:#2a2219ee;border:1px solid #c9a45c;border-radius:8px;padding:6px 12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:50}
 #toast.show{opacity:1}
+#toast[data-tone="good"]{border-color:#8fd19e}
+#toast[data-tone="bad"]{border-color:#e07a5f}
 #toast .good{color:#9fd3c7}#toast .bad{color:#e07a5f}#toast .gold{color:#e9c46a}#toast .sys{color:#c9bb9f}
 
 /* 探索信息栏 */
