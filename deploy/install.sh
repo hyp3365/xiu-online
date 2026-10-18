@@ -11,6 +11,11 @@ SERVICE=xiu-online-test
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq ca-certificates curl git nginx >/dev/null
+PUBLIC_IP="${XIU_PUBLIC_IP:-$(curl -4fsS --max-time 8 https://api.ipify.org || true)}"
+if [[ ! "$PUBLIC_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+  echo "无法确定公网 IPv4；请设置 XIU_PUBLIC_IP 后重新运行安装器。" >&2
+  exit 1
+fi
 if ! command -v node >/dev/null || [ "$(node -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || echo 0)" -lt 20 ]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y -qq nodejs >/dev/null
@@ -39,10 +44,13 @@ else
   echo ">>> 请在 HTTPS 站点的 server{} 中加入：include snippets/xiu-online-test.conf;"
 fi
 # 独立的公网 IP HTTP server block；HTTP 80 已可达，IP 根路径会跳到 /xiuxian-test/。
-install -m 0644 "$DIR/deploy/nginx-xiuxian-ip.conf" /etc/nginx/conf.d/xiu-online-ip-test.conf
+IP_NGX_TMP=$(mktemp)
+sed "s/__XIU_PUBLIC_IP__/${PUBLIC_IP}/g" "$DIR/deploy/nginx-xiuxian-ip.conf" > "$IP_NGX_TMP"
+install -m 0644 "$IP_NGX_TMP" /etc/nginx/conf.d/xiu-online-ip-test.conf
+rm -f "$IP_NGX_TMP"
 nginx -t
 systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
 curl -fsS http://127.0.0.1:18301/health >/dev/null
-printf '\n安装完成：\n  IP 测试入口（HTTP）：http://56.69.168.157/\n  HTTPS 入口（配置好站点后）：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$SERVICE"
+printf '\n安装完成：\n  IP 测试入口（HTTP）：http://%s/\n  HTTPS 入口（配置好站点后）：https://你的域名/xiuxian-test/\n  Node API：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$PUBLIC_IP" "$SERVICE"
 echo '注意：IP 测试入口使用明文 HTTP，仅限临时测试；请用一次性测试账号和密码，不要输入常用密码。'

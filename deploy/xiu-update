@@ -4,9 +4,16 @@ set -euo pipefail
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 DIR=/opt/xiu-online
 SERVICE=xiu-online-test
+PUBLIC_IP="${XIU_PUBLIC_IP:-$(curl -4fsS --max-time 8 https://api.ipify.org || true)}"
+if [[ ! "$PUBLIC_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+  echo "无法确定公网 IPv4；请使用 sudo env XIU_PUBLIC_IP=你的公网IP xiu-online-update。" >&2
+  exit 1
+fi
 printf '>>> 拉取 hyp3699/xiu-online 的 main 分支\n'
 git -C "$DIR" fetch --depth 1 origin main
 git -C "$DIR" reset --hard FETCH_HEAD
+install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
+install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
 (cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
 # 给静态脚本生成内容哈希版本，避免测试服客户端继续使用旧缓存。
 python3 - "$DIR/web" <<'PY'
@@ -30,6 +37,10 @@ curl -fsS http://127.0.0.1:18301/health
 for D in /etc/nginx/conf.d/central_vps_users/*/ /etc/nginx/snippets/; do
   [ -f "${D}xiu-online-test.conf" ] && install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" "${D}xiu-online-test.conf"
 done
-install -m 0644 "$DIR/deploy/nginx-xiuxian-ip.conf" /etc/nginx/conf.d/xiu-online-ip-test.conf
-if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then systemctl reload nginx; fi
-printf '\n更新完成。IP 测试入口：http://56.69.168.157/（HTTP，仅供临时测试）\n'
+IP_NGX_TMP=$(mktemp)
+sed "s/__XIU_PUBLIC_IP__/${PUBLIC_IP}/g" "$DIR/deploy/nginx-xiuxian-ip.conf" > "$IP_NGX_TMP"
+install -m 0644 "$IP_NGX_TMP" /etc/nginx/conf.d/xiu-online-ip-test.conf
+rm -f "$IP_NGX_TMP"
+nginx -t
+systemctl reload nginx
+printf '\n更新完成。IP 测试入口：http://%s/（HTTP，仅供临时测试）\n' "$PUBLIC_IP"

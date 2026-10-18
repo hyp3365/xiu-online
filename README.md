@@ -31,7 +31,14 @@ npm test
 
 ## 直接用公网 IP 测试
 
-安装完成后可访问 `http://56.69.168.157/`，Nginx 会将根路径跳转到 `/xiuxian-test/`，并在同一 IP 上反代 API 和 WebSocket。此入口为 HTTP 明文传输，只适合短期测试：请使用一次性测试账号和密码，不要使用常用密码。正式使用请配置域名和 HTTPS，再通过 HTTPS/WSS 访问。
+安装完成后可访问 `http://你的公网IP/`，Nginx 会将根路径跳转到 `/xiuxian-test/`，并在同一 IP 上反代 API 和 WebSocket。安装器默认通过 `api.ipify.org` 探测公网 IPv4；若探测结果不是访问用的 IP，可在运行安装/更新时设置 `XIU_PUBLIC_IP`。例如：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/install.sh | sudo env XIU_PUBLIC_IP=54.252.143.152 bash
+sudo env XIU_PUBLIC_IP=54.252.143.152 xiu-online-update
+```
+
+此入口为 HTTP 明文传输，只适合短期测试：请使用一次性测试账号和密码，不要使用常用密码。正式使用请配置域名和 HTTPS，再通过 HTTPS/WSS 访问。`server-url.txt` 当前指向这台测试 IP，APK 测试版也会使用明文 HTTP。
 
 ## 部署到现有 Debian/Ubuntu 服务器
 
