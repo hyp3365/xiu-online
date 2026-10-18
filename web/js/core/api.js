@@ -217,7 +217,6 @@ const API = {
       this.showActionFeedback(error, "bad");
       pending.reject(new Error(error)); return;
     }
-    this.showActionFeedback("操作已同步到服务器", "good");
     this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result);
     pending.resolve(message);
   },
@@ -249,7 +248,6 @@ const API = {
     this._clickedButton = null;
     const buttonPending = this.markButtonPending(button);
     const refresh = button && button.dataset ? button.dataset.refresh || "" : "";
-    this.showActionFeedback("正在同步操作…", "sys");
     try {
       if (!this._socket || this._socket.readyState !== WebSocket.OPEN) await this.connectSocket();
     } catch (error) {
