@@ -231,9 +231,9 @@ G.module({
       const cnt = () => { let r = Math.random() * 100; for (const [p, n] of I.N) { if ((r -= p) < 0) return n; } return I.N[I.N.length - 1][1]; };
       s.affairItems = [...pick(pool("herb"), I.HERB).map(g => ({ kind: "herb", g })), ...pick(pool("ore"), I.ORE).map(g => ({ kind: "ore", g }))]
         .map(o => Object.assign(o, { n: cnt(), done: false }));
-      const names = DATA.maps.slice(0, DATA.FAN_MAP_N).flatMap(m => m.monsters || []), R = a => U.rand(a[0], a[a.length - 1]);
+      const mobs = DATA.maps.slice(0, DATA.FAN_MAP_N).flatMap((m, a) => (m.monsters || []).map(name => ({ name, a }))), R = a => U.rand(a[0], a[a.length - 1]);
       s.affairFights = [];
-      F.GROUPS.forEach((G0, gi) => { for (let k = 0; k < G0.n; k++) s.affairFights.push({ name: names[U.rand(0, names.length - 1)] || "妖兽", grp: gi,
+      F.GROUPS.forEach((G0, gi) => { for (let k = 0; k < G0.n; k++) s.affairFights.push({ ...(mobs[U.rand(0, mobs.length - 1)] || { name: "妖兽", a: 0 }), grp: gi,
         realm: Math.min(DATA.realms.length - 1, x.reqRealm + G0.realm), lay: R(G0.lay), pct: R(G0.pct), gf: R(G0.gf), done: false }); });
       s.affairDay = day;
     },
@@ -254,7 +254,8 @@ G.module({
       this.affairGen(); const s = this.s, t = (s.affairFights || [])[i]; if (!s.sect || !t || t.done) return;
       if (s.hp < this.stats().hp * CFG.battle.TOWER_HP_MIN) return this.log("生命不足三成，先休养片刻。", "sys");
       const b = DATA.mobRoll(this.affairFightRow(t), CFG.sect.affairFight.CRIT), v = (x, k) => x * DATA.mobRnd(k);
-      const m = this.addMagic({ name: t.name, boss: false, hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, "normal");
+      const a = t.a >= 0 ? t.a : DATA.maps.findIndex(m => (m.monsters || []).includes(t.name));   // 地图序号：战斗画面按它找怪物图
+      const m = this.addMagic({ name: t.name, a, boss: false, hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, "normal");
       const res = this.battle(m); let txt;
       if (res.win) { const w = this.affairFightWin(t); t.done = true; s.stone += w.stone; s.contrib += w.contrib;
         txt = `${res.rounds}回合击杀${t.name}，灵石 +${U.fmt(w.stone)}，贡献 +${U.fmt(w.contrib)}。`; }
@@ -262,7 +263,7 @@ G.module({
         txt = `未能击杀${t.name}${res.timeout ? "（回合耗尽）" : ""}，灵石 -${U.fmt(l.stone)}，贡献 -${U.fmt(l.contrib)}。`; }
       this.log(txt, res.win ? "good" : "bad");
       this.after();
-      this.playBattle(res.detail, `特殊任务 · ${t.name}`, txt, res.win);
+      this.playBattle(res.detail, "特殊任务", txt, res.win, null, false, { tname: t.name });
     },
     setAffairTab(t) { this.affairTab = t; this.render(); },
 
