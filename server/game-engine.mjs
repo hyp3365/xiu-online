@@ -91,6 +91,9 @@ export class GameEngine {
       navigator: { sendBeacon() { return true; } },
       location: { href: "http://server.invalid/", reload() {} },
       setTimeout: () => 0,
+      // 确认框在客户端发送操作前弹出（api.js 的 CONFIRMS），到服务器时一律视为已确认
+      confirm: () => true,
+      alert() {},
       clearTimeout() {},
       setInterval: () => 0,
       clearInterval() {},
@@ -142,6 +145,8 @@ export class GameEngine {
       engine.logs.unshift(entry);
       if (engine.logs.length > 100) engine.logs.length = 100;
     };
+    // 悟道的读条在客户端播放，结束后发 wudaoDone；直接调用 wudao 时立即结算（服务器没有定时器）
+    this.G.wudao = function (dao) { if (this.wdCheck(dao)) this.wudaoDone(dao); };
     this.G.save = function () {};
     this.G.upload = async function () {};
     this.G.render = function () {};
