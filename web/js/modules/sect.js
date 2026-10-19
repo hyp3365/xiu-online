@@ -647,7 +647,7 @@ G.module({
       } else if (at === "fight") {
         h += `<div class="card"><h3>特殊任务</h3>` +
           (!fresh ? `<p class="desc">任务刷新中…</p>` : s.affairFights.map((t, i) => { const w = this.affairFightWin(t), l = this.affairFightLose(t);
-            return `<div class="line"><div>击杀 · ${t.name}<span class="tag">${DATA.realmLabel(t.realm)}</span><small>功法率 ${t.pct}% · 功法 ${t.gf} 层 · 奖励 ${U.fmt(w.stone)} 灵石 ${U.fmt(w.contrib)} 贡献 · 失败扣 ${U.fmt(l.stone)} 灵石 ${U.fmt(l.contrib)} 贡献</small></div>
+            return `<div class="line"><div>击杀 · ${t.name}<span class="tag">${DATA.realmLabel(t.realm)}</span><small>奖励 ${U.fmt(w.stone)} 灵石 ${U.fmt(w.contrib)} 贡献 · 失败扣 ${U.fmt(l.stone)} 灵石 ${U.fmt(l.contrib)} 贡献</small></div>
               <button class="sm" onclick="G.fightAffair(${i})" ${t.done ? "disabled" : ""}>${t.done ? "已完成" : "执行"}</button></div>`; }).join("")) + `</div>`;
       } else {
       const a = s.affair, cur = a.task >= 0 ? DATA.affairs[a.task] : null;
