@@ -1170,7 +1170,7 @@ G.module({
 });
 
 // 背景主题列表：[id, 名字]，id 为空 = 默认；样式在 style.css 的 html[data-bg="id"]
-const BG_THEMES = [["", "默认"], ["qingming", "青冥"], ["zixiao", "紫霄"], ["chixia", "赤霞"], ["bihai", "碧海"], ["cangsong", "苍松"], ["xuanbing", "玄冰"], ["liuli", "琉璃"], ["jinwu", "金乌"], ["yueying", "月影"], ["moyun", "墨云"], ["taohua", "桃花"], ["youming", "幽冥"], ["rongyan", "熔岩"], ["jiuxiao", "九霄"], ["qingci", "青瓷"], ["xingye", "星夜"]];
+const BG_THEMES = [["", "默认"], ["qingming", "青冥"], ["zixiao", "紫霄"], ["chixia", "赤霞"], ["cangsong", "苍松"], ["taohua", "桃花"], ["jinwu", "金乌"], ["qingci", "青瓷"]];
 function applyBg() {
   if (typeof document === "undefined" || !document.documentElement) return;   // 服务器端引擎里没有页面
   let id = ""; try { id = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
