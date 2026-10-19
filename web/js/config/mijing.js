@@ -1,136 +1,91 @@
 /* =====================================================================
- * ★ 数值设置 · 秘境 ★
- * ---------------------------------------------------------------------
- * 所有数值文件都在 js/config/ 下，一个部分一个文件；改完把 index.html 里的 ?v=数字 加 1。
- * 代码：js/modules/world.js（mjDiscover / makeMjMob / rollMj）、js/data/refstats.js（生成怪物属性）
- *
- * 【发现】在凡界地图历练 / 自动探索 / 元婴出窍，每走完一次（没战败），对「能在这张地图发现、还没发现」的秘境
- *   按 find.chance% 依次判定，一次最多发现一处。发现后永久保留。
- * 【进入】每处秘境每天只能进 DAILY 次（历练、探索都算），先历练通过（走完不战败）才能自动探索。
- *   「一键探索」= 把今天还能进、已历练通过的秘境按顺序依次自动探索一遍。
- *   生命低于上限 × config/explore.js 的 STOP 不能进入。
- * 【走路】一次 TIME 步；每步秒数、每步恢复用凡界的设置（config/explore.js 的 STEP_SEC / STEP_MIN / HEAL_STEP，
- *   宗门秘法「神行」可减少）。事件排法同凡界：普通怪 MONSTERS + 精英 ELITES + 灵药 HERB_MIN~HERB_MAX
- *   + 矿脉 ORE_MIN~ORE_MAX，其余无事发生，打乱后最后 BOSS 步是首领。
- *
- * 【怪物属性、进入境界】在 config/mobs.js 的 mijing（每处秘境 普通 / 精英 / 首领 单独设置）
- *
- * 【掉落】（击败怪物 / 发现灵药 / 发现矿脉 时）
- *   灵石 = 凡界 RUN_STONE 按 L 算的每只普通怪灵石基数 × 随机(1~2.5) × STONE_RATE × 种类倍率 × 该秘境 stone（config/drops.js）
- *          （用秘境自己的 stone，不再乘地图的 stone）
- *   药材矿石 = 从 config/drops.js 里 mapDrops[drops] 那张地图的药材 + 矿石表合起来抽，
- *            掉几种、每种几个按 config/drops.js 的 CFG.dropRule.mijing（kinds / n），
- *            每种个数 = max(1, 四舍五入(随机(n) × 该秘境 mat))（用秘境自己的 mat，不再乘地图的 mat）
- *   （秘境借用凡界地图的药材矿石表时，不带那张地图的固定掉落 fixed，见 config/drops.js）
- *   再加 extra 额外掉落（单独判定，不占上面的种数）：每条单独掷 chance%，掷中掉 随机(n[0]~n[1]) 个
- *   现在只有首领（boss）有额外掉落：耀石、火髓、空间晶核、灵晶；普通怪、精英怪没有
- *   元婴期秘境每次进入另外必定掉落养神露（数量见 config/sect.js 的 chuqiao.LU_DROP）
- *
- * 【每处秘境的字段】
- *   name 名字（和 config/mobs.js 的 mijing 对应）
- *   find  { map 在哪张凡界地图能发现（0 青云山林 1 黑风谷 2 万妖岭 3 幽冥沼泽 4 落星海 5 地火熔窟 6 埋骨战场 7 断魂谷 8 雷泽荒原），
- *           chance 每走完一次发现的几率% }
- *   drops 药材矿石表用哪张地图的（种数、个数按 dropRule.mijing）（序号同 find.map）   mat 药材矿石数量倍率   stone 灵石倍率
- *   L     层序（只用来算灵石掉落，见 config/drops.js 的 RUN_STONE）
- *   bossName 首领名字   monsters 普通怪名字（随机取一个；精英怪 = "精英·" + 名字）
- *   extra 额外掉落：按事件分列表（monster 普通怪 / elite 精英 / boss 首领 / herbEvent 灵药 / oreEvent 矿脉，不写 = 没有），
- *         每条 { item 物品名, chance 几率%, n [最少, 最多] }
- *         物品名：火髓、空间晶核、养神露（这三样没有品阶）、耀石 / 灵晶（写 "耀石" "灵晶" = 每个随机一种属性，或写 "火耀石" "火灵晶" 这样的某一种）
- *                 也可以写药材 / 矿石名字，或 content/items.js 里的自定义物品
+ * ★ 数值设置 · 秘境 ★（代码：modules/world.js 的 mjXxx；怪物属性、进入境界在 config/mobs.js 的 mijing）
+ * 发现：在凡界第 find.map 张地图走完一次历练 / 探索，按 find.chance% 判定，一次最多发现一处
+ *   地图序号：0 青云山林 1 黑风谷 2 万妖岭 3 幽冥沼泽 4 落星海 5 地火熔窟 6 埋骨战场 7 断魂谷 8 雷泽荒原
+ * 一次 TIME 步：普通怪 MONSTERS + 精英 ELITES + 灵药 HERB_MIN~MAX + 矿脉 ORE_MIN~MAX，其余空步，最后 BOSS 步是首领
+ * 灵石 = 凡界 RUN_STONE(L) × 随机(1~2.5) × STONE_RATE × 种类倍率 × stone（config/drops.js）
+ * 药材矿石 = 第 drops 张凡界地图的药材 + 矿石表（dropRule.mijing，不含 fixed），每种个数 = max(1, 四舍五入(随机n × mat))
+ * extra 额外掉落：按事件分（monster / elite / boss / herbEvent / oreEvent），每条 { item, chance 几率%, n [最少, 最多] } 单独判定
+ *   item：火髓、空间晶核、养神露；"耀石" / "灵晶" = 随机属性，或 "火耀石" 这样指定；也可写药材 / 矿石名或 content/items.js 的物品
+ * 元婴期秘境另必掉养神露（config/sect.js 的 chuqiao.LU_DROP）
  * ===================================================================== */
 window.CFG = window.CFG || {};
 
 CFG.mijing = {
-  DAILY: 1,          // 每处秘境每天能进几次（历练、探索合计）
+  DAILY: 1,          // 每处每天能进几次（历练、探索合计）
   TIME: 100,         // 一次走多少步
-  // 一次固定遇到的事件数量（其余步数无事发生）：
   MONSTERS: 12,      // 普通怪个数
   ELITES: 5,         // 精英怪个数
-  BOSS: 1,           // 首领个数（放在最后几步）
-  HERB_MIN: 5,       // 发现灵药次数下限
-  HERB_MAX: 10,      // 发现灵药次数上限
-  ORE_MIN: 5,        // 发现矿脉次数下限
-  ORE_MAX: 10,       // 发现矿脉次数上限
+  BOSS: 1,           // 首领个数（放在最后）
+  HERB_MIN: 5,       // 灵药次数下限
+  HERB_MAX: 10,      // 灵药次数上限
+  ORE_MIN: 5,        // 矿脉次数下限
+  ORE_MAX: 10,       // 矿脉次数上限
 
-  // ---------- 秘境专用材料 ----------
-  //   name 名字   sell 出售价（灵石）   desc 说明
+  // 秘境专用材料：name 名字  sell 出售价（灵石）  desc 说明  names 各属性名字（顺序固定，对应图标序号）
   items: {
-    kj:   { name: "空间晶核", sell: 20, desc: "炼制空间石的专用材料。" },   // 空间晶核：出售 20 灵石
-    // 耀石：6 种（金 木 水 火 土 雷），装备、戒指、法宝炼制和强化的专用矿石，不分品阶
-    //   装备、戒指用任意一种；法宝只能用同属性的（数量见 config/forge.js 的 YAOSHI、enhance.SPECIAL）
-    //   掉落写 "耀石"（每个随机一种属性），或写某一种，如 "火耀石"
-    //   names 6 种的名字（顺序 金 木 水 火 土 雷，图片 img/icons/sm_ys序号.png）；sell 出售价（灵石）
+    kj:   { name: "空间晶核", sell: 20, desc: "炼制空间石的专用材料。" },
+    // 耀石：金 木 水 火 土 雷，装备 / 戒指用任意一种，法宝要同属性（用量见 config/forge.js）
     ys:   { name: "耀石", names: ["金耀石", "木耀石", "水耀石", "火耀石", "土耀石", "雷耀石"], sell: 20,
             desc: "装备、戒指、法宝炼制和强化的专用矿石。装备、戒指可用任意一种，法宝要用同属性的。" },
-    // 灵晶：5 种（金 木 水 火 土），炼制、强化灵珠的材料（见 config/array.js 的 CFG.lingzhu），图片 img/icons/sm_lj序号.png
-    //   掉落写 "灵晶"（每个随机一种属性），或写某一种，如 "火灵晶"
+    // 灵晶：金 木 水 火 土，炼制、强化灵珠（config/array.js 的 lingzhu）
     lj:   { name: "灵晶", names: ["金灵晶", "木灵晶", "水灵晶", "火灵晶", "土灵晶"], sell: 20, desc: "炼制、强化灵珠的材料，凡界秘境首领掉落。" },
-    lu:   { name: "养神露", sell: 20, desc: "炼制养神丹的材料，元婴期秘境、万妖岭首领掉落。" },   // 养神露：出售 20 灵石
-    wdg:  { name: "悟道果", sell: 10, desc: "在「洞府 → 悟道室」悟道时消耗。四界功德司用功德购买。" },   // 悟道果：出售 10 灵石
-    yd:   { name: "养神丹", sell: 50, desc: "在「修炼 → 神识」养神，提升神识强度（每天可元婴出窍的次数）。2 星宗门炼丹房学丹方炼制。" },   // 养神丹：出售 50 灵石
+    lu:   { name: "养神露", sell: 20, desc: "炼制养神丹的材料，元婴期秘境、万妖岭首领掉落。" },
+    wdg:  { name: "悟道果", sell: 10, desc: "在「洞府 → 悟道室」悟道时消耗。四界功德司用功德购买。" },
+    yd:   { name: "养神丹", sell: 50, desc: "在「修炼 → 神识」养神，提升神识强度（每天可元婴出窍的次数）。2 星宗门炼丹房学丹方炼制。" },
   },
 
-  // ---------- 秘境列表（顺序 = 秘境序号，不要调换，存档按序号记录） ----------
+  // 秘境列表：顺序 = 存档序号，不要调换或插入；进入境界依次为练气、筑基……大乘（见 config/mobs.js）
   list: [
-    // ---------- 1. 灵泉洞天（需练气） ----------
-    { name: "灵泉洞天", find: { map: 0, chance: 5 }, drops: 0, mat: 2, stone: 2, L: 9,   // 在青云山林探索时发现；普通掉落用青云山林的掉落组
+    { name: "灵泉洞天", find: { map: 0, chance: 5 }, drops: 0, mat: 2, stone: 2, L: 9,
       bossName: "灵泉守护·碧水灵蛟", monsters: ["灵泉水妖", "碧鳞鱼精", "水灵", "青藤妖"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 2. 古修洞府（需筑基） ----------
-    { name: "古修洞府", find: { map: 1, chance: 5 }, drops: 1, mat: 2, stone: 2, L: 19,   // 在黑风谷探索时发现；普通掉落用黑风谷的掉落组
+    { name: "古修洞府", find: { map: 1, chance: 5 }, drops: 1, mat: 2, stone: 2, L: 19,
       bossName: "古修残魂", monsters: ["守府傀儡", "古修残影", "石甲卫", "噬灵鼠"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 3. 赤炎火窟（需金丹） ----------
-    { name: "赤炎火窟", find: { map: 2, chance: 5 }, drops: 2, mat: 2, stone: 2, L: 29,   // 在万妖岭探索时发现；普通掉落用万妖岭的掉落组
+    { name: "赤炎火窟", find: { map: 2, chance: 5 }, drops: 2, mat: 2, stone: 2, L: 29,
       bossName: "火窟之主·赤炎魔君", monsters: ["火灵", "炎魔", "赤炎蜥", "熔岩巨人"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 4. 寒渊冰宫（需元婴） ----------
-    { name: "寒渊冰宫", find: { map: 3, chance: 5 }, drops: 3, mat: 2, stone: 2, L: 39,   // 在幽冥沼泽探索时发现；普通掉落用幽冥沼泽的掉落组
+    { name: "寒渊冰宫", find: { map: 3, chance: 5 }, drops: 3, mat: 2, stone: 2, L: 39,
       bossName: "冰宫女帝·玄冰凤", monsters: ["冰魄妖", "寒霜狼", "冰傀儡", "雪妖"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 5. 万剑冢（需出窍） ----------
-    { name: "万剑冢", find: { map: 3, chance: 5 }, drops: 3, mat: 2, stone: 2, L: 44,   // 在幽冥沼泽探索时发现；普通掉落用幽冥沼泽的掉落组
+    { name: "万剑冢", find: { map: 3, chance: 5 }, drops: 3, mat: 2, stone: 2, L: 44,
       bossName: "剑冢剑灵", monsters: ["剑灵", "剑魂", "残剑傀儡", "剑奴"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 6. 上古战场（需化神） ----------
-    { name: "上古战场", find: { map: 4, chance: 5 }, drops: 4, mat: 2, stone: 2, L: 49,   // 在落星海探索时发现；普通掉落用落星海的掉落组
+    { name: "上古战场", find: { map: 4, chance: 5 }, drops: 4, mat: 2, stone: 2, L: 49,
       bossName: "上古战魂·不灭战神", monsters: ["上古战魂", "骷髅战将", "战场怨灵", "血煞魔兵"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 7. 星陨秘境（需练虚） ----------
-    { name: "星陨秘境", find: { map: 5, chance: 5 }, drops: 5, mat: 2, stone: 2, L: 59,   // 在地火熔窟探索时发现；普通掉落用地火熔窟的掉落组
+    { name: "星陨秘境", find: { map: 5, chance: 5 }, drops: 5, mat: 2, stone: 2, L: 59,
       bossName: "星陨之主·噬星兽", monsters: ["星兽", "陨星傀儡", "星芒灵", "噬星虫"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 8. 幽冥鬼域（需合体） ----------
-    { name: "幽冥鬼域", find: { map: 6, chance: 5 }, drops: 6, mat: 2, stone: 2, L: 69,   // 在埋骨战场探索时发现；普通掉落用埋骨战场的掉落组
+    { name: "幽冥鬼域", find: { map: 6, chance: 5 }, drops: 6, mat: 2, stone: 2, L: 69,
       bossName: "鬼域之王·幽冥鬼帝", monsters: ["鬼将", "幽魂", "冥鬼", "骨魔"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 9. 太虚幻境（需洞真） ----------
-    { name: "太虚幻境", find: { map: 6, chance: 5 }, drops: 6, mat: 2, stone: 2, L: 74,   // 在埋骨战场探索时发现；普通掉落用埋骨战场的掉落组
+    { name: "太虚幻境", find: { map: 6, chance: 5 }, drops: 6, mat: 2, stone: 2, L: 74,
       bossName: "太虚幻主", monsters: ["幻影修士", "心魔幻象", "虚空灵", "幻兽"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    // ---------- 10. 混沌古界（需大乘） ----------
-    { name: "混沌古界", find: { map: 7, chance: 5 }, drops: 7, mat: 2, stone: 2, L: 79,   // 在断魂谷探索时发现；普通掉落用断魂谷的掉落组
+    { name: "混沌古界", find: { map: 7, chance: 5 }, drops: 7, mat: 2, stone: 2, L: 79,
       bossName: "混沌古兽", monsters: ["混沌兽", "太古魔灵", "混沌之灵", "古界巨人"],
-      extra: {   // 额外掉落：只有首领有（普通怪、精英怪没有）
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],   // 首领：火髓、空间晶核、耀石、灵晶（每处秘境一次 1~2 个）
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
   ],
 };
