@@ -2,7 +2,7 @@
  * 人物属性（计算在 js/modules/player.js 的 computeStats）
  *   各属性 = base + 修为突破合计（config/realm.js）+ 肉身 + 装备 + 功法 + 丹药
  *   暴击% = min(CRIT_CAP, fixed.crit + 装备 + 丹药/肉身)，不随境界成长
- *   总修炼速度 = (境界修炼速度 + 秘诀 + 宗门秘法「聚元」) × (1 + (聚灵阵% + 丹药% + 修炼室%) / 100)
+ *   总修炼速度 = (境界修炼速度 + 秘诀 + 宗门秘法「聚元」) × (1 + (聚灵阵% + 丹药% + 修炼室% + 聚元圆满% + 道童%) / 100)
  * ===================================================================== */
 window.CFG = window.CFG || {};
 
@@ -29,5 +29,5 @@ CFG.player = {
 };
 
 // 六系抗性（金木水火土雷）= RES_BASE + 修为突破合计 res + 本系抗性功法 + 肉身 + 丹药
-// 法术伤害 = 威力 × 灵根加成 − (防御 × RES_RATE + 该系抗性) × DEF_RATE（RES_RATE、DEF_RATE 在 config/battle.js；普攻、法宝只算防御）
+// 法术 / 法宝伤害 = 威力 × 灵根 − 防御 × RES_RATE − 该系抗性 × RES_EL_RATE；普攻 = 攻击 − 防御 × DEF_RATE（均在 config/battle.js）
 CFG.player.RES_BASE = 3.4;   // 凡人每系抗性
