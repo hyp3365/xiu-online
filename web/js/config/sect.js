@@ -26,13 +26,13 @@ CFG.sect = {
   // 事务堂（自动循环，离线继续）：rank 最低职务序号  time 每次分钟  contrib / stone 每次奖励 × 星级倍率 × 职务倍率
   affair: {
     tasks: [
-      { name: "打扫山门",     rank: 0, time: 5,   contrib: 5,   stone: 1 },
-      { name: "护送商队",     rank: 1, time: 5,  contrib: 8,  stone: 2 },
-      { name: "镇守灵脉",     rank: 2, time: 5,  contrib: 12,  stone: 3 },
-      { name: "斩杀魔修",     rank: 3, time: 5,  contrib: 16,  stone: 4 },
-      { name: "传功讲道",     rank: 4, time: 5,  contrib: 20, stone: 5 },
-      { name: "镇压魔窟",     rank: 5, time: 5,  contrib: 25, stone: 6 },
-      { name: "统御宗门",     rank: 6, time: 5, contrib: 30, stone: 7 },
+      { name: "打扫山门",     rank: 0, time: 5,   contrib: 5,   stone: 5 },
+      { name: "护送商队",     rank: 1, time: 5,  contrib: 8,  stone: 8 },
+      { name: "镇守灵脉",     rank: 2, time: 5,  contrib: 12,  stone: 12 },
+      { name: "斩杀魔修",     rank: 3, time: 5,  contrib: 16,  stone: 16 },
+      { name: "传功讲道",     rank: 4, time: 5,  contrib: 20, stone: 20 },
+      { name: "镇压魔窟",     rank: 5, time: 5,  contrib: 25, stone: 25 },
+      { name: "统御宗门",     rank: 6, time: 5, contrib: 30, stone: 30 },
     ],
   },
   // 修炼室：pct 修为修炼速度 +% × 星级倍率  cost 每 10 秒贡献（不乘倍率）  rank 需要职务序号（不写 = 所有人）
