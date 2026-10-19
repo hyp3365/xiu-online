@@ -1,5 +1,5 @@
 /* =====================================================================
- * ★ 灵药园 · 灵田 ★ 代码见 js/data/craft.js
+ * ★ 灵药园 · 灵田 ★ 代码见 js/data/craft.js、js/modules/garden.js
  * 第 n 块灵田灵石 = floor(OPEN_COST × OPEN_RATE^(n−1))
  * 成熟时间 = grow × (1 − 缩短%/100)，缩短% = 灵植夫/仙植师 GROW_CUT + 秘法「育灵」+ 道童，上限 config/wudao.js TIME_CUT_MAX.plantTime
  * 每季数量 = floor(yield 随机 × (1 + 增产%/100))，增产% = 灵植夫/仙植师 YIELD_ADD + 秘法「丰灵」
@@ -11,7 +11,7 @@ CFG.garden = {
   OPEN_COST: 1000,    // 开第 1 块灵田的灵石
   OPEN_RATE: 1.5,     // 每多开一块灵石 × 此倍率
   // 药材名: { grow 成熟（分钟）, yield [最少, 最多] 每季收获, ling 每季开始时扣的灵气, seed 宗门宝库兑换种子的贡献（一次永久） }
-  // 药材名须与 config/items.js 的 mats.herb / matsOther.herb 一致；没写的药材按 grow 60、yield [1,1]、ling 0、seed 100；各界特色药材不能种
+  // 药材名须与 config/items.js 的 mats.herb / matsOther.herb 一致；能兑换种子的药材都要写；各界特色药材不能种
   herbs: {
     // 凡界：种子不限门派星级，按灵植夫加成
     青灵草: { grow: 1200, yield: [40, 60], ling: 50000, seed: 100 },
