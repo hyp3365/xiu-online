@@ -115,7 +115,8 @@ const API = {
     this._modalTracking = true;
     const modal = G.modal;
     G._modalSeq = 0;
-    G.modal = function (...args) { G._modalSeq++; return modal.apply(this, args); };
+    // 不是 open* 打开的弹窗（如悟道结果）不记录打开函数，避免被刷新成上一个弹窗
+    G.modal = function (...args) { G._modalSeq++; G._modalOpener = null; return modal.apply(this, args); };
     const closeModal = G.closeModal;
     G.closeModal = function (...args) { G._modalOpener = null; return closeModal.apply(this, args); };
     for (const key of Object.keys(G)) {
@@ -167,17 +168,32 @@ const API = {
     this._clickTracking = true;
   },
 
-  markButtonPending(button) {
-    if (!button || button.disabled) return { button: null, wasDisabled: true };
-    button.classList.add("pending");
-    button.disabled = true;
-    return { button, wasDisabled: false };
+  // 按钮不再显示「处理中…」：结果由服务器很快推回，界面直接刷新
+  markButtonPending() { return { button: null }; },
+  finishButtonPending() {},
+
+  // 服务器写的游戏日志（如「灵石不足」）：和单机版 G.log 一样，不在修炼页（或开着弹窗）时用浮动提示显示
+  toastLogs(logs, force = false) {
+    if (!Array.isArray(logs) || !logs.length || typeof G === "undefined") return;
+    const modal = document.getElementById("modal"), modalOpen = modal && !modal.classList.contains("hidden");
+    if (!force && G.tab === "cultivate" && !modalOpen) return;
+    const t = document.getElementById("toast"); if (!t) return;
+    const esc = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    t.innerHTML = logs.slice(0, 3).reverse().map(l => `<p class="${esc(l.c || "")}">${esc(l.m || "")}</p>`).join("");
+    t.classList.add("show");
+    clearTimeout(G._toastT); clearTimeout(this._actionToastTimer);
+    G._toastT = setTimeout(() => t.classList.remove("show"), 1800);
   },
 
-  finishButtonPending(pending) {
-    if (!pending || !pending.button) return;
-    pending.button.classList.remove("pending");
-    if (pending.button.isConnected && !pending.wasDisabled) pending.button.disabled = false;
+  // 需要玩家确认的操作：先在本地弹确认框，取消就不发给服务器（服务器端 confirm 一律视为确定）
+  CONFIRMS: {
+    leaveSect: () => G.s.sect && G.s.contrib >= G.leaveCost() ? `叛出门派将扣除贡献 ${U.fmt(G.leaveCost())}、清空职务（已学功法保留），确定？` : "",
+    stopStudy: () => G.s.gfStudy ? "中断修炼，已消耗的灵气不退还，确定？" : "",
+    svFire: () => "遣散这个道童？",
+    forgetGongfa: id => {
+      const g = G.s.gongfa[id] && DATA.skillInfo(id, G.s.gongfa[id]);
+      return g && G.ssForgettable(id) ? `遗忘《${g.name}》？\n第 ${g.lv} 层和加的${g.label}全部删除，归还灵识点 ${G.ssCost(id)}。` : "";
+    },
   },
 
   showActionFeedback(text, tone = "sys") {
@@ -261,6 +277,7 @@ const API = {
     try { message = JSON.parse(raw); } catch { return; }
     if (message.type === "snapshot") {
       this.applyState(message);
+      this.toastLogs(message.logs);
       this.setSync("已同步到服务器");
       return;
     }
@@ -284,11 +301,19 @@ const API = {
       this.showActionFeedback(error, "bad");
       pending.reject(new Error(error)); return;
     }
-    this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result);
+    this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result, pending.exStart, message.logs || []);
+    if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true);
     pending.resolve(message);
   },
 
-  afterRemoteAction(name, args, refresh, result) {
+  afterRemoteAction(name, args, refresh, result, exStart, logs = []) {
+    // 悟道结果窗口：服务器结算后用它写的日志在本地弹出
+    if (name === "wudaoDone") {
+      const D0 = ((CFG.wudaoRoom || {}).daos || []).find(d => d.id === args[0]), log = logs.find(l => l.c === "gold");
+      if (D0 && log && G.wdModal) G.wdModal(D0, String(log.m).replace(/。$/, "").split("，").slice(1).map(x => `<div class="line"><div>${x.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</div></div>`).join(""));
+    }
+    // 开始探索 / 挖矿 / 秘境后展开探索信息（单机版在操作里设置 exploreOpen，服务器上设置不到客户端）
+    if (["toggleExplore", "toggleKuang", "toggleMj", "mjAll"].includes(name) && G.s.explore && G.s.explore.start !== exStart) { G.exploreOpen = true; G.render(); }
     // These actions combine a server state change with a purely visual transition.
     if (name === "startTrib") { G.tribOpen = true; if (G.tribRender) G.tribRender(true); }
     if (name === "tribPut") { G.closeModal(); if (G.tribOpen && G.tribRender) G.tribRender(true); }
@@ -314,6 +339,25 @@ const API = {
   async sendAction(name, args) {
     const button = this._clickedButton;
     this._clickedButton = null;
+    if (typeof G !== "undefined" && G.s) {
+      // 炼法宝还没选类型 / 属性：在本地打开选择窗口，选好后再发给服务器
+      if (name === "craftFurnace" && args[2] === "fabao" && !(DATA.fabaoTypes[args[3]] && DATA.elById[args[4]])) { G.openFabaoPick(args[1]); return false; }
+      // 悟道：读条动画在本地播放，结束时让服务器结算
+      if (name === "wudao") {
+        const dao = args[0];
+        if (G._wdRun || !G.wdCheck(dao)) { G.renderLog(); return false; }
+        const ms = ((CFG.wudaoRoom || {}).TIME || 0) * 1000;
+        G._wdRun = { dao, end: Date.now() + ms }; G.render();
+        await new Promise(r => setTimeout(r, ms));
+        G._wdRun = null; G._wdFx = Date.now();
+        return this.sendAction("wudaoDone", [dao]);
+      }
+      if (this.CONFIRMS[name]) {
+        let text = "";
+        try { text = this.CONFIRMS[name](...args); } catch {}
+        if (text && !confirm(text)) return false;
+      }
+    }
     const buttonPending = this.markButtonPending(button);
     const refresh = button && button.dataset ? button.dataset.refresh || "" : "";
     try {
@@ -341,7 +385,8 @@ const API = {
         const error = new Error("服务器响应超时，请稍后查看状态");
         this.showActionFeedback(error.message, "bad"); reject(error);
       }, 15_000);
-      this._pending.set(id, { resolve, reject, timer, name, args, refresh, ...buttonPending });
+      const exStart = typeof G !== "undefined" && G.s && G.s.explore ? G.s.explore.start : undefined;
+      this._pending.set(id, { resolve, reject, timer, name, args, refresh, exStart, ...buttonPending });
       try { socket.send(JSON.stringify({ type: "action", id, action: name, args })); }
       catch (error) {
         clearTimeout(timer); this._pending.delete(id); this.finishButtonPending(buttonPending);
