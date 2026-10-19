@@ -97,6 +97,25 @@ CFG.sect.rankTrial = {
   cost: [0, 50, 100, 150, 200, 300, 500],
 };
 
+// 事务堂 · 物品任务 / 特殊任务（每天北京时间 0 点重置，每个任务完成一次）
+CFG.sect.affairItem = {
+  HERB: 3, ORE: 3,                 // 药材任务、矿石任务各几个（每个任务只要一种）
+  FAN_STAR: 5,                     // 宗门 ≤ 这个星级交凡界药材矿石，以上交四界通用药材矿石
+  N: [[30, 50], [70, 100]],        // 要交的数量：[几率%, 个数]
+  CONTRIB: 100, RANK_ADD: 25,      // 奖励贡献 = CONTRIB + 职务序号 × RANK_ADD（不看星级）
+};
+CFG.sect.affairFight = {
+  // 前 3 个 = 入门境界，后 3 个 = 入门境界的下一个境界；lay 怪物层 pct 宗门功法学% gf 功法层，都是 [最小, 最大] 随机
+  GROUPS: [
+    { n: 3, realm: 0, lay: [1, 5],  pct: [1, 20],  gf: [1, 3], mul: 1 },
+    { n: 3, realm: 1, lay: [6, 10], pct: [21, 50], gf: [3, 6], mul: 2 },
+  ],
+  // 胜利奖励 × mul；失败扣 × 宗门星级 × mul（可以扣成负数）；赢了才算完成，输了可以再打
+  WIN: { stone: 1000, contrib: 300 },
+  LOSE: { stone: 200, contrib: 50 },
+  CRIT: 5,                         // 怪物暴击%
+};
+
 /* 练体池：每天 DAILY 次，每次 MINUTES 分钟，泡完永久加肉身属性
  * 进入扣：贡献 contrib × 本池 STAR_MULT[宗门星级-1]（不读宗门通用 STAR_MULT）；扣肉身气血 hp 点
  * keys 加哪些属性（hp atk def dodge res hit mana crit）；rank 需要职务序号
