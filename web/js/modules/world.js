@@ -34,6 +34,11 @@ G.module({
 
   api: {
     setWorldTab(t) { this.worldTab = t; this.render(); },
+    openAdmin(on) {
+      this.adminPage = !!on; this.giftPage = false; this.accPage = false;
+      if (on) API.adminInfo().then(j => { this.adminInfo = j; this.render(); }).catch(() => {});
+      this.render();
+    },
 
     setHall(h) { this.hallSel = h; this.render(); },
     // 一张地图的东西南北四域（历练 / 探索 / 出窍）
@@ -1141,16 +1146,21 @@ G.module({
     if (wt === "shop") return tabs + this.shopView();
     if (wt === "battle") return tabs + this.bsetView();
 
-    if (this.giftPage && this.adminInfo && this.adminInfo.admin) return tabs + this.giftAdminView();
-    if (this.accPage && this.adminInfo && this.adminInfo.admin) return tabs + this.accAdminView();
+    const isAdmin = !!(this.adminInfo && this.adminInfo.admin);
+    if (this.giftPage && isAdmin) return tabs + this.giftAdminView();
+    if (this.accPage && isAdmin) return tabs + this.accAdminView();
     if (this.adminInfo === undefined) { this.adminInfo = null; API.adminInfo().then(j => { this.adminInfo = j; this.render(); }).catch(() => {}); }
-    const A = this.adminInfo, upd = A && A.admin ? `<div class="card"><h3>游戏更新<small>管理员</small></h3>
-      <p class="desc">当前版本：${A.version || "未知"}</p>
+    const A = this.adminInfo;
+    // 管理员页：游戏更新（从 GitHub 更新 / 刷新页面）、礼包码、账号管理
+    if (this.adminPage && isAdmin) return tabs + `<div class="row" style="margin:6px 0"><b>管理员</b><button class="sm" onclick="G.openAdmin(false)">返回</button></div>
+      <div class="card"><h3>游戏更新<small>管理员</small></h3>
+      <p class="desc">当前版本：${String(A.version || "未知").replace(/</g, "&lt;")}</p>
       <div class="btns"><button class="primary" onclick="G.webUpdate()" ${this.updating ? "disabled" : ""}>${this.updating ? "更新中…" : "从 GitHub 更新"}</button>
       <button onclick="location.reload()">刷新页面</button></div>
       ${A.log ? `<div class="explore-log" style="white-space:pre-wrap;font-size:11px">${A.log.replace(/</g, "&lt;")}</div>` : ""}</div>
       <div class="card"><h3>礼包码<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openGiftAdmin(true)">生成礼包码</button></div></div>
-      <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>` : "";
+      <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>`;
+    const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
     return tabs + upd + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
       <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
