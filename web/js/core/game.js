@@ -59,7 +59,7 @@ const G = {
     if (this.tab !== "cultivate") {
       const t = $("#toast"); if (!t) return;
       t.innerHTML = `<p class="${c}">${m}</p>`; t.classList.add("show");
-      clearTimeout(this._toastT); this._toastT = setTimeout(() => t.classList.remove("show"), 2500);
+      clearTimeout(this._toastT); this._toastT = setTimeout(() => t.classList.remove("show"), 1800);
     }
   },
 
