@@ -64,7 +64,7 @@ G.module({
     kuangPlan() { return "k".repeat(CFG.explore.KUANG.TIME); },
     // 每步灵石 = 当前地图北域一次探索平均灵石 ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）
     kuangStone(a) {
-      const X = CFG.explore, run = this.zoneStone(a, DATA.regionCount - 1) * CFG.drop.STONE_RATE;
+      const X = CFG.explore, x = this.s.explore, run = (x && x.kuang ? this.runStone(x) : this.zoneStone(a, DATA.regionCount - 1)) * CFG.drop.STONE_RATE;
       return Math.floor(run / X.KUANG.TIME * (0.5 + Math.random()) + Math.random());
     },
     toggleKuang(a) {
@@ -576,15 +576,21 @@ G.module({
       if (!R) return 0;
       return R[0] + i * (R[1] - R[0]) / Math.max(1, n);
     },
+    // 本次探索的灵石总收益：这一处平均灵石 + 随机整数[−RAND, RAND]（每次探索算一次，记在 x.rs）
+    runStone(x) {
+      if (x.rs === undefined) { const RD = CFG.drop.RUN_STONE.RAND || 0; x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? DATA.regionCount - 1 : x.reg || 0, x.mj, x.mk) + U.rand(-RD, RD)); }
+      return x.rs;
+    },
     // 击败怪物的掉落，写进 loot，返回描述文字
-    //   灵石 = (这一处平均灵石 + 随机整数[−RAND, RAND]) ÷ 平均加权怪数 × STONE_RATE × 种类倍率（1 / ELITE_STONE / BOSS_STONE）
+    //   灵石：本次总收益 × STONE_RATE 分摊到本次的怪：首领合计 BOSS_SHARE%，其余按 普通 1 / 精英 ELITE_STONE 的权重分
     //   mj = 秘境序号（掉落按 config/mijing.js）；mk = "ld"：灵地（config/lingdi.js）
-    rollMonsterLoot(loot, m, a, mj, mk, r) {
-      const E = CFG.drop, mult = m.boss ? E.BOSS_STONE : m.elite ? E.ELITE_STONE : 1, ev = m.boss ? "boss" : m.elite ? "elite" : "monster";
-      const X = mj !== undefined ? this.mjCfg(mk) : CFG.explore, RD = E.RUN_STONE.RAND || 0;
-      const den = Math.max(1, this.cntAvg(X.MONSTERS) + this.cntAvg(X.ELITES) * E.ELITE_STONE + this.cntAvg(X.BOSS) * E.BOSS_STONE);
-      const base = Math.max(0, this.zoneStone(a, r, mj, mk) + U.rand(-RD, RD));
-      const stone = Math.floor(base / den * E.STONE_RATE * mult + Math.random());   // 随机取整，平均值不被向下取整吃掉
+    rollMonsterLoot(x, m) {
+      const loot = x.loot, a = x.map, mj = x.mj, mk = x.mk;
+      const E = CFG.drop, ev = m.boss ? "boss" : m.elite ? "elite" : "monster", P = x.plan || "", cnt = c => P.split(c).length - 1;
+      const nb = cnt("b"), w = cnt("m") + cnt("e") * E.ELITE_STONE, bs = nb ? Math.min(100, E.BOSS_SHARE || 0) / 100 : 0;
+      const tot = this.runStone(x) * E.STONE_RATE;
+      const share = m.boss ? (w ? bs : 1) / Math.max(1, nb) : (nb ? 1 - bs : 1) * (m.elite ? E.ELITE_STONE : 1) / Math.max(1, w);
+      const stone = Math.floor(tot * share + Math.random());   // 随机取整，平均值不被向下取整吃掉
       loot.stone += stone;
       const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk) : this.rollEvent(loot, ev, a);
       return `灵石${U.fmt(stone)}${mats ? "、" + mats : ""}`; // 怪物不掉丹药、装备
@@ -695,7 +701,7 @@ G.module({
         const kind = type === "monster" ? "normal" : type, m = mj !== undefined ? this.makeMjMob(mj, kind, mk) : this.makeMob(a, r, kind);
         m.a = a;
         const res = this.battle(m, { foe: m.boss ? "boss" : m.elite ? "elite" : "mob" }), tag = `${m.boss ? "【首领】" : m.elite ? "【精英】" : ""}${String(m.name).replace(/^精英·/, "")}`;
-        if (res.win) { this.s.kills++; t = `遭遇${tag}，${res.rounds}回合击败，获得 ${[this.rollMonsterLoot(x.loot, m, a, mj, mk, r), sm()].filter(Boolean).join("、")}`; c = m.boss ? "gold" : ""; }
+        if (res.win) { this.s.kills++; t = `遭遇${tag}，${res.rounds}回合击败，获得 ${[this.rollMonsterLoot(x, m), sm()].filter(Boolean).join("、")}`; c = m.boss ? "gold" : ""; }
         else if (res.lose) { t = `遭遇${tag}，${res.timeout ? `${res.rounds} 回合未能击败，力竭重伤` : `第 ${res.rounds} 回合不敌重伤`}，本次探索收获全部遗失。${res.why}`; c = "bad"; }
         else { const g = sm(); t = `遭遇${tag}，缠斗 ${res.rounds} 回合，各自退去${g ? `，拾得 ${g}` : ""}`; }
         bd = res.detail;
@@ -728,7 +734,7 @@ G.module({
       if (!x.ms) x.ms = this.exploreMs();
       if (x.rest) {   // v186 探索 / 出窍：生命不足时原地休养，恢复满后自动继续
         if (!this.exReady()) return;
-        x.rest = 0; x.start = this.now(); x.step = 0; x.loot = this.newLoot(); x.ev = []; x.plan = this.exPlan(x);
+        x.rest = 0; x.start = this.now(); x.step = 0; x.loot = this.newLoot(); x.ev = []; x.plan = this.exPlan(x); delete x.rs;
         this.log(`生命、法力已恢复，继续${x.cq ? "出窍探索" : "自动探索"}。`, "sys"); changed = true;
       }
       const W = (CFG.explore.END_WAIT || 0) * 1000;   // v203 走完最后一步：先显示出来，固定再等 END_WAIT 秒才结算（「神行」不影响）
@@ -767,7 +773,7 @@ G.module({
             this.log(`${this.exReadyTxt()}，原地休养，恢复后自动继续（已探索 ${x.count} 次）。`, "bad");
             x.rest = 1; x.step = 0; x.loot = this.newLoot(); x.ev = []; break;
           }
-          x.start = at; x.ms = this.exploreMs(); x.step = 0; x.loot = this.newLoot(); x.ev = []; x.plan = this.exPlan(x);
+          x.start = at; x.ms = this.exploreMs(); x.step = 0; x.loot = this.newLoot(); x.ev = []; x.plan = this.exPlan(x); delete x.rs;
           s.lastRun = null; // 开始新一次：不保留上一次的记录
         }
       }
