@@ -293,7 +293,7 @@ G.module({
     tribToast(msg) {
       const n = $("#toast"); if (!n) return;
       n.innerHTML = `<p class="sys">${msg}</p>`; n.classList.add("show");
-      clearTimeout(this._toastT); this._toastT = setTimeout(() => n.classList.remove("show"), 2000);
+      clearTimeout(this._toastT); this._toastT = setTimeout(() => n.classList.remove("show"), 1500);
     },
     // 渡劫中点格子 i：法宝 / 法术 → 护盾，丹药 → 回生命法力
     tribUse(i) {
