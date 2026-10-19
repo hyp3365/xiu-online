@@ -186,7 +186,8 @@ DATA.lvMul = lv => { const m = (_GF.LV_MULT || [])[lv - 1]; return m === undefin
 // 修炼：每 5 秒消耗灵气 = STUDY_RATE × STUDY_STAR[星级-1] × STUDY_LING（不乘层数；开局功法书 = STUDY_PER × STUDY_LING）
 DATA.studyPer = info => { const v = (x, d) => x === undefined ? d : x, M = v(_GF.STUDY_LING, 1);
   const base = info.per ? info.per : Math.max(1, Math.floor(v(_GF.STUDY_RATE, 5) * v((_GF.STUDY_STAR || [])[info.star - 1], info.star)));
-  return Math.max(1, Math.round(base * M)); };
+  const L = v((_GF.STUDY_LV || [])[(info.lv || 1) - 1], 1);   // v248 每层单独倍率
+  return Math.max(1, Math.round(base * M * L)); };
 // 学习所需：宗门 = 贡献，坊市 = 灵石
 DATA.gfLearnCost = (o, typeId) => {
   if (DATA.srcType(o) !== "shop") {   // 宗门学习贡献单独设置：learn × LEARN_TYPE × LEARN_STAR × EFFECT_LEARN（不用效果倍率）

@@ -4,7 +4,7 @@
  * 法术伤害 = 法术攻击 × SPELL_LV_PCT[层]% × SPELL_MUL × TYPE_MULT.spell × EFFECT_PCT × 灵根 + 精研属性伤害 − 对方减免（config/battle.js）
  *   法术攻击 = min(修为 + 肉身攻击, REF 境界参考值) + 其余全部攻击（功法、装备、戒指、法宝、丹药、练体池等）
  * 法力消耗 = REF 境界的修为突破法力 × MANA_PCT% × (1 + 该系灵根等级 × MANA_LINGEN)，四舍五入，至少 1
- * 修炼升层：每层 STUDY_MIN 分钟；每 STUDY_STEP 秒扣灵气 STUDY_RATE × STUDY_STAR[星级-1] × STUDY_LING（不乘层数）
+ * 修炼升层：每层 STUDY_MIN 分钟；每 STUDY_STEP 秒扣灵气 STUDY_RATE × STUDY_STAR[星级-1] × STUDY_LING × STUDY_LV[当前层-1]（每层单独倍率）
  * ===================================================================== */
 window.CFG = window.CFG || {};
 
@@ -20,6 +20,7 @@ CFG.gongfa = {
   LEARN_Q: { MAX: 5, MIFA_MUL: 5 },
   STUDY_LING: 1.5,   // 修炼灵气消耗倍率
   STUDY_RATE: 20,    // 修炼灵气消耗基础值
+  STUDY_LV: [1, 1, 1, 1, 2, 2, 2, 2, 2],   // 每层修炼灵气倍率（单独设置）：1→2 层 …… 9→10 层（现在修炼到第 6~10 层消耗翻倍）
   STUDY_STAR: [3, 50, 400, 1200, 4000, 8000, 15000, 24000, 35000, 50000, 70000, 95000],   // 修炼消耗星级倍率：1 星 ~ 12 星
 
   BOOKS: { xinfa: 2, gongjue: 2, zhenjing: 3, fajue: 3, tijue: 2, mijue: 2 },   // 每个宗门每类功法几本（没写 = 1；其他来源都是 1 本）

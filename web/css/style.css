@@ -569,3 +569,8 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 #resume-load{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(14,12,10,.6)}
 #resume-load.show{display:flex}
 #resume-load span{padding:14px 28px;background:#2a2219f2;border:1px solid #c9a45c;border-radius:10px;color:#f3e6c8;font-size:22px;font-weight:900;letter-spacing:3px;text-shadow:0 1px 2px #000;box-shadow:0 4px 18px #000a}
+/* v248 两张卡片放一行（炼丹师 + 丹炉）；炼制数量窗口 */
+.card-row{display:flex;gap:8px;align-items:stretch}.card-row>.card{flex:1 1 0;min-width:0}
+.qty-box{display:flex;justify-content:center;align-items:center;gap:6px;margin:12px 0 4px}
+.qty-box button{min-width:42px;padding:6px 8px}
+.qty-box input{width:90px;text-align:center;font-size:16px}

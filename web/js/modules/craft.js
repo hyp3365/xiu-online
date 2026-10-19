@@ -279,6 +279,59 @@ G.module({
       if (slot === "fabao") this.closeModal();
       this.after();
     },
+    // v248 炼制数量窗口（炼丹、炼器共用）：加减按钮 / 输入框选数量，确定后炼制
+    cardRow(a, b) { return `<div class="card-row">${a}${b}</div>`; },
+    qtyModal(title, info, max, call) {
+      this._qty = { max, call, n: Math.min(max, this._qty && this._qty.title === title ? this._qty.n : 1), title };
+      const step = [[-10, "-10"], [-1, "-"], [1, "+"], [10, "+10"]];
+      this.modal(`<h2>${title}</h2>${info}
+        <div class="qty-box">${step.slice(0, 2).map(([d, t]) => `<button onclick="G.qtyAdd(${d})">${t}</button>`).join("")}
+          <input id="qty-n" type="number" min="1" max="${max}" value="${this._qty.n}" oninput="G.qtySet(this.value,1)">
+          ${step.slice(2).map(([d, t]) => `<button onclick="G.qtyAdd(${d})">${t}</button>`).join("")}</div>
+        <p class="desc" style="text-align:center">最多可炼 ${U.fmt(max)}　<a href="javascript:void 0" onclick="G.qtySet(${max})">最大</a></p>
+        <div class="btns"><button class="primary" onclick="G.qtyOk()">炼制</button><button onclick="G.closeModal()">取消</button></div>`);
+    },
+    qtySet(v, typing) { const q = this._qty; if (!q) return; v = Math.floor(+v || 0); q.n = Math.max(1, Math.min(q.max, v));
+      const el = document.getElementById("qty-n"); if (el && (!typing || v > q.max)) el.value = q.n; },
+    qtyAdd(d) { const q = this._qty; if (q) this.qtySet(q.n + d); },
+    qtyOk() { const q = this._qty; if (!q) return; const n = q.n, call = q.call; this._qty = null; this.closeModal(); call(n); },
+    // 炼丹数量：最多 = 药材够炼几枚（一炉上限 MAX_BATCH）
+    openAlchN(type, g) {
+      const rec = DATA.danRecipe(type, g); let max = CFG.alchemy.MAX_BATCH;
+      for (const m of rec) max = Math.min(max, Math.floor(this.countMat(m.kind, m.g) / m.n));
+      if (max <= 0) return this.log("药材不足。", "sys");
+      this.qtyModal(`炼制${DATA.danName(type, g)}`, `<p class="desc">每枚：${this.matsText(rec)} · ${U.dur(this.danPer(type, g) / 1000)}${this.s.alchJob ? " · 丹炉正忙，会加入队列" : ""}</p>`, max, n => this.startAlch(type, g, n));
+    },
+    // 炼器数量：每件单独排队，最多 = 队列空位 和 材料（含上一阶装备、专用材料）够几件
+    forgeMax(kind, g, slot, ft, el) {
+      const s = this.s, job = { kind, g }; if (kind === "ring") job.r = +slot; else if (slot) job.slot = slot; if (slot === "fabao") { job.ft = +ft; job.el = el; }
+      let max = (s.forgeJob ? 0 : 1) + CFG.furnace.QUEUE - s.forgeQueue.length;
+      for (const m of this.jobMats(job)) max = Math.min(max, Math.floor(this.countMat(m.kind, m.g) / m.n));
+      for (const x of this.jobSm(job)) max = Math.min(max, Math.floor(this.smCount(x.k, x.ft) / x.n));
+      if ((kind === "eq" && g > 0) || kind === "ring") {
+        const ps = kind === "ring" ? "ring" : slot, r = kind === "ring" ? job.r : job.ft;
+        const same = e => r === undefined || (ps === "fabao" ? e.ft === r && (!el || e.el === el) : e.r === r);
+        max = Math.min(max, s.bag.filter(it => it.t === "eq" && it.e.attrs && it.e.slot === ps && it.e.g === g - 1 && same(it.e)).length);
+      }
+      return Math.max(0, max);
+    },
+    openForgeN(kind, g, slot, ft, el) {
+      const job = { kind, g }; if (kind === "ring") job.r = +slot; else if (slot) job.slot = slot; if (slot === "fabao") { job.ft = +ft; job.el = el; }
+      const max = this.forgeMax(kind, g, slot, ft, el);
+      if (max <= 0) return this.craftFurnace(kind, g, slot, ft, el);   // 炼不了：让炼制自己提示原因
+      const sm = this.jobSm(job);
+      this.qtyModal(`炼制${this.jobName(job)}`, `<p class="desc">每件：${this.matsText(this.jobMats(job))}${sm.length ? "、" + this.smText(sm) : ""} · ${U.dur(this.forgePer(kind, g) / 1000)}${this.s.forgeJob ? " · 炼器炉正忙，会加入队列" : ""}</p>`, max,
+        n => this.craftFurnaceN(n, kind, g, slot, ft, el));
+    },
+    // 连续炼制 n 件（每件一个队列位）
+    craftFurnaceN(n, kind, g, slot, ft, el) {
+      n = Math.max(1, Math.min(Math.floor(+n) || 1, (CFG.furnace.QUEUE || 5) + 1));
+      for (let i = 0; i < n; i++) {
+        const before = (this.s.forgeJob ? 1 : 0) + this.s.forgeQueue.length;
+        this.craftFurnace(kind, g, slot, ft, el);
+        if ((this.s.forgeJob ? 1 : 0) + this.s.forgeQueue.length === before) break;
+      }
+    },
     // 法宝：先选属性（上面一排），再选形状炼制（7 种）
     setFabaoEl(g, el) { this._fbEl = el; this.openFabaoPick(g); },
     openFabaoPick(g) {
@@ -291,7 +344,7 @@ G.module({
           const prevOK = g === 0 || this.prevEquipIndex("fabao", g, ft, el) >= 0;
           return `<div class="line"><div>${DATA.eqTierIco(DATA.iconImg("fbs" + ft + "_" + DATA.elIdx(el)), g)}${DATA.JIE[g]}·${DATA.elById[el].name}·${DATA.fabaoName(ft, g)}
             <small>${g ? `<span class="${prevOK ? "" : "q5"}">${DATA.JIE[g - 1]}·${DATA.elById[el].name}·${DATA.fabaoName(ft, g - 1)} ×1</span>` : ""}</small></div>
-            <button class="sm" onclick="G.craftFurnace('eq',${g},'fabao',${ft},'${el}')" ${ok0 && smOK && prevOK ? "" : "disabled"}>${s.forgeJob ? "排队" : "炼制"}</button></div>`;
+            <button class="sm" onclick="G.openForgeN('eq',${g},'fabao',${ft},'${el}')" ${ok0 && smOK && prevOK ? "" : "disabled"}>炼制</button></div>`;
         }).join("") +
         `<div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
@@ -462,10 +515,10 @@ G.module({
 G.caveViews.alchemy = function () {
   const s = this.s, a = s.alchJob, tier = this.danTier || 0, cat = this.danCat || 0, catName = (CFG.alchemy.CATS || [])[cat] || "";
   const fk = cat ? "xdan" : "dan", fu = s.furnaceUse[fk];   // 仙冥魔神丹：炼丹仙师 + 炼丹仙炉
-  let h = this.danCatBar("danCat") + this.craftsmanCard(fk) + this.furnaceCard(fk);
+  let h = this.danCatBar("danCat") + this.cardRow(this.craftsmanCard(fk), this.furnaceCard(fk));
   if (a) {
     const aLeft = Math.max(0, a.next - Date.now()) + Math.max(0, a.n - a.done - 1) * a.per; let aAcc = aLeft;   // 这一炉剩余 / 排到队列第几炉为止的总时间（毫秒）
-    h += `<div class="card"><h3>丹炉中<small>${DATA.danName(a.type, a.g)} ${a.done} / ${a.n}</small></h3>
+    h += `<div class="card"><h3>正在炼丹<small>${DATA.danName(a.type, a.g)} ${a.done} / ${a.n}</small></h3>
       <p class="desc">成丹 ${a.ok || 0}${a.extra ? `（额外 +${a.extra}）` : ""} · 失败 ${a.fail || 0} · 当前成功率 ${this.ratePct(this.craftRate(DATA.danCraft(a.type), a.g))}</p>
       <div class="line"><div class="pg">${this.pgFill(Math.max(0, a.next - Date.now()), a.per)}<span>下一枚出炉<small>${U.cd(Math.max(0, a.next - Date.now()) / 1000 + 59)} · 每枚 ${U.dur(a.per / 1000)} · 这一炉约 ${U.cd(aLeft / 1000 + 59)} 后炼完</small></span></div>
       <button class="sm" onclick="G.stopAlch()">停炉</button></div>` +
@@ -481,10 +534,9 @@ G.caveViews.alchemy = function () {
       const eaten = !DATA.dans[t] ? "" : ` · 已服 ${DATA.danLimit(t, tier) - this.danLeft(t, tier)}/${DATA.danLimit(t, tier)}`;
       return `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, tier), "li")}${DATA.danName(t, tier)}<span class="tag">${DATA.recipeEffect(t, tier)}</span>
         <small>${this.matsText(rec)} · 每枚 ${U.dur(this.danPer(t, tier) / 1000)} · 成功率 ${this.ratePct(this.craftRate(fk, tier))}${eaten}</small></div>
-        <div><button class="sm" onclick="G.startAlch('${t}',${tier},1)" ${ok ? "" : "disabled"}>${a ? "排1" : "炼1"}</button>
-        <button class="sm" onclick="G.startAlch('${t}',${tier},0)" ${ok ? "" : "disabled"}>全部</button></div></div>`;
+        <button class="sm" onclick="G.openAlchN('${t}',${tier})" ${ok ? "" : "disabled"}>炼制</button></div>`;
     }).join("") : `<p class="desc">尚未学会${DATA.JIE[tier]}${cat ? catName : ""}丹方，可在门派 → 炼丹房学习。</p>`) +
-    `<p class="desc">必须装有${DATA.furnaceKinds[fk]}，丹阶不能高于使用中的${DATA.furnaceKinds[fk]}；「全部」= 用现有药材最多炼 ${CFG.alchemy.MAX_BATCH} 枚。每枚单独判定成功率，失败的药材不退。</p></div>`;
+    `<p class="desc">必须装有${DATA.furnaceKinds[fk]}，丹阶不能高于使用中的${DATA.furnaceKinds[fk]}；一炉最多炼 ${CFG.alchemy.MAX_BATCH} 枚。每枚单独判定成功率，失败的药材不退。</p></div>`;
   return h;
 };
 
@@ -492,7 +544,7 @@ G.caveViews.alchemy = function () {
 G.caveViews.forge = function () {
   const s = this.s, j = s.forgeJob, qi = s.furnaceUse.qi, has = qi >= 0, full = j && s.forgeQueue.length >= CFG.furnace.QUEUE, g = this.forgeTier || 0;
   const xian = DATA.FURNACE_KINDS.some(k => (k === "xdan" || k === "xqi") && (s.blueprints[k].length || s.furnaces[k].length));   // 有仙炉图纸 / 仙炉才显示炼器仙师、炼器仙炉
-  let h = this.craftsmanCard("qi") + this.furnaceCard("qi") + (xian ? this.craftsmanCard("xqi") + this.furnaceCard("xqi") : "");
+  let h = this.cardRow(this.craftsmanCard("qi"), this.furnaceCard("qi")) + (xian ? this.cardRow(this.craftsmanCard("xqi"), this.furnaceCard("xqi")) : "");
   let fAcc = j ? Math.max(0, j.end - Date.now()) : 0;   // 排到队列第几个为止的总时间（毫秒）
   if (j) h += `<div class="card"><h3>炼制中<small>${this.jobName(j)}</small></h3>
     <div class="line"><div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div><button class="sm" onclick="G.stopForge()">停止</button></div>` +
@@ -500,7 +552,7 @@ G.caveViews.forge = function () {
       return `<div class="line"><div>队列 ${i + 1}：${this.jobName(q)}<small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(fAcc / 1000 + 59)} 后完成</small></div>
       <button class="sm" onclick="G.cancelForgeQ(${i})">取消</button></div>`; }).join("") +
     `<p class="desc">队列 ${s.forgeQueue.length} / ${CFG.furnace.QUEUE}，炼好放进背包，自动开始下一个。</p></div>`;
-  const btn = (ok, call) => `<button class="sm" onclick="${call}" ${!has || full || !ok ? "disabled" : ""}>${j ? "排队" : "炼制"}</button>`;
+  const btn = (ok, call) => `<button class="sm" onclick="${call.replace("G.craftFurnace(", "G.openForgeN(")}" ${!has || full || !ok ? "disabled" : ""}>炼制</button>`;
   let rows = "";
   const rate = this.ratePct(this.craftRate("qi", g));
   // 炉子（需在背包学会图纸）
