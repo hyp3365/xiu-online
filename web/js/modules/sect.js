@@ -219,7 +219,7 @@ G.module({
     freeGfOn() { const f = this.s.freeGf; return !!(this.s.sect && f && this.now() < f.end); },
     freeUsed(f) { return f && f.day === this.bjDay() ? f.used || 0 : 0; },
     /* ---------- 练体池（config/sect.js 的 sect.pool） ---------- */
-    poolCost(i) { const P = CFG.sect.pool, p = P.list[i], sm = (P.STAR_MULT || [])[this.sectInfo().star - 1]; return { contrib: Math.floor((p.contrib || 0) * (sm === undefined ? this.starMul() : sm)), hp: p.hp !== undefined ? p.hp : Math.ceil(this.stats().hp * (p.hpPct || 0) / 100) }; },
+    poolCost(i) { const P = CFG.sect.pool, p = P.list[i]; return { contrib: Math.floor(p.contrib * P.STAR_MULT[this.sectInfo().star - 1]), hp: p.hp }; },
     poolGainOf(i, rnd) {
       // v237 基础值（GAIN 第 i 行）× STAR_GAIN^(宗门星级 − 1)；rnd = true 时每种再随机 ± RAND（进入练体池时定下）
       const P = CFG.sect.pool, G0 = P.GAIN || [], g = G0[i] || G0[G0.length - 1] || [], o = {};
@@ -326,8 +326,8 @@ G.module({
     cqLeftToday() { const s = this.s; return Math.max(0, this.cqMaxRuns() - (s.cqDay === this.bjDay() ? s.cqUsed || 0 : 0)); },
     cqUse(n) { const s = this.s; if (s.cqDay !== this.bjDay()) { s.cqDay = this.bjDay(); s.cqUsed = 0; } s.cqUsed += n; },
     cqRefund(n) { const s = this.s; if (n > 0 && s.cqDay === this.bjDay()) s.cqUsed = Math.max(0, (s.cqUsed || 0) - n); },   // 跨天了就不用退（已经重置）
-    // 杂物页货单：content/items.js 的 ITEMS.treasury（没写就用 config/sect.js 的 treasury）
-    treasuryList() { return ITEMS.treasury || DATA.treasury; },
+    // 杂物页货单：content/items.js 的 ITEMS.treasury
+    treasuryList() { return ITEMS.treasury; },
     treasuryName(it) {
       if (it.item) return it.item;
       if (it.kind === "furnace") return DATA.furnaceName(it.fk, it.g);
@@ -373,8 +373,8 @@ G.module({
     },
     // 兑换种子（每种一次，永久可种）
     exchangeSeed(g) {
-      const c = DATA.seedCost(g);
-      if (!this.treasuryMatOK("herb", g) || this.s.seeds.includes(g) || this.s.contrib < c) return;
+      if (!this.treasuryMatOK("herb", g) || this.s.seeds.includes(g)) return;
+      const c = DATA.seedCost(g); if (this.s.contrib < c) return;
       this.s.contrib -= c; this.s.seeds.push(g);
       this.log(`获得${DATA.herbs[g]}种子，可在洞府灵药园种植。`, "gold"); this.after();
     },
