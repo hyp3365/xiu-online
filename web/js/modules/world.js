@@ -62,9 +62,10 @@ G.module({
         <button class="sm ${x && x.cq ? "on" : ""}" onclick="G.${x && x.cq ? "stopChuqiao" : "openChuqiao"}(${a},-1)" ${x && x.cq || s.cqLearn && !cq ? "" : "disabled"}>${x && x.cq ? "停止" : "出窍"}</button></div>`}</div>`;
     },
     kuangPlan() { return "k".repeat(CFG.explore.KUANG.TIME); },
-    // 每步灵石 = 当前地图北域一次探索平均灵石 ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）
+    // 每步灵石 = 当前地图东域本次灵石收益 × KUANG.SHARE% ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）；不掉药材矿石
     kuangStone(a) {
-      const X = CFG.explore, x = this.s.explore, run = (x && x.kuang ? this.runStone(x) : this.zoneStone(a, DATA.regionCount - 1)) * CFG.drop.STONE_RATE;
+      const X = CFG.explore, x = this.s.explore, K = X.KUANG.SHARE === undefined ? 100 : X.KUANG.SHARE;   // 灵矿：本图东域收益 × SHARE%
+      const run = (x && x.kuang ? this.runStone(x) : this.zoneStone(a, 0)) * K / 100;
       return Math.floor(run / X.KUANG.TIME * (0.5 + Math.random()) + Math.random());
     },
     toggleKuang(a) {
@@ -578,18 +579,18 @@ G.module({
     },
     // 本次探索的灵石总收益：这一处平均灵石 + 随机整数[−RAND, RAND]（每次探索算一次，记在 x.rs）
     runStone(x) {
-      if (x.rs === undefined) { const RD = CFG.drop.RUN_STONE.RAND || 0; x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? DATA.regionCount - 1 : x.reg || 0, x.mj, x.mk) + U.rand(-RD, RD)); }
+      if (x.rs === undefined) { const RD = CFG.drop.RUN_STONE.RAND || 0; x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? 0 : x.reg || 0, x.mj, x.mk) + U.rand(-RD, RD)); }
       return x.rs;
     },
     // 击败怪物的掉落，写进 loot，返回描述文字
-    //   灵石：本次总收益 × STONE_RATE 分摊到本次的怪：首领合计 BOSS_SHARE%，其余按 普通 1 / 精英 ELITE_STONE 的权重分
+    //   灵石：本次总收益分摊到本次的怪：首领合计 BOSS_SHARE%，其余普通怪、精英怪平分
     //   mj = 秘境序号（掉落按 config/mijing.js）；mk = "ld"：灵地（config/lingdi.js）
     rollMonsterLoot(x, m) {
       const loot = x.loot, a = x.map, mj = x.mj, mk = x.mk;
       const E = CFG.drop, ev = m.boss ? "boss" : m.elite ? "elite" : "monster", P = x.plan || "", cnt = c => P.split(c).length - 1;
-      const nb = cnt("b"), w = cnt("m") + cnt("e") * E.ELITE_STONE, bs = nb ? Math.min(100, E.BOSS_SHARE || 0) / 100 : 0;
-      const tot = this.runStone(x) * E.STONE_RATE;
-      const share = m.boss ? (w ? bs : 1) / Math.max(1, nb) : (nb ? 1 - bs : 1) * (m.elite ? E.ELITE_STONE : 1) / Math.max(1, w);
+      const nb = cnt("b"), w = cnt("m") + cnt("e"), bs = nb ? Math.min(100, E.BOSS_SHARE || 0) / 100 : 0;
+      const tot = this.runStone(x);
+      const share = m.boss ? (w ? bs : 1) / Math.max(1, nb) : (nb ? 1 - bs : 1) / Math.max(1, w);
       const stone = Math.floor(tot * share + Math.random());   // 随机取整，平均值不被向下取整吃掉
       loot.stone += stone;
       const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk) : this.rollEvent(loot, ev, a);
