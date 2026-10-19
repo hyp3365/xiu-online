@@ -383,7 +383,7 @@ const API = {
       throw error;
     }
     if (this.OPTIMISTIC.has(name) && typeof G !== "undefined" && G.s) {
-      try { this._originalActions.get(name).apply(G, args); G.dirty(); G.render(); G.bars(); } catch {}
+      try { this._originalActions.get(name).apply(G, args); G.dirty(); G.render(); G.bars(); this.refreshOpenModal(); } catch {}
     }
     const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now().toString(36)}-${(++this._actionCounter).toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return new Promise((resolve, reject) => {
