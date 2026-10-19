@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import Database from "better-sqlite3";
 import { WebSocketServer, WebSocket } from "ws";
-import { GameEngine } from "./game-engine.mjs";
+import { GameEngine, CONFIG_OVERRIDE_DIR, configNames, configOverridden, readConfig, validConfigName } from "./game-engine.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.XIU_HOST || "127.0.0.1";
@@ -15,6 +15,7 @@ const DATA_DIR = path.resolve(process.env.XIU_DATA_DIR || path.join(HERE, "data"
 const DB_FILE = path.resolve(process.env.XIU_DB_PATH || path.join(DATA_DIR, "xiu-online.sqlite3"));
 const WS_PATH = "/api/ws";
 const MAX_HTTP_BODY = 64 * 1024;
+const MAX_CONFIG_BODY = 1024 * 1024;
 const MAX_WS_PAYLOAD = 16 * 1024;
 const ACTIONS = new Set(JSON.parse(fs.readFileSync(path.join(HERE, "action-whitelist.json"), "utf8")));
 const PBKDF2_ROUNDS = 240_000;
@@ -65,6 +66,14 @@ function getEngine(userId) {
   return entry.engine;
 }
 
+// 参数改动后：在线玩家立即换成用新参数加载的游戏引擎，并通知网页重新加载参数
+function applyNewConfig() {
+  engines.clear();
+  for (const [userId, client] of clients) {
+    try { client.engine = getEngine(userId); } catch (err) { console.error("reload engine failed", err); }
+    send(client.socket, { type: "config" });
+  }
+}
 function sendJson(res, status, body) {
   const data = Buffer.from(JSON.stringify(body));
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin" });
@@ -103,11 +112,11 @@ function registrationOpen() {
   const value = db.prepare("SELECT value FROM settings WHERE key='registration_open'").get()?.value;
   return value === undefined || value === "true";
 }
-async function readBody(req) {
+async function readBody(req, limit = MAX_HTTP_BODY) {
   const chunks = []; let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_HTTP_BODY) throw Object.assign(new Error("请求过大"), { status: 413 });
+    if (size > limit) throw Object.assign(new Error("请求过大"), { status: 413 });
     chunks.push(chunk);
   }
   if (!size) return {};
@@ -178,6 +187,17 @@ const server = http.createServer(async (req, res) => {
       if (!userFor(req)) return error(res, 401, "登录已过期");
       db.prepare("DELETE FROM tokens WHERE token_hash=?").run(hashToken(token));
       return sendJson(res, 200, { ok: true });
+    }
+
+    // 游戏参数脚本（浏览器和服务器用同一份；管理员改过的优先）
+    const cfgRoute = route.match(/^\/api\/config\/([^/]+)$/);
+    if (req.method === "GET" && cfgRoute) {
+      let code;
+      try { code = readConfig(cfgRoute[1]); } catch { res.writeHead(404); return res.end(); }
+      const data = Buffer.from(code), etag = `"${crypto.createHash("sha1").update(data).digest("hex").slice(0, 16)}"`;
+      if (req.headers["if-none-match"] === etag) { res.writeHead(304, { ETag: etag, "Cache-Control": "no-cache" }); return res.end(); }
+      res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-cache", ETag: etag, "X-Content-Type-Options": "nosniff" });
+      return res.end(data);
     }
 
     const user = userFor(req);
@@ -281,6 +301,28 @@ const server = http.createServer(async (req, res) => {
       });
       const result = redeem();
       return result ? sendJson(res, 200, { ok: true, ...result, serverNow: Date.now() }) : error(res, 400, "礼包码无效、已过期、已用完或已经兑换");
+    }
+    // 管理员：数据修改（web/js/config 参数）
+    if (user.is_admin && req.method === "GET" && route === "/api/admin/config") {
+      return sendJson(res, 200, { list: configNames().map(name => ({ name, overridden: configOverridden(name) })) });
+    }
+    if (user.is_admin && req.method === "GET" && route === "/api/admin/config/file") {
+      const name = validConfigName(url.searchParams.get("name"));
+      return sendJson(res, 200, { name, content: readConfig(name), overridden: configOverridden(name) });
+    }
+    if (user.is_admin && req.method === "POST" && (route === "/api/admin/config/save" || route === "/api/admin/config/reset")) {
+      const body = await readBody(req, MAX_CONFIG_BODY), name = validConfigName(body.name), reset = route.endsWith("/reset");
+      const content = reset ? null : String(body.content ?? "");
+      if (!reset) {
+        // 先用新参数完整加载一遍游戏，出错就不保存
+        try { new GameEngine({ [name]: content }); }
+        catch (err) { return error(res, 400, `参数有错误，未保存：${String(err && err.message || err).slice(0, 300)}`); }
+        fs.mkdirSync(CONFIG_OVERRIDE_DIR, { recursive: true, mode: 0o750 });
+        const tmp = path.join(CONFIG_OVERRIDE_DIR, `.${name}.${process.pid}.tmp`);
+        fs.writeFileSync(tmp, content); fs.renameSync(tmp, path.join(CONFIG_OVERRIDE_DIR, name));
+      } else fs.rmSync(path.join(CONFIG_OVERRIDE_DIR, name), { force: true });
+      applyNewConfig();
+      return sendJson(res, 200, { ok: true, name, overridden: configOverridden(name), online: clients.size });
     }
     if (req.method === "POST" && route === "/api/admin/update") {
       await readBody(req);
