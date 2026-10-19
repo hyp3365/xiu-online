@@ -133,6 +133,7 @@ const API = {
   refreshOpenModal() {
     const m = typeof G !== "undefined" && G._modalOpener, el = document.getElementById("modal"), box = document.getElementById("modal-box");
     if (!m || G._lockModal || G._cfgOpen || !el || el.classList.contains("hidden")) return;
+    if (G.editing && G.editing(box)) return;   // 正在弹窗里输入：不重画，免得输入法收起
     const top = box ? box.scrollTop : 0;
     try { m.fn.apply(G, m.args); G._modalOpener = m; } catch { return; }
     if (box) box.scrollTop = top;
@@ -173,13 +174,15 @@ const API = {
   finishButtonPending() {},
 
   // 服务器写的游戏日志（如「灵石不足」）：和单机版 G.log 一样，不在修炼页（或开着弹窗）时用浮动提示显示
-  toastLogs(logs, force = false) {
+  // fail = 条件不足等没执行成功的提示：红色，显示在屏幕中间
+  toastLogs(logs, force = false, fail = false) {
     if (!Array.isArray(logs) || !logs.length || typeof G === "undefined") return;
     const modal = document.getElementById("modal"), modalOpen = modal && !modal.classList.contains("hidden");
     if (!force && G.tab === "cultivate" && !modalOpen) return;
     const t = document.getElementById("toast"); if (!t) return;
     const esc = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     t.innerHTML = logs.slice(0, 3).reverse().map(l => `<p class="${esc(l.c || "")}">${esc(l.m || "")}</p>`).join("");
+    t.classList.toggle("center", fail); delete t.dataset.tone;
     t.classList.add("show");
     clearTimeout(G._toastT); clearTimeout(this._actionToastTimer);
     G._toastT = setTimeout(() => t.classList.remove("show"), 1800);
@@ -202,6 +205,7 @@ const API = {
     if (!toast) return;
     toast.textContent = text;
     toast.dataset.tone = tone;
+    toast.classList.toggle("center", tone === "bad");
     toast.classList.add("show");
     clearTimeout(this._actionToastTimer);
     this._actionToastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
@@ -295,14 +299,17 @@ const API = {
     if (!pending) return;
     clearTimeout(pending.timer); this._pending.delete(message.id);
     this.finishButtonPending(pending);
+    const noLog = st => st ? JSON.stringify({ ...st, log: 0 }) : "";
+    const before = noLog(this.serverState);
     this.applyState(message);
+    const failed = message.ok && before === noLog(this.serverState);   // 除了日志什么都没变 = 条件不足没执行
     if (!message.ok) {
       const error = message.error || "操作失败";
       this.showActionFeedback(error, "bad");
       pending.reject(new Error(error)); return;
     }
     this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result, pending.exStart, message.logs || []);
-    if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true);
+    if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true, failed);
     pending.resolve(message);
   },
 
@@ -345,7 +352,8 @@ const API = {
       // 悟道：读条动画在本地播放，结束时让服务器结算
       if (name === "wudao") {
         const dao = args[0];
-        if (G._wdRun || !G.wdCheck(dao)) { G.renderLog(); return false; }
+        if (G._wdRun) return false;
+        if (!G.wdCheck(dao)) { G.renderLog(); this.toastLogs(G.s.log.slice(0, 1), true, true); return false; }
         const ms = ((CFG.wudaoRoom || {}).TIME || 0) * 1000;
         G._wdRun = { dao, end: Date.now() + ms }; G.render();
         await new Promise(r => setTimeout(r, ms));
