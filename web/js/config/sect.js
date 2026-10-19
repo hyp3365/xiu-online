@@ -110,7 +110,7 @@ CFG.sect.affairFight = {
     { n: 3, realm: 0, lay: [1, 5],  pct: [1, 20],  gf: [1, 3], mul: 1 },
     { n: 3, realm: 1, lay: [6, 10], pct: [21, 50], gf: [3, 6], mul: 2 },
   ],
-  // 胜利奖励 × mul；失败扣 × 宗门星级 × mul（可以扣成负数）；赢了才算完成，输了可以再打
+  // 胜利奖励 × mul（灵石再 × 宗门星级）；失败扣 × 宗门星级 × mul（可以扣成负数）；赢了才算完成，输了可以再打
   WIN: { stone: 1000, contrib: 300 },
   LOSE: { stone: 200, contrib: 50 },
   CRIT: 5,                         // 怪物暴击%
