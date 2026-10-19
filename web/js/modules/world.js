@@ -508,14 +508,30 @@ G.module({
     // v165 护盾光圈：护盾在的时候一直显示，套住人物 / 怪物（比人物大一点），破碎时消失
     btRing(w, on) {
       const u = $("#bt-u" + w); if (!u) return;
-      let r = u.querySelector(".btv-ring");
+      let r = u.querySelector(".btv-ring:not(.off)");
       if (!on) { if (r) { r.classList.add("off"); setTimeout(() => r.remove(), 500); } return; }
       if (r) r.remove();
-      const im = (u.querySelector(".btv-hero") || u.querySelector("img") || u).getBoundingClientRect(), ur = u.getBoundingClientRect();
       r = document.createElement("div"); r.className = "btv-ring" + (w ? " mob" : "");
-      const W2 = im.width * 1.3, H2 = im.height * 1.1;
-      Object.assign(r.style, { width: W2 + "px", height: H2 + "px", left: (im.left - ur.left + im.width / 2 - W2 / 2) + "px", top: (im.top - ur.top + im.height / 2 - H2 / 2) + "px" });
       u.appendChild(r);
+      this.btRingPos(u, r, 0);
+    },
+    // v245 光圈位置：按人物 / 怪物图在格子里的布局尺寸算（不受出手动画缩放影响）；
+    //   图还没加载好（宽度 0，常见于第 1 回合就放盾）时等图加载完再算，之前光圈大小为 0 看不到
+    btRingPos(u, r, n) {
+      if (!r.isConnected) return;
+      const t = u.querySelector(".btv-hero") || u.querySelector("img") || u;
+      let x = 0, y = 0, e = t;
+      while (e && e !== u && u.contains(e)) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; }
+      if (e !== u) { const a = t.getBoundingClientRect(), b = u.getBoundingClientRect(); x = a.left - b.left; y = a.top - b.top; }
+      const iw = t.offsetWidth, ih = t.offsetHeight;
+      if ((iw < 8 || ih < 8) && n < 40) {
+        const img = t.tagName === "IMG" ? t : t.querySelector("img");
+        if (img && !img.complete && n === 0) img.addEventListener("load", () => this.btRingPos(u, r, 1), { once: true });
+        setTimeout(() => this.btRingPos(u, r, n + 1), 100);
+        return;
+      }
+      const W = Math.max(iw, 40) * 1.3, H = Math.max(ih, 40) * 1.1;
+      Object.assign(r.style, { width: W + "px", height: H + "px", left: (x + iw / 2 - W / 2) + "px", top: (y + ih / 2 - H / 2) + "px" });
     },
     btFinish() {
       const bp = this._bp; if (!bp || bp.done) return;
