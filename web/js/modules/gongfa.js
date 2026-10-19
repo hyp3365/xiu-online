@@ -148,7 +148,7 @@ G.module({
     lqCard(ch) {
       const c = this.s[this.lqSlot(ch)], q = this.lqList(ch); if (!c) return "";
       const left = Math.max(0, c.end - this.now());
-      return `<div class="card"><h3>学习队列<small>排队 ${q.length} / ${this.lqMax()} · 已扣费，不能取消</small></h3>
+      return `<div class="card"><h3>学习队列<small>排队 ${q.length} / ${this.lqMax()}</small></h3>
         <div class="line"><div class="pg">${this.pgFill(left, this.lqMs(ch, c))}<span>${this.lqName(c)}<small>学习中 · 剩余 ${U.cd(left / 1000)}</small></span></div></div>` +
         q.map((x, i) => `<div class="line"><div>${i + 1}. ${this.lqName(x)}<small>排队中 · 需 ${U.dur(this.lqMs(ch, x) / 1000)}</small></div></div>`).join("") + `</div>`;
     },
