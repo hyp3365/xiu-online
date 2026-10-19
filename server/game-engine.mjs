@@ -158,6 +158,10 @@ export class GameEngine {
       for (const module of this.modules) if (module.tick) module.tick.call(this, offline);
     };
     this.G.modal = function () {};
+    // 战斗画面在客户端播放：服务器只记下来，随操作结果发回
+    this.G.playBattle = function (b, title, txt, win, logs, replay, opt) {
+      engine.battles = [safeClone({ b, title, txt, win, logs: logs || null, replay: !!replay, opt: opt || {} })];
+    };
     this.G.closeModal = function () {};
     this.G.setSync = function () {};
     this.G.offlineReport = function () {};
@@ -265,6 +269,7 @@ export class GameEngine {
     if (action.startsWith("_") || ["init", "start", "loop", "runTicks", "offline", "tickAll", "migrate", "newSave"].includes(action)) throw new Error("不允许调用该操作");
     this.seedRandom();
     this.G._simNow = this.clock.now;
+    this.battles = [];
     const result = method.apply(this.G, args);
     if (result && typeof result.then === "function") throw new Error("异步 UI 方法不能作为游戏操作调用");
     this.G.s.last = Math.max(Number(this.G.s.last) || 0, this.clock.now - ((this.clock.now - (Number(this.G.s.last) || this.clock.now)) % TICK_MS));
@@ -273,6 +278,7 @@ export class GameEngine {
       logs: safeClone(this.logs),
       serverNow: this.clock.now,
       result: result === undefined ? null : result,
+      battles: this.battles,
       processedTicks: advanced.processedTicks,
     };
     return response;
