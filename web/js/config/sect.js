@@ -39,9 +39,9 @@ CFG.sect = {
   rooms: [
     { name: "下品修炼室", pct: 20,  cost: 1 },
     { name: "中品修炼室", pct: 30,  cost: 2 },
-    { name: "上品修炼室", pct: 50, cost: 4 },
-    { name: "天品修炼室", pct: 80, cost: 6 },
-    { name: "宗主修炼室", pct: 120, cost: 1, rank: 6 },
+    { name: "上品修炼室", pct: 50, cost: 3 },
+    { name: "天品修炼室", pct: 80, cost: 4 },
+    { name: "宗主修炼室", pct: 120, cost: 2, rank: 6 },
   ],
   SECRET_COST: 200,  // 宗门秘境每次贡献 = SECRET_COST × 门派星数（不读 STAR_MULT）
 };
