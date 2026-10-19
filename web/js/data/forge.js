@@ -101,7 +101,7 @@ DATA.eqEnhStats = e => { const o = {}; if (!e || !e.attrs || e.slot === "fabao" 
 // 一条属性没强化时的数值
 // 装备 / 戒指：REF[阶] 境界的修为突破 + 肉身突破属性 × PCT[颜色]%（暴击除外）
 DATA._eqRef = {};
-DATA.eqRef = g => DATA._eqRef[g] || (DATA._eqRef[g] = (() => { const r = (_FG.attr.REF || [])[g] || [2 * g + 1, 10]; return DATA.mobStats([0, r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
+DATA.eqRef = g => DATA._eqRef[g] || (DATA._eqRef[g] = (() => { const r = (_FG.attr.REF || [])[g] || [2 * g + 1, 10]; return DATA.mobStats([r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
 DATA.eqPctOK = a => a.k !== "crit";
 DATA.eqPct = a => { const R = _FG.attr.PCT, r = R[a.c] || R[R.length - 1]; return Math.round((r[0] + (r[1] - r[0]) * DATA.attrPos(a)) * 100) / 100; };
 DATA.attrBase = (a, g, e) => {
@@ -228,7 +228,7 @@ DATA._fbRef = {};
 // v152 法宝强化：盾 = 增加护盾值，其他 = 附加伤害（固定数字）
 DATA.fbEnhPer = e => { const E = CFG.forge.enhance.fabao, T = DATA.fabaoTypes[e.ft] || {}; return ((T.shield ? E.SHIELD : E.DMG) || [])[e.g] || 0; };
 DATA.fbEnh = e => (e.enh || 0) * DATA.fbEnhPer(e);
-DATA.fbRef = g => DATA._fbRef[g] || (DATA._fbRef[g] = (() => { const r = (_FG.fabao.REF || [])[g] || [2 * g + 1, 10]; return DATA.mobStats([0, r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
+DATA.fbRef = g => DATA._fbRef[g] || (DATA._fbRef[g] = (() => { const r = (_FG.fabao.REF || [])[g] || [2 * g + 1, 10]; return DATA.mobStats([r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
 // 法宝攻击 = 自己修为 + 肉身攻击（不超过参考攻击）+ 功法攻击（own 不写 = 玩家自己的，见 data/gongfa.js 的 DATA.capAtk）
 // 法宝战斗数值（atk 已含剑 / 刀的专属攻击；hit、critAdd = 刀 / 锤攻击时额外命中、暴击%）：{ el, atk, pct, mana, ign, cutPct, extra: [{ el, pct }], crit（锤暴击伤害%）, shield, ding, yin }
 DATA.fabaoInfo = (e, own) => {
