@@ -38,7 +38,7 @@ G.module({
   api: {
     // 神魂之道减掉的每次修炼灵气消耗（kind: exp 修为 / body 肉身）
     wdRed(kind) { return ((this.s.wd || {}).red || {})[kind] || 0; },
-    wdLeft(dao) { const w = this.s.wd || {}; return (w.day || {})[dao] === this.today() ? 0 : _WR.DAILY; },
+    wdLeft(dao) { const w = this.s.wd || {}; return (w.day || {})[dao] === this.today() ? 0 : 1; },   // 每条道每天 1 次
     setWdDao(id) { this.wdDao = id; this.render(); },
     // 功德司：买悟道果
     buyWdFruit(n) {
