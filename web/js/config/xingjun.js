@@ -32,9 +32,9 @@ CFG.xingjun = {
   JZ_POS: 12,       // 界主的职位倍率（只用于挑战贡献）
 
   // 每界（xian 仙 / ming 冥 / mo 魔 / shen 神）：
-  //   JZ / SEAT / TJ = 界主、星君、天将名字写法；{map} 地图名，{short} 地图名去掉末尾「天」，{seat} SEATS 里的名字
+  //   JZ / SEAT / TJ = 界主、星君、天将名字写法；{map} 地图名，{short} 地图名去掉末尾「天 / 地狱」，{seat} SEATS 里的名字
   //   SEATS = 每张地图一组星君名（从低到高）；只写一组 = 所有地图共用；人数 = 星君位数
-  //   名字会被 config/names.js 的 xingjun 覆盖，改名去那里改
+  //   名字会被 config/names.js 的 xingjun 覆盖，改名去那里改（魔、神界界主名在那里的 JZS）
   //   PAY_MULT = 本界俸禄倍率
   worlds: {
     xian: {
@@ -59,12 +59,12 @@ CFG.xingjun = {
       PAY_MULT: 1,
     },
     mo: {
-      JZ: "{map}魔王", SEAT: "{seat}魔君", TJ: "魔将",
+      SEAT: "{seat}魔君", TJ: "魔将",
       SEATS: [["万劫", "裂地", "焚天", "幽冥", "天罗", "噬魂", "血煞"]],
       PAY_MULT: 1,
     },
     shen: {
-      JZ: "{map}神帝", SEAT: "{seat}神君", TJ: "神将",
+      SEAT: "{seat}神君", TJ: "神将",
       SEATS: [["少昊", "太昊", "黄枢", "玄冥", "白藏", "赤明", "青阳"]],
       PAY_MULT: 1.3,
     },
