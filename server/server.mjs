@@ -276,7 +276,7 @@ const server = http.createServer(async (req, res) => {
         persist(user.id, updatedState);
         db.prepare("INSERT INTO gift_uses(code,user_id,used_at) VALUES(?,?,?)").run(code, user.id, Date.now());
         db.prepare("UPDATE gifts SET used_count=used_count+1 WHERE code=?").run(code);
-        const online = clients.get(user.id); if (online) { online.state = updatedState; send(online.socket, snapshot(online)); }
+        const online = clients.get(user.id); if (online) { online.state = JSON.parse(JSON.stringify(updatedState)); pushState(online, Date.now(), [], true, true); }
         return { items, got, lost, state: updatedState };
       });
       const result = redeem();
@@ -301,7 +301,36 @@ const server = http.createServer(async (req, res) => {
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_WS_PAYLOAD, perMessageDeflate: false });
 function send(socket, value) { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); }
-function snapshot(client, logs = []) { return { type: "snapshot", state: client.state, serverNow: Date.now(), revision: client.revision, logs }; }
+// 状态差异：只发变化的字段。普通对象逐层比较；数组和其它值整体替换。
+// 补丁格式 { $p: 1, s: { 键: 新值或子补丁 }, d: [删除的键] }；无变化返回 undefined。
+const isPlain = v => v !== null && typeof v === "object" && !Array.isArray(v);
+function diffState(a, b) {
+  if (isPlain(a) && isPlain(b)) {
+    const set = {}, del = []; let changed = false;
+    for (const k of Object.keys(b)) {
+      if (!(k in a)) { set[k] = b[k]; changed = true; continue; }
+      const d = diffState(a[k], b[k]);
+      if (d !== undefined) { set[k] = d; changed = true; }
+    }
+    for (const k of Object.keys(a)) if (!(k in b)) { del.push(k); changed = true; }
+    return changed ? { $p: 1, s: set, d: del } : undefined;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b) ? undefined : b;
+  return a === b ? undefined : b;
+}
+// 生成发给某个连接的状态消息：首次或要求重同步时发完整状态，之后只发补丁，并带上序号供客户端校验。
+function statePayload(client, full = false) {
+  const json = JSON.stringify(client.state), prevSeq = client.seq || 0;
+  client.seq = prevSeq + 1;
+  let payload;
+  if (full || !client.lastSent) payload = { state: client.state };
+  else {
+    const patch = diffState(client.lastSent, client.state);
+    payload = { patch: patch || null, base: prevSeq };
+  }
+  client.lastSent = JSON.parse(json); client.lastSentJson = json;
+  return { ...payload, seq: client.seq };
+}
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url || "/", "http://localhost"), ticket = url.searchParams.get("ticket") || "";
   const session = tickets.get(ticket);
@@ -324,20 +353,21 @@ wss.on("connection", (socket, session) => {
   const playerEngine = getEngine(user.id);
   const advanced = playerEngine.advance(state, Date.now()); persist(user.id, advanced.state);
   const saved = q.save.get(user.id);
-  const client = { socket, userId: user.id, engine: playerEngine, state: advanced.state, revision: saved?.revision || 1, lastPersist: Date.now(), rateWindow: Date.now(), rateCount: 0 };
+  const client = { socket, userId: user.id, engine: playerEngine, state: advanced.state, revision: saved?.revision || 1, lastPersist: Date.now(), rateWindow: Date.now(), rateCount: 0, nextCheck: Math.min(Date.now() + CHECK_MS, (advanced.nextDue || 0) + DUE_MARGIN_MS), lastPush: 0, lastSentJson: "", lastSent: null, seq: 0 };
   clients.set(user.id, client); receipts.set(socket, new Map());
-  send(socket, snapshot(client, advanced.logs));
+  pushState(client, Date.now(), advanced.logs, true, true);
 
   socket.on("message", raw => {
     const now = Date.now();
     if (now - client.rateWindow >= 1000) { client.rateWindow = now; client.rateCount = 0; }
     if (++client.rateCount > 12) { send(socket, { type: "error", error: "操作过于频繁，请稍后重试" }); return; }
     let msg; try { msg = JSON.parse(raw.toString("utf8")); } catch { send(socket, { type: "error", error: "消息格式错误" }); return; }
+    if (msg && msg.type === "resync") { pushState(client, Date.now(), [], true, true); return; }
     if (!msg || msg.type !== "action") { send(socket, { type: "error", error: "未知消息类型" }); return; }
     const id = String(msg.id || "");
     if (!/^[A-Za-z0-9_-]{8,80}$/.test(id)) { send(socket, { type: "error", id, error: "操作编号无效" }); return; }
     const seen = receipts.get(socket);
-    if (seen.has(id)) { send(socket, seen.get(id)); return; }
+    if (seen.has(id)) { const { patch, base, state, ...cached } = seen.get(id); send(socket, { ...cached, ...statePayload(client, true) }); return; }
     try {
       const action = String(msg.action || ""), args = msg.args;
       if (!ACTIONS.has(action)) throw new Error("此操作未授权");
@@ -348,10 +378,11 @@ wss.on("connection", (socket, session) => {
       client.state = outcome.state;
       client.revision = (q.revision.get(user.id)?.revision || 0) + 1;
       persist(user.id, client.state); client.lastPersist = Date.now();
-      const reply = { type: "result", id, ok: true, state: client.state, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result };
+      const reply = { type: "result", id, ok: true, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result, ...statePayload(client) };
+      client.lastPush = Date.now(); client.nextCheck = Date.now();
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
     } catch (err) {
-      const reply = { type: "result", id, ok: false, error: err.message || "操作失败", state: client.state, serverNow: Date.now(), revision: client.revision };
+      const reply = { type: "result", id, ok: false, error: err.message || "操作失败", serverNow: Date.now(), revision: client.revision, ...statePayload(client) };
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
     }
   });
@@ -365,23 +396,39 @@ wss.on("connection", (socket, session) => {
   socket.on("error", err => console.warn("WebSocket error:", err.message));
 });
 
+// 服务器推送：只在状态变化时推，最多 10 秒一次心跳。
+// 每 100ms 检查一次是否到了下一个结算点（修炼周期 / 探索步 / 劫雷），到点立刻结算推送，
+// 进度条走满就能马上看到结算；其它计时系统每秒检查一次。
+const PUSH_IDLE_MS = 10_000, CHECK_MS = 1_000, DUE_MARGIN_MS = 15;
+function pushState(client, now, logs = [], force = false, full = false) {
+  if (!force && !logs.length && JSON.stringify(client.state) === client.lastSentJson && now - client.lastPush < PUSH_IDLE_MS) return;
+  client.lastPush = now;
+  send(client.socket, { type: "snapshot", serverNow: now, revision: client.revision, logs, ...statePayload(client, full) });
+}
+let lastHousekeeping = 0;
 const timer = setInterval(() => {
   const now = Date.now();
   for (const [userId, client] of clients) {
     if (client.socket.readyState !== WebSocket.OPEN) continue;
     try {
-      const outcome = client.engine.advance(client.state, now); client.state = outcome.state;
-      if (now - client.lastPersist >= 30_000) {
-        persist(userId, client.state); client.lastPersist = now;
-        client.revision = (q.revision.get(userId)?.revision || client.revision) + 1;
-      }
-      send(client.socket, snapshot(client, outcome.logs));
+      if (now >= client.nextCheck) {
+        const outcome = client.engine.advance(client.state, now); client.state = outcome.state;
+        client.nextCheck = Math.min(now + CHECK_MS, Math.max(now + 50, (outcome.nextDue || 0) + DUE_MARGIN_MS));
+        if (now - client.lastPersist >= 30_000) {
+          persist(userId, client.state); client.lastPersist = now;
+          client.revision = (q.revision.get(userId)?.revision || client.revision) + 1;
+        }
+        pushState(client, now, outcome.logs);
+      } else if (now - client.lastPush >= PUSH_IDLE_MS) pushState(client, now, [], true);
     } catch (err) { console.error("game tick failed:", err?.stack || err); client.socket.close(1011, "游戏结算失败"); }
   }
-  for (const [ticket, item] of tickets) if (item.expiresAt < now) tickets.delete(ticket);
-  for (const [userId, entry] of engines) if (!clients.has(userId) && now - entry.lastUsed > 120_000) engines.delete(userId);
-  db.prepare("DELETE FROM tokens WHERE expires_at<?").run(now);
-}, 1000);
+  if (now - lastHousekeeping >= 1000) {
+    lastHousekeeping = now;
+    for (const [ticket, item] of tickets) if (item.expiresAt < now) tickets.delete(ticket);
+    for (const [userId, entry] of engines) if (!clients.has(userId) && now - entry.lastUsed > 120_000) engines.delete(userId);
+    db.prepare("DELETE FROM tokens WHERE expires_at<?").run(now);
+  }
+}, 100);
 timer.unref();
 
 function shutdown(signal) {
