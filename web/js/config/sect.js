@@ -84,7 +84,8 @@ CFG.sect.trial = {
   },
 };
 
-// 练功房：pct 功法修炼时间 −%（不乘星级，最多 95）  cost 每 5 秒贡献（不乘倍率，只在修炼功法时扣）  rank 需要职务序号
+// 练功房：pct 功法修炼时间 −%（不乘星级，最多 95）  cost 每 gfRoomSec 秒扣一次的贡献（不乘倍率，只在修炼功法时扣）  rank 需要职务序号
+CFG.sect.gfRoomSec = 10;   // 练功房多少秒扣一次贡献（按 5 秒取整，最少 5）
 CFG.sect.gfRooms = [
   { name: "下品练功房", pct: 18, cost: 1 },
   { name: "中品练功房", pct: 24, cost: 2 },
