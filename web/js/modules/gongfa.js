@@ -230,6 +230,8 @@ G.module({
       const t = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
       return `<span class="cd">${(h ? h + "小时" : "") + (h || m ? m + "分" : "") + s + "秒"}</span>`;
     },
+    // 第3层 → 第4层（目标层红框）
+    gfLvTo(lv) { return `<span class="tag gf-lv">第${lv}层</span> → <span class="tag gf-to">第${lv + 1}层</span>`; },
     // 「修炼队列」页：正在修炼（倒计时、进度、消耗）+ 排队中的
     gfQueueView() {
       const s = this.s, R = this.gfRoomNow(), mul = R ? R.mul : 1;
@@ -238,7 +240,7 @@ G.module({
         const info = DATA.skillInfo(s.gfStudy.id, s.gongfa[s.gfStudy.id]);
         const st = s.gfStudy, done = st.stalled ? st.done : Math.min(st.total, st.done + Math.max(0, Date.now() - st.at) * mul), left = (st.total - done) / mul;
         acc = left;
-        html += `<div class="card"><h3>修炼中 ·《${info ? info.name : st.id}》${info ? `<span class="tag gf-lv">第${info.lv}层</span>` : ""}</h3>
+        html += `<div class="card"><h3>修炼中 ·《${info ? info.name : st.id}》${info ? this.gfLvTo(info.lv) : ""}</h3>
         <div class="bar tick"><div style="width:${done / st.total * 100}%"></div></div>
         <div class="row small"><span>${st.stalled ? `<b class='q5'>${st.stone ? "灵气或灵石" : "灵气"}不足，暂停中</b>` : `倒计时 <b>${this.countdown(left)}</b>`}</span><button class="sm" onclick="G.stopStudy()">中断</button></div>
         <div class="row small"><span>每 10 秒消耗 <b>${U.fmt(st.per * 2)}</b> 灵气${st.stone ? ` + ${U.fmt(st.stone * 2)} 灵石` : ""} · 已消耗 <b>${U.fix(U.fmt(st.spent))}</b> / ${U.fmt(st.per * st.total / (DATA.STUDY_STEP * 1000))}</span><span>${R ? `${R.name} -${U.num(R.pct)}%` : "未进练功房"}</span></div></div>`;
@@ -253,7 +255,7 @@ G.module({
       html += `<div class="card"><h3>排队中<small>${s.gfQueue.length} / ${DATA.GF_QUEUE}${s.gfQueue.length ? ` · 全部完成约 ${this.countdown(acc)}` : ""}</small></h3>` +
         (s.gfQueue.length ? s.gfQueue.map((id, i) => {
           const q = DATA.skillInfo(id); if (!q) return "";
-          return `<div class="line"><div>${i + 1}. 《${q.name}》${q.noEl ? "" : `<span class="tag">${q.star}星</span>`}<span class="tag gf-lv">第${rows[i].lv}层</span><small>需 ${this.countdown(rows[i].ms)} · 约 ${this.countdown(rows[i].acc)} 后完成</small></div><button class="sm" onclick="G.removeQueue(${i})">移除</button></div>`; }).join("")
+          return `<div class="line"><div>${i + 1}. 《${q.name}》${q.noEl ? "" : `<span class="tag">${q.star}星</span>`}${this.gfLvTo(rows[i].lv)}<small>需 ${this.countdown(rows[i].ms)} · 约 ${this.countdown(rows[i].acc)} 后完成</small></div><button class="sm" onclick="G.removeQueue(${i})">移除</button></div>`; }).join("")
           : `<p class="desc">队列为空。</p>`) + `</div>`;
       return html;
     },
