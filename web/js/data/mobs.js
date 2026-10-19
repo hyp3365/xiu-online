@@ -3,7 +3,6 @@
  * 每个怪物 8 个数 [进入境界, 境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]：
  *   怪物基础属性 = (修为突破属性 + 肉身突破属性 + 功法属性) × 倍率
  *   遇到时 × 随机(RAND[0] ~ RAND[1])；暴击 = CRIT
- *   旧写法（v218 的 9 个数、更早的 8 个数）仍能读
  * 生成后写进：
  *   CFG.monster.regions[地图][区域][normal/elite/boss]、CFG.monster.MAP_REALM（凡界 + 仙魔冥神）
  *   CFG.mijing.list[i] / CFG.lingdi.list[i] 的 realm 和 normal/elite/boss
@@ -24,18 +23,13 @@ DATA.mobCatSrcs = c => c === 1 ? DATA.sects : c === 2 ? [...DATA.shopSources, ..
 // v219 一行怪物数据统一成对象：8 个数 [进入境界, 境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]
 //   层、各类学%、各类功法层都可以写一个数，或 [最小, 最大]（每次遇到随机；层、功法层取整数，学% 可带小数）
 //   cats = [{ c: 1/2/3, pct: [最小, 最大], gf: [最小, 最大] }]，学 0% 或功法层 0 的那类不算
-//   兼容：v218 的 9 个数 [.., [1, 宗门%], [2, 坊市%], [3, 功德司%], 功法层, 倍率]；更早的 8 个数 [.., 功法来源, 学功法%, 功法层, 倍率]（只算宗门）
 DATA.MOB_NONE = [0, 0, 1, 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1];   // 没写时：练气一层、不算功法
 DATA.mobRange = v => Array.isArray(v) ? [v[0], v[v.length - 1]] : [v || 0, v || 0];
 DATA.mobRow = t => {
   t = t || DATA.MOB_NONE;
-  let cats, k;
-  if (!Array.isArray(t[4])) { cats = [{ c: 1, pct: t[5], gf: t[6] }]; k = t[7]; }                              // 最早的写法
-  else if (t.length >= 9) { cats = [t[4], t[5], t[6]].filter(Array.isArray).map(x => ({ c: x[0], pct: x[1], gf: t[7] })); k = t[8]; }   // v218
-  else { cats = [t[4], t[5], t[6]].filter(Array.isArray).map(x => ({ c: x[0], pct: x[1], gf: x[2] })); k = t[7]; }                   // v219
-  cats = cats.map(x => ({ c: x.c, pct: DATA.mobRange(x.pct), gf: DATA.mobRange(x.gf) })).filter(x => DATA.MOB_GF_CAT[x.c] && x.pct[1] > 0 && x.gf[1] > 0);
+  const cats = [t[4], t[5], t[6]].map(x => ({ c: x[0], pct: DATA.mobRange(x[1]), gf: DATA.mobRange(x[2]) })).filter(x => DATA.MOB_GF_CAT[x.c] && x.pct[1] > 0 && x.gf[1] > 0);
   return { enter: t[0], realm: Math.max(0, Math.min(DATA.realms.length - 1, t[1])), lay: DATA.mobRange(t[2]), star: t[3] || 0,
-    cats, k: k === undefined ? 1 : k };
+    cats, k: t[7] };
 };
 // 1 ~ 星级、某一类来源里的全部功法，按种类分组：{ 种类id: [{ id, stat, stat2 }] }（缓存）
 DATA._mobBooks = {};
@@ -90,7 +84,7 @@ DATA.mobMeet = (grp, kind) => { const t = grp && grp._t && grp._t[kind]; return 
   const M = CFG.mobs;
   for (let a = 0; a < DATA.FAN_MAP_N; a++) {
     const c = DATA.mobPick(M.fan, DATA.maps[a].name, a) || {};
-    CFG.monster.regions[a] = DATA.regionDirs.map((n, r) => Object.assign({ name: n, L: a * 10 + (M.FAN_L || [0, 3, 6, 9])[r] }, DATA.mobGroup(c[n])));
+    CFG.monster.regions[a] = DATA.regionDirs.map((n, r) => Object.assign({ name: n, L: a * 10 + M.FAN_L[r] }, DATA.mobGroup(c[n])));
     CFG.monster.MAP_REALM[a] = ((c["东"] || {})["普通"] || [0])[0];
   }
   for (const w of ["xian", "ming", "mo", "shen"]) for (const a of DATA.worldMapIdx[w] || []) {
@@ -120,13 +114,13 @@ DATA.mobJz = a => (DATA.maps[a].mob || {})["界主"] || DATA.MOB_NONE;
 //   逢 10 层 × BOSS（v222）；2 星及以上 = 上一星塔顶（不含 BOSS 倍）的全部属性 + 本星塔多出来的境界 / 肉身属性 + 本星宗门功法，本星部分 × 阶段倍率
 DATA._tower = {};
 DATA.towerPart = (star, floor, max) => {   // 返回 { own: 本星这一层的属性（已 × 倍率）, base: 上一星塔顶, realm, lay, pct, gf, mul }
-  const T = CFG.mobs.tower || {}, RN = T.REALMS || 2, LN = RN * DATA.LAYERS, f = Math.max(1, Math.min(max, floor)), p = f / max;
+  const T = CFG.mobs.tower, LN = T.REALMS * DATA.LAYERS, f = Math.max(1, Math.min(max, floor)), p = f / max;
   const step = (n) => Math.max(1, Math.min(n, Math.ceil(p * n - 1e-9)));
-  const r0 = (CFG.sect.REQ_REALM || [])[star - 1] !== undefined ? CFG.sect.REQ_REALM[star - 1] : (star - 1) * RN;
+  const r0 = CFG.sect.REQ_REALM[star - 1];
   const j = step(LN), realm = Math.min(DATA.realms.length - 1, r0 + Math.floor((j - 1) / DATA.LAYERS)), lay = (j - 1) % DATA.LAYERS + 1;
-  const gf = step(T.GF_MAX || 5), SN = T.STAGES || 50, sg = step(SN);
-  const pct = T.PCT_START !== undefined ? T.PCT_START + (sg - 1) * (T.PCT_ADD || 0) : step(T.PCT_MAX || 50);   // v225 学习比例：第 1 段 PCT_START %，每段 + PCT_ADD %
-  const mul = ((T.MUL === undefined ? 100 : T.MUL) + (sg - 1) * (T.MUL_ADD || 0)) / 100;   // v222 第 1 段 MUL %，每段 + MUL_ADD %
+  const gf = step(T.GF_MAX), sg = step(T.STAGES);
+  const pct = T.PCT_START + (sg - 1) * T.PCT_ADD;   // 学习比例：第 1 段 PCT_START %，每段 + PCT_ADD %
+  const mul = (T.MUL + (sg - 1) * T.MUL_ADD) / 100;   // 第 1 段 MUL %，每段 + MUL_ADD %
   const Lof = (r, l) => r * DATA.LAYERS + l;
   const cur = DATA.refStats(realm, lay, 0, star, 1), bd = DATA.mobBody(Lof(realm, lay));
   let pre = null, pbd = null, base = null;
@@ -149,8 +143,8 @@ DATA.towerPart = (star, floor, max) => {   // 返回 { own: 本星这一层的�
 DATA.towerStage = (star, floor, max) => {
   const key = star + ":" + floor + ":" + max;
   if (!DATA._tower[key]) {
-    const T = CFG.mobs.tower || {}, P = DATA.towerPart(star, floor, max), crit = T.CRIT !== undefined ? T.CRIT : DATA.mobCrit("考官");
-    const B = T.BOSS || [0, 1], boss = B[0] > 0 && floor % B[0] === 0 ? B[1] : 1, o = Object.assign({}, P.total);   // v222 逢 10 层 × BOSS
+    const T = CFG.mobs.tower, P = DATA.towerPart(star, floor, max), crit = DATA.mobCrit("考官");
+    const B = T.BOSS, boss = B[0] > 0 && floor % B[0] === 0 ? B[1] : 1, o = Object.assign({}, P.total);   // v222 逢 10 层 × BOSS
     for (const k of DATA.MOB_KEYS) o[k] *= boss;
     DATA._tower[key] = Object.assign(o, { crit, L: P.L, realm: P.realm, layer: P.lay, pct: P.pct, gf: P.gf, mul: P.mul, boss });
   }
