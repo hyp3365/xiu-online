@@ -10,9 +10,13 @@ const TICK_MS = 10_000;
 // 游戏参数（web/js/config/*.js）：管理员在网页里改过的版本存放在数据目录，不进 git，GitHub 更新也不会覆盖。
 export const CONFIG_DIR = path.join(ROOT, "web/js/config");
 export const CONFIG_OVERRIDE_DIR = path.resolve(process.env.XIU_CONFIG_DIR || path.join(process.env.XIU_DATA_DIR || path.join(HERE, "data"), "config"));
+// 加载顺序（后面的文件可以用前面文件定义的参数）；新加的参数文件不在列表里时按文件名排在最后
+const CONFIG_ORDER = ["realm.js", "player.js", "array.js", "mobs.js", "explore.js", "drops.js", "worldmaps.js", "xingjun.js", "battle.js", "equip.js", "start.js", "bag.js", "gongfa.js", "lingen.js", "items.js", "alchemy.js", "furnace.js", "forge.js", "garden.js", "trib.js", "servant.js", "sect.js", "wudao.js", "craftsman.js", "mijing.js", "lingdi.js", "body.js", "names.js", "shenshi.js", "wudaoshi.js"];
 export function configNames() {
-  return fs.readdirSync(CONFIG_DIR).filter(f => /^[a-z0-9_-]+\.js$/i.test(f)).sort();
+  const files = fs.readdirSync(CONFIG_DIR).filter(f => /^[a-z0-9_-]+\.js$/i.test(f));
+  return [...CONFIG_ORDER.filter(f => files.includes(f)), ...files.filter(f => !CONFIG_ORDER.includes(f)).sort()];
 }
+export function configHash(code) { return crypto.createHash("sha1").update(code).digest("hex").slice(0, 12); }
 export function validConfigName(name) {
   const n = String(name || "");
   if (!/^[a-z0-9_-]+\.js$/i.test(n) || !configNames().includes(n)) throw Object.assign(new Error("没有这个参数文件"), { status: 404 });
@@ -109,7 +113,12 @@ export class GameEngine {
     for (const source of sources) {
       let code;
       const cfg = source.match(/^(?:api|js)\/config\/([^/]+\.js)$/);
-      if (cfg) code = Object.prototype.hasOwnProperty.call(overrides, cfg[1]) ? overrides[cfg[1]] : readConfig(cfg[1]);
+      const cfgOf = name => Object.prototype.hasOwnProperty.call(overrides, name) ? overrides[name] : readConfig(name);
+      if (source === "api/config-loader.js") {
+        for (const name of configNames()) vm.runInContext(cfgOf(name), sandbox, { filename: `js/config/${name}`, timeout: 5_000 });
+        continue;
+      }
+      if (cfg) code = cfgOf(cfg[1]);
       else {
         const fullPath = path.resolve(ROOT, "web", source);
         if (!fullPath.startsWith(path.join(ROOT, "web") + path.sep)) throw new Error(`Invalid game script path: ${source}`);
