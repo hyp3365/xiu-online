@@ -21,6 +21,6 @@ systemctl reset-failed "$SERVICE" 2>/dev/null || true
 rm -f /etc/nginx/conf.d/central_vps_users/*/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-test.conf /etc/nginx/snippets/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-ip-test.conf
 if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then systemctl reload nginx || true; fi
 rm -rf /opt/xiu-online /var/lib/xiu-online
-rm -f /usr/local/bin/xiu-online-update /usr/local/bin/xiu-online-uninstall /usr/local/bin/xiu-online-backup-github /usr/local/bin/xiu-online-backup-setup
+rm -f /usr/local/bin/xiu-online-update /usr/local/bin/xiu-online-uninstall
 id xiu-online >/dev/null 2>&1 && userdel xiu-online 2>/dev/null || true
 echo "xiu-online 测试服已卸载。原版游戏与存档未动。"

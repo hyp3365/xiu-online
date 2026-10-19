@@ -4,6 +4,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
+import os from "node:os";
+import zlib from "node:zlib";
 import Database from "better-sqlite3";
 import { WebSocketServer, WebSocket } from "ws";
 import { GameEngine, CONFIG_OVERRIDE_DIR, configNames, configOverridden, readConfig, validConfigName, configHash } from "./game-engine.mjs";
@@ -248,6 +250,27 @@ const server = http.createServer(async (req, res) => {
       if (!user.is_admin) return sendJson(res, 200, { admin: false });
       return sendJson(res, 200, { admin: true, service: "xiu-online", version: await repoVersion(), log: readUpdateLog(), registrationOpen: registrationOpen(), startedAt });
     }
+    if (user.is_admin && req.method === "GET" && route === "/api/admin/server") return sendJson(res, 200, await serverInfo());
+    if (user.is_admin && req.method === "POST" && route === "/api/admin/gh") {
+      const body = await readBody(req);
+      const repo = String(body.repo ?? "").trim().replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/$/, "");
+      if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) return error(res, 400, "仓库格式：用户名/仓库名");
+      const iv = Number(body.interval);
+      if (!GH_INTERVALS.includes(iv)) return error(res, 400, "上传间隔无效");
+      setSetting("gh_repo", repo || null); setSetting("gh_interval", iv);
+      if (body.clearToken) setSetting("gh_token", null);
+      else if (typeof body.token === "string" && body.token.trim()) {
+        const token = body.token.trim();
+        if (token.length > 255 || /\s/.test(token)) return error(res, 400, "令牌格式不对");
+        setSetting("gh_token", token);
+      }
+      return sendJson(res, 200, { ok: true, info: await serverInfo() });
+    }
+    if (user.is_admin && req.method === "POST" && route === "/api/admin/gh/upload") {
+      await readBody(req);
+      const last = await ghUpload(true);
+      return sendJson(res, 200, { ok: true, last, info: await serverInfo() });
+    }
     if (user.is_admin && req.method === "POST" && route === "/api/admin/reg") {
       const body = await readBody(req);
       db.prepare("INSERT INTO settings(key,value) VALUES('registration_open',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(body.open ? "true" : "false");
@@ -461,7 +484,7 @@ function pushState(client, now, logs = [], force = false, full = false) {
   send(client.socket, { type: "snapshot", serverNow: now, revision: client.revision, logs, ...statePayload(client, full) });
 }
 // ---- 每小时自动备份数据库（存档、账号、礼包码），保留最近 48 份 ----
-// 备份在 数据目录/backup/xiu-年月日-时分.sqlite3（北京时间）；deploy/xiu-backup-github.sh 会把最新一份传到 GitHub 私有仓库
+// 备份在 数据目录/backup/xiu-年月日-时分.sqlite3（北京时间）；最新一份按管理员设置的间隔上传到 GitHub 私有仓库（见下面 ghUpload）
 const BACKUP_DIR = path.join(DATA_DIR, "backup"), BACKUP_KEEP = 48, BACKUP_MS = 3600_000;
 const BACKUP_RE = /^xiu-\d{8}-\d{4}\.sqlite3$/;
 let backupRunning = false;
@@ -482,6 +505,96 @@ async function backupDb() {
     console.log(`backup ok: ${name} ${(fs.statSync(file).size / 1024).toFixed(0)} KB；角色 ${players.n} 个，存档合计 ${(players.b / 1024).toFixed(0)} KB，最大一份 ${(players.m / 1024).toFixed(0)} KB`);
   } catch (err) { console.error("backup failed:", err?.stack || err); }
   finally { backupRunning = false; }
+}
+
+// ---- 最新备份上传 GitHub（管理员 → 服务器信息 里设置仓库、令牌、间隔）----
+// 用 GitHub Git Data API 建一个没有父提交的新提交并强制指向 main：仓库里永远只有最新一份，不堆历史。
+// 设置存在 settings 表：gh_repo、gh_token、gh_interval（小时，0 = 关闭）、gh_last（上次结果 JSON）
+const getSetting = k => db.prepare("SELECT value FROM settings WHERE key=?").get(k)?.value;
+const setSetting = (k, v) => v === null ? db.prepare("DELETE FROM settings WHERE key=?").run(k) : db.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(k, String(v));
+const GH_INTERVALS = [0, 1, 2, 3, 6, 12, 24];
+function ghConfig() {
+  const iv = Number(getSetting("gh_interval"));
+  let last = null; try { last = JSON.parse(getSetting("gh_last") || "null"); } catch {}
+  return { repo: getSetting("gh_repo") || "", token: getSetting("gh_token") || "", interval: GH_INTERVALS.includes(iv) ? iv : 0, last };
+}
+function backupList() {
+  try {
+    return fs.readdirSync(BACKUP_DIR).filter(f => BACKUP_RE.test(f)).sort().reverse()
+      .map(f => { const st = fs.statSync(path.join(BACKUP_DIR, f)); return { name: f, size: st.size, time: st.mtimeMs }; });
+  } catch { return []; }
+}
+async function ghApi(token, method, url, body) {
+  const r = await fetch("https://api.github.com" + url, { method, headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "xiu-online-backup", ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(120_000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(`GitHub ${r.status}：${j.message || "请求失败"}`); e.status = r.status; throw e; }
+  return j;
+}
+let ghRunning = false;
+async function ghUpload(manual = false) {
+  const cfg = ghConfig();
+  if (!cfg.repo || !cfg.token) throw new Error("还没填 GitHub 仓库和令牌");
+  if (ghRunning) throw new Error("正在上传，请稍候");
+  ghRunning = true;
+  const t0 = Date.now();
+  try {
+    let latest = backupList()[0];
+    if (manual || !latest) { await backupDb(); latest = backupList()[0]; }   // 手动上传先备份一次，传的就是此刻的存档
+    if (!latest) throw new Error("没有备份文件");
+    const R = `/repos/${cfg.repo}`;
+    const repo = await ghApi(cfg.token, "GET", R);
+    if (!repo.private) throw new Error("这个仓库是公开的！备份里有所有账号和存档，只能传到私有仓库");
+    const gz = zlib.gzipSync(fs.readFileSync(path.join(BACKUP_DIR, latest.name)), { level: 9 });
+    const readme = `# 问道长生 存档备份\n\n- 备份：${latest.name}\n- 压缩后：${(gz.length / 1024).toFixed(0)} KB\n\n恢复：解压 xiu-online.sqlite3.gz，停服后替换 /var/lib/xiu-online/xiu-online.sqlite3（并删除同目录的 -wal、-shm 文件），再启动。\n`;
+    const blob = async (buf) => (await ghApi(cfg.token, "POST", `${R}/git/blobs`, { content: buf.toString("base64"), encoding: "base64" })).sha;
+    let fileSha;
+    try { fileSha = await blob(gz); }
+    catch (err) {
+      if (err.status !== 409) throw err;   // 空仓库（没有任何提交）不能直接建 blob：先放一个 README 初始化
+      await ghApi(cfg.token, "PUT", `${R}/contents/README.md`, { message: "初始化", content: Buffer.from(readme).toString("base64") });
+      fileSha = await blob(gz);
+    }
+    const readmeSha = await blob(Buffer.from(readme));
+    const tree = await ghApi(cfg.token, "POST", `${R}/git/trees`, { tree: [{ path: "xiu-online.sqlite3.gz", mode: "100644", type: "blob", sha: fileSha }, { path: "README.md", mode: "100644", type: "blob", sha: readmeSha }] });
+    const commit = await ghApi(cfg.token, "POST", `${R}/git/commits`, { message: `备份 ${latest.name}`, tree: tree.sha, parents: [] });
+    const branch = repo.default_branch || "main";
+    try { await ghApi(cfg.token, "PATCH", `${R}/git/refs/heads/${branch}`, { sha: commit.sha, force: true }); }
+    catch (err) { if (err.status !== 404 && err.status !== 422) throw err; await ghApi(cfg.token, "POST", `${R}/git/refs`, { ref: `refs/heads/${branch}`, sha: commit.sha }); }
+    const last = { ok: true, time: Date.now(), file: latest.name, size: gz.length, ms: Date.now() - t0 };
+    setSetting("gh_last", JSON.stringify(last));
+    console.log(`github backup ok: ${latest.name} ${(gz.length / 1024).toFixed(0)} KB -> ${cfg.repo}`);
+    return last;
+  } catch (err) {
+    const msg = String(err.message || err).split(cfg.token).join("***");
+    setSetting("gh_last", JSON.stringify({ ok: false, time: Date.now(), error: msg }));
+    console.error("github backup failed:", msg);
+    throw new Error(msg);
+  } finally { ghRunning = false; }
+}
+// 每分钟看一次是否到了上传时间（按上次上传时间 + 间隔；失败的话 10 分钟后重试）
+setInterval(() => {
+  const cfg = ghConfig();
+  if (!cfg.interval || !cfg.repo || !cfg.token || ghRunning) return;
+  const last = cfg.last, due = !last ? 0 : last.ok ? last.time + cfg.interval * 3600_000 : last.time + 600_000;
+  if (Date.now() >= due) ghUpload().catch(() => {});
+}, 60_000).unref();
+
+// 管理员 → 服务器信息
+async function serverInfo() {
+  const mem = process.memoryUsage(), dbSize = f => { try { return fs.statSync(f).size; } catch { return 0; } };
+  let disk = null; try { const st = fs.statfsSync(DATA_DIR); disk = { free: st.bavail * st.bsize, total: st.blocks * st.bsize }; } catch {}
+  const saves = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) b, COALESCE(MAX(LENGTH(data)),0) m FROM saves").get();
+  const users = db.prepare("SELECT COUNT(*) n FROM users").get().n;
+  const backups = backupList(), cfg = ghConfig();
+  return {
+    version: await repoVersion(), node: process.version, platform: `${os.type()} ${os.release()} ${os.arch()}`, host: os.hostname(),
+    startedAt, now: Date.now(), osUptime: os.uptime(), pid: process.pid,
+    mem: { rss: mem.rss, heap: mem.heapUsed }, sys: { total: os.totalmem(), free: os.freemem(), load: os.loadavg(), cpus: os.cpus().length },
+    disk, db: { file: DB_FILE, size: dbSize(DB_FILE) + dbSize(DB_FILE + "-wal") },
+    players: { users, saves: saves.n, total: saves.b, max: saves.m, online: clients.size },
+    backup: { dir: BACKUP_DIR, keep: BACKUP_KEEP, count: backups.length, list: backups.slice(0, 5) },
+    gh: { repo: cfg.repo, tokenSet: !!cfg.token, tokenTail: cfg.token ? cfg.token.slice(-4) : "", interval: cfg.interval, intervals: GH_INTERVALS, last: cfg.last, running: ghRunning },
+  };
 }
 setTimeout(backupDb, 60_000).unref();                       // 启动 1 分钟后先备份一次
 setInterval(backupDb, BACKUP_MS).unref();

@@ -1,9 +1,0 @@
-[Unit]
-Description=Upload latest Xiu Online database backup to GitHub
-After=network-online.target
-Wants=network-online.target
-ConditionPathExists=/etc/xiu-online/backup-github.env
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/xiu-online-backup-github

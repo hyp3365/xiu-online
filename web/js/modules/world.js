@@ -1163,6 +1163,7 @@ G.module({
     const isAdmin = !!(this.adminInfo && this.adminInfo.admin);
     if (this.giftPage && isAdmin) return tabs + this.giftAdminView();
     if (this.accPage && isAdmin) return tabs + this.accAdminView();
+    if (this.srvPage && isAdmin) return tabs + this.srvInfoView();
     if (this.adminInfo === undefined) { this.adminInfo = null; API.adminInfo().then(j => { this.adminInfo = j; this.render(); }).catch(() => {}); }
     const A = this.adminInfo;
     // 管理员页：游戏更新（从 GitHub 更新 / 刷新页面）、礼包码、账号管理
@@ -1172,6 +1173,7 @@ G.module({
       <div class="btns"><button class="primary" onclick="G.webUpdate()" ${this.updating ? "disabled" : ""}>${this.updating ? "更新中…" : "从 GitHub 更新"}</button>
       <button onclick="location.reload()">刷新页面</button></div>
       ${A.log ? `<div class="explore-log" style="white-space:pre-wrap;font-size:11px">${A.log.replace(/</g, "&lt;")}</div>` : ""}</div>
+      <div class="card"><h3>服务器信息<small>管理员</small></h3><p class="desc">游戏程序运行情况、自动备份；设置上传 GitHub 的令牌和间隔。</p><div class="btns"><button class="primary" onclick="G.openSrvInfo(true)">服务器信息</button></div></div>
       <div class="card"><h3>礼包码<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openGiftAdmin(true)">生成礼包码</button></div></div>
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
