@@ -37,6 +37,7 @@ const q = {
   byId: db.prepare("SELECT * FROM users WHERE id=?"),
   token: db.prepare("SELECT user_id,expires_at FROM tokens WHERE token_hash=?"),
   save: db.prepare("SELECT data,revision,updated_at FROM saves WHERE user_id=?"),
+  revision: db.prepare("SELECT revision FROM saves WHERE user_id=?"),
   saveUpsert: db.prepare(`INSERT INTO saves(user_id,data,revision,updated_at) VALUES(?,?,1,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data,revision=saves.revision+1,updated_at=excluded.updated_at`),
 };
 const clients = new Map();
@@ -322,7 +323,7 @@ wss.on("connection", (socket, session) => {
       const working = JSON.parse(JSON.stringify(client.state));
       const outcome = client.engine.act(working, action, args, Date.now());
       client.state = outcome.state;
-      client.revision = (q.save.get(user.id)?.revision || 0) + 1;
+      client.revision = (q.revision.get(user.id)?.revision || 0) + 1;
       persist(user.id, client.state); client.lastPersist = Date.now();
       const reply = { type: "result", id, ok: true, state: client.state, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result };
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
@@ -349,7 +350,7 @@ const timer = setInterval(() => {
       const outcome = client.engine.advance(client.state, now); client.state = outcome.state;
       if (now - client.lastPersist >= 30_000) {
         persist(userId, client.state); client.lastPersist = now;
-        client.revision = (q.save.get(userId)?.revision || client.revision) + 1;
+        client.revision = (q.revision.get(userId)?.revision || client.revision) + 1;
       }
       send(client.socket, snapshot(client, outcome.logs));
     } catch (err) { console.error("game tick failed:", err?.stack || err); client.socket.close(1011, "游戏结算失败"); }
