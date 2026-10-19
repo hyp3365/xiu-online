@@ -97,7 +97,12 @@ G.module({
 
     /* ---------- 宗门大殿 ---------- */
     // 职务需要的境界：外门弟子 = 门派入门境界；其余 = config/mobs.js 该星宗门考官的第 1 个数
-    rankReqRealm(i) { if (i <= 0) return this.sectInfo().reqRealm; const t = DATA.mobExam(this.sectInfo().star, i); return t ? t[0] : this.sectInfo().reqRealm; },
+    rankReqRealm(i) {   // 晋升需要的境界 = 考官境界；config/mobs.js 的 sect 写了「晋升需」按它
+      const I = this.sectInfo(); if (i <= 0) return I.reqRealm;
+      const g = DATA.mobPick(CFG.mobs.sect, I.star + "星", I.star - 1) || {}, o = (g["晋升需"] || {})[DATA.ranks[i] && DATA.ranks[i].name];
+      if (o !== undefined) return o;
+      const t = DATA.mobExam(I.star, i); return t ? t[0] : I.reqRealm;
+    },
     rankCost(i) { return Math.floor(DATA.ranks[i].cost * this.starMul()); },
     promote() {
       const i = this.s.rank + 1; if (i >= DATA.ranks.length) return;
