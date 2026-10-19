@@ -117,13 +117,16 @@ G.module({
 
     // 给怪物加 属性 / 六系抗性 / 法术 / 法宝（config/mobs.js 的 mobs.magic）
     addMagic(m, kind, b = {}) {
-      const M = (CFG.mobs.magic || {})[kind] || {}, O = (CFG.mobs.magic || {}).OWN_RES || 1;
+      // kind：normal / elite / boss / tower，或直接写中文种类（考核、天将、星君、界主）
+      const MG = CFG.mobs.magic || {}, M = MG[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] || {}, O = MG.OWN_RES || 1;
       m.el = b.el || U.pick(DATA.elements).id;
       m.mana = m.maxMana = b.mana !== undefined ? b.mana : m.mana || 0;   // 法力 = 修为突破 + 肉身突破的法力 × 倍率（同其他属性）
       const rv = typeof m.res === "number" ? m.res : 0;
       m.res = {};
       for (const e of DATA.elements) m.res[e.id] = b.res && b.res[e.id] !== undefined ? b.res[e.id] : rv * DATA.mobRnd("res") * (e.id === m.el ? O : 1);   // v227 每系单独随机；每系抗性 = 怪物抗性（修为 + 肉身 + 真诀）× 倍率，本属性再 × OWN_RES
-      m.spell = M.spell; m.fabao = M.fabao;
+      const cv = c => c ? { chance: c.几率 || 0, pct: c.伤害 || 0, mana: c.消耗 || [0, 1] } : null;
+      m.spell = cv(M.法术); m.fabao = cv(M.法宝);
+      const S = M.盾; m.shield = S ? { chance: S.几率 || 0, max: S.次数 || 0, hp: S.护盾值, def: S.盾防御, mana: S.消耗 || [0, 1], red: MG.SHIELD_RED || 0 } : null;
       return m;
     },
 
@@ -272,16 +275,15 @@ G.module({
           if (d !== null) { rec(0, shield.hp); return; }
         }
       };
-      // v165 怪物护盾：几率 = 法宝几率 × CHANCE_PCT%，每场最多 MAX 次，不占出手
-      const MS = (CFG.mobs.magic || {}).SHIELD || {};
+      // v165 怪物护盾：几率、次数、护盾值、盾防御、消耗按种类单独设置（config/mobs.js 的 mobs.magic.种类.盾），不占出手
       let mShield = null, mShN = 0;
       const mobShield = () => {
-        const c = m.fabao; if (!c || mobSeal || mShield || mShN >= (MS.MAX || 0)) return;
+        const c = m.shield; if (!c || mobSeal || mShield || mShN >= c.max) return;
         const P = c.mana || [0, 1], cost = (m.manaBr || 0) * P[0] * (P[1] === undefined ? 1 : P[1]);
-        if (m.mana < cost || Math.random() * 100 >= c.chance * (MS.CHANCE_PCT || 0) / 100) return;
+        if (m.mana < cost || Math.random() * 100 >= c.chance) return;
         m.mana -= cost; mShN++;
         const rp = v => Array.isArray(v) ? v[0] + Math.random() * (v[1] - v[0]) : v || 0;   // v166 [最小, 最大] 随机
-        mShield = { hp: m.hp * rp(MS.HP_PCT) / 100, def: m.def * rp(MS.DEF_PCT) / 100, red: MS.RED || 0 };
+        mShield = { hp: m.hp * rp(c.hp) / 100, def: m.def * rp(c.def) / 100, red: c.red || 0 };
         act = { k: 3, f: 0 }; rec(1, mShield.hp);
       };
       const me = (lx) => {
