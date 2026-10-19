@@ -29,7 +29,10 @@ text = re.sub(r'((?:src|href)="([^"?:]+))\?v=[^"]*"', update, text)
 index.write_text(text, encoding="utf-8")
 PY
 install -m 0644 "$DIR/deploy/xiu-server.service" "/etc/systemd/system/${SERVICE}.service"
+install -m 0644 "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-online-web-update.service
+install -m 0644 "$DIR/deploy/xiu-web-update.path" /etc/systemd/system/xiu-online-web-update.path
 systemctl daemon-reload
+systemctl enable --now xiu-online-web-update.path >/dev/null 2>&1 || true
 systemctl restart "$SERVICE"
 systemctl is-active --quiet "$SERVICE"
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
