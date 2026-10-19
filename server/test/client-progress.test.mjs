@@ -14,27 +14,23 @@ const context = vm.createContext({ Date: TestDate, DATA: { TICK: 10 } });
 vm.runInContext(`${gameSource}\nglobalThis.__testGame = G;`, context, { filename: gamePath });
 const G = context.__testGame;
 
-test("progress wraps on the authoritative tick boundary and remains continuous after a late snapshot", () => {
+test("progress holds at 100% until the server settles the tick, then restarts from the new anchor", () => {
   G._lastTick = 1_000;
 
   clock.now = 10_999;
   assert.ok(Math.abs(G.tickPct() - 99.99) < 0.001);
 
-  // At exactly one 10-second cycle the display starts at zero, rather than
-  // remaining pinned at 100% until the next server snapshot.
+  // The bar does not wrap before the server's settlement arrives.
   clock.now = 11_000;
-  assert.equal(G.tickPct(), 0);
+  assert.equal(G.tickPct(), 100);
+  clock.now = 11_400;
+  assert.equal(G.tickPct(), 100);
 
-  // If a snapshot arrives 1 second after the boundary, the old and new
-  // authoritative anchors render the same 10% phase, so the bar does not jump.
-  clock.now = 12_000;
-  const beforeSnapshot = G.tickPct();
+  // The settlement snapshot moves the anchor; the bar restarts in step with it.
   G._lastTick = 11_000;
-  const afterSnapshot = G.tickPct();
-  assert.equal(beforeSnapshot, 10);
-  assert.equal(afterSnapshot, beforeSnapshot);
+  assert.equal(G.tickPct(), 4);
 
-  // Several elapsed cycles still display only the current visual phase.
+  // If no settlement arrives for a long time (disconnected), the display keeps cycling.
   G._lastTick = 1_000;
   clock.now = 23_000;
   assert.equal(G.tickPct(), 20);
