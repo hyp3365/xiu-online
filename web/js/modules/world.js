@@ -64,9 +64,7 @@ G.module({
     kuangPlan() { return "k".repeat(CFG.explore.KUANG.TIME); },
     // 每步灵石 = 当前地图北域一次探索平均灵石 ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）
     kuangStone(a) {
-      const E = CFG.drop, X = CFG.explore, L = DATA.region(a, DATA.regionCount - 1).L, per = this.runStonePer(DATA.maps[a].w || "fan", L);
-const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * DATA.mapStone(a);   // 凡界：mapDrops stone 平均
-      const run = one * (X.MONSTERS + (X.ELITES || 0) * E.ELITE_STONE + X.BOSS * E.BOSS_STONE) * E.STONE_RATE;
+      const X = CFG.explore, run = this.zoneStone(a, DATA.regionCount - 1) * CFG.drop.STONE_RATE;
       return Math.floor(run / X.KUANG.TIME * (0.5 + Math.random()) + Math.random());
     },
     toggleKuang(a) {
@@ -545,8 +543,7 @@ const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * 
     matPlan(x) {
       const T = CFG.dropTotal || {}, plan = x.plan || "", mp = {};
       if (x.kuang) return mp;
-      const tk = x.mj === undefined ? "explore" : x.mk === "ld" ? "lingdi" : "mijing", md = tk === "explore" ? DATA.mapDrops[x.map] || {} : {};
-      const t = md.herbN || md.oreN ? { herb: md.herbN, ore: md.oreN } : T[tk] || {};   // 凡界地图按 mapDrops 每张图的范围
+      const tk = x.mj === undefined ? "explore" : x.mk === "ld" ? "lingdi" : "mijing", t = T[tk] || {};
       const pick = (r, ok, j) => { if (!r) return; const n = U.rand(r[0], r[1]), idx = [];
         for (let i = 0; i < plan.length; i++) if (ok.includes(plan[i])) idx.push(i);
         if (!idx.length) idx.push(plan.length - 1);
@@ -566,26 +563,28 @@ const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * 
     // 击败怪物的掉落，写进 loot，返回描述文字
     //   mj = 秘境序号（秘境：灵石倍率、掉落按 config/mijing.js）
     //   mk = "ld"：灵地（config/lingdi.js）
-    // CFG.drop.RUN_STONE：w 界、区域层序 L 时每只普通怪的灵石基数
-    runStonePer(w, L) {
-      const E = CFG.drop, R = E.RUN_STONE[w || "fan"];
-      if (!this._rsL) this._rsL = {};
-      let b = this._rsL[w];
-      if (!b) { b = [Infinity, -Infinity]; DATA.maps.forEach((mp, i) => { if ((mp.w || "fan") !== (w || "fan")) return; for (let r = 0; r < DATA.regionCount; r++) { const l = DATA.region(i, r).L; if (l < b[0]) b[0] = l; if (l > b[1]) b[1] = l; } }); this._rsL[w] = b; }
-      const t = b[1] > b[0] ? Math.max(0, Math.min(1, (L - b[0]) / (b[1] - b[0]))) : 0, X = CFG.explore;
-      const den = 1.75 * (X.MONSTERS + X.ELITES * E.ELITE_STONE + X.BOSS * E.BOSS_STONE);
-      return (R[0] + (R[1] - R[0]) * t) / den;
+    // 个数参数：数字或 [最少, 最多]（config/explore.js、mijing.js、lingdi.js）
+    cntRoll(v) { return Array.isArray(v) ? U.rand(v[0], v[1]) : (v || 0); },
+    cntAvg(v) { return Array.isArray(v) ? (v[0] + v[1]) / 2 : (v || 0); },
+    // CFG.drop.RUN_STONE：这一处一次探索（全胜）的平均灵石 = 最少 + 第几处 × (最多 − 最少) ÷ 总处数
+    //   凡界 / 四界：每张图东西南北各算一处（地图 × 4）；秘境：按列表顺序；灵地：同一界里按列表顺序
+    zoneStone(a, r, mj, mk) {
+      const RS = CFG.drop.RUN_STONE; let R, i, n;
+      if (mj !== undefined && mk === "ld") { const L = this.mjCfg("ld").list, w = L[mj].w, same = L.map((d, k) => d.w === w ? k : -1).filter(k => k >= 0); R = (RS.lingdi || {})[w]; i = same.indexOf(mj); n = same.length; }
+      else if (mj !== undefined) { R = RS.mijing; i = mj; n = this.mjCfg().list.length; }
+      else { const w = DATA.maps[a].w || "fan", idx = DATA.worldMapIdx[w]; R = RS[w]; i = idx.indexOf(a) * DATA.regionCount + Math.max(0, r || 0); n = idx.length * DATA.regionCount; }
+      if (!R) return 0;
+      return R[0] + i * (R[1] - R[0]) / Math.max(1, n);
     },
-    rollMonsterLoot(loot, m, a, mj, mk) {
+    // 击败怪物的掉落，写进 loot，返回描述文字
+    //   灵石 = (这一处平均灵石 + 随机整数[−RAND, RAND]) ÷ 平均加权怪数 × STONE_RATE × 种类倍率（1 / ELITE_STONE / BOSS_STONE）
+    //   mj = 秘境序号（掉落按 config/mijing.js）；mk = "ld"：灵地（config/lingdi.js）
+    rollMonsterLoot(loot, m, a, mj, mk, r) {
       const E = CFG.drop, mult = m.boss ? E.BOSS_STONE : m.elite ? E.ELITE_STONE : 1, ev = m.boss ? "boss" : m.elite ? "elite" : "monster";
-      const SR = mj === undefined ? DATA.mapStoneRange(a) : null;   // 凡界地图：config/drops.js mapDrops 每张图 stone 范围
-      let stone;
-      if (SR) stone = Math.floor(U.rand(SR[0], SR[1]) * E.STONE_RATE * mult + Math.random());
-      else {
-        const sm = (mj !== undefined ? (this.mjDef(mj, mk).stone || 1) : DATA.mapStone(a)) * (E.MAP_STONE || 1);   // v200 四界地图 / 秘境 / 灵地怪物灵石 × MAP_STONE（灵矿不乘）
-        const w = mj !== undefined ? (mk === "ld" ? this.mjDef(mj, mk).w : "fan") : DATA.maps[a].w, per = this.runStonePer(w, m.Lm);
-        stone = Math.floor(per * (1 + Math.random() * 1.5) * E.STONE_RATE * mult * sm + Math.random());   // 随机取整，平均值不被向下取整吃掉
-      }
+      const X = mj !== undefined ? this.mjCfg(mk) : CFG.explore, RD = E.RUN_STONE.RAND || 0;
+      const den = Math.max(1, this.cntAvg(X.MONSTERS) + this.cntAvg(X.ELITES) * E.ELITE_STONE + this.cntAvg(X.BOSS) * E.BOSS_STONE);
+      const base = Math.max(0, this.zoneStone(a, r, mj, mk) + U.rand(-RD, RD));
+      const stone = Math.floor(base / den * E.STONE_RATE * mult + Math.random());   // 随机取整，平均值不被向下取整吃掉
       loot.stone += stone;
       const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk) : this.rollEvent(loot, ev, a);
       return `灵石${U.fmt(stone)}${mats ? "、" + mats : ""}`; // 怪物不掉丹药、装备
@@ -696,7 +695,7 @@ const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * 
         const kind = type === "monster" ? "normal" : type, m = mj !== undefined ? this.makeMjMob(mj, kind, mk) : this.makeMob(a, r, kind);
         m.a = a;
         const res = this.battle(m, { foe: m.boss ? "boss" : m.elite ? "elite" : "mob" }), tag = `${m.boss ? "【首领】" : m.elite ? "【精英】" : ""}${String(m.name).replace(/^精英·/, "")}`;
-        if (res.win) { this.s.kills++; t = `遭遇${tag}，${res.rounds}回合击败，获得 ${[this.rollMonsterLoot(x.loot, m, a, mj, mk), sm()].filter(Boolean).join("、")}`; c = m.boss ? "gold" : ""; }
+        if (res.win) { this.s.kills++; t = `遭遇${tag}，${res.rounds}回合击败，获得 ${[this.rollMonsterLoot(x.loot, m, a, mj, mk, r), sm()].filter(Boolean).join("、")}`; c = m.boss ? "gold" : ""; }
         else if (res.lose) { t = `遭遇${tag}，${res.timeout ? `${res.rounds} 回合未能击败，力竭重伤` : `第 ${res.rounds} 回合不敌重伤`}，本次探索收获全部遗失。${res.why}`; c = "bad"; }
         else { const g = sm(); t = `遭遇${tag}，缠斗 ${res.rounds} 回合，各自退去${g ? `，拾得 ${g}` : ""}`; }
         bd = res.detail;
@@ -708,11 +707,11 @@ const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * 
     // 生成一次探索的事件顺序（字符串，每个字符一步）：首领固定在最后一步
     makePlan(E = CFG.explore) {
       const T = E.TIME;
-      const list = [...Array(E.MONSTERS).fill("m"), ...Array(E.ELITES || 0).fill("e"), ...Array(U.rand(E.HERB_MIN, E.HERB_MAX)).fill("h"), ...Array(U.rand(E.ORE_MIN, E.ORE_MAX)).fill("o")];
-      while (list.length < T - E.BOSS) list.push("n");
-      list.length = T - E.BOSS;
+      const B = this.cntRoll(E.BOSS), list = [...Array(this.cntRoll(E.MONSTERS)).fill("m"), ...Array(this.cntRoll(E.ELITES)).fill("e"), ...Array(this.cntRoll(E.HERB)).fill("h"), ...Array(this.cntRoll(E.ORE)).fill("o")];
+      while (list.length < T - B) list.push("n");
+      list.length = T - B;
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
-      return list.join("") + "b".repeat(E.BOSS);
+      return list.join("") + "b".repeat(B);
     },
     // 每走一步的毫秒数 = STEP_SEC − 宗门秘法「神行」（只影响历练 / 探索走路，最少 STEP_MIN 秒）
     exploreMs() { const E = CFG.explore; return Math.round(Math.max(E.STEP_MIN || 0.5, (E.STEP_SEC || 1) - this.mifaBonus().explore) * 1000); },
