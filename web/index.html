@@ -54,36 +54,8 @@
     b.textContent += "脚本错误：" + e.filename.split("/").slice(-2).join("/").split("?")[0] + " 第 " + e.lineno + " 行：" + e.message + "\n";
   });
 </script>
-<script src="api/config/realm.js"></script>
-<script src="api/config/player.js"></script>
-<script src="api/config/array.js"></script>
-<script src="api/config/mobs.js"></script>
-<script src="api/config/explore.js"></script>
-<script src="api/config/drops.js"></script>
-<script src="api/config/worldmaps.js"></script>
-<script src="api/config/xingjun.js"></script>
-<script src="api/config/battle.js"></script>
-<script src="api/config/equip.js"></script>
-<script src="api/config/start.js"></script>
-<script src="api/config/bag.js"></script>
-<script src="api/config/gongfa.js"></script>
-<script src="api/config/lingen.js"></script>
-<script src="api/config/items.js"></script>
-<script src="api/config/alchemy.js"></script>
-<script src="api/config/furnace.js"></script>
-<script src="api/config/forge.js"></script>
-<script src="api/config/garden.js"></script>
-<script src="api/config/trib.js"></script>
-<script src="api/config/servant.js"></script>
-<script src="api/config/sect.js"></script>
-<script src="api/config/wudao.js"></script>
-<script src="api/config/craftsman.js"></script>
-<script src="api/config/mijing.js"></script>
-<script src="api/config/lingdi.js"></script>
-<script src="api/config/body.js"></script>
-<script src="api/config/names.js"></script>
-<script src="api/config/shenshi.js"></script>
-<script src="api/config/wudaoshi.js"></script>
+<!-- 游戏参数（js/config/）：由服务器按顺序加载，管理员「数据修改」改过的优先 -->
+<script src="api/config-loader.js"></script>
 <!-- 自定义物品、坊市、宗门宝库（不是数值文件） -->
 <script src="js/content/items.js?v=208"></script>
 <script src="js/data/names.js?v=208"></script>
