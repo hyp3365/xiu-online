@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import Database from "better-sqlite3";
 import { WebSocketServer, WebSocket } from "ws";
-import { GameEngine, CONFIG_OVERRIDE_DIR, configNames, configOverridden, readConfig, validConfigName } from "./game-engine.mjs";
+import { GameEngine, CONFIG_OVERRIDE_DIR, configNames, configOverridden, readConfig, validConfigName, configHash } from "./game-engine.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.XIU_HOST || "127.0.0.1";
@@ -189,14 +189,22 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true });
     }
 
-    // 游戏参数脚本（浏览器和服务器用同一份；管理员改过的优先）
+    // 游戏参数脚本（浏览器和服务器用同一份；管理员改过的优先）。
+    // config-loader.js 每次都不缓存，按内容哈希写出各参数文件的地址：参数一改地址就变，
+    // 不会被浏览器 / Cloudflare 缓存住旧参数；地址带对哈希的文件可以长期缓存。
+    if (req.method === "GET" && route === "/api/config-loader.js") {
+      const tags = configNames().map(name => `api/config/${name}?h=${configHash(readConfig(name))}`);
+      const data = Buffer.from(`(function(){var a=${JSON.stringify(tags)};for(var i=0;i<a.length;i++)document.write('<script src="'+a[i]+'"><\\/script>');})();\n`);
+      res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+      return res.end(data);
+    }
     const cfgRoute = route.match(/^\/api\/config\/([^/]+)$/);
     if (req.method === "GET" && cfgRoute) {
       let code;
       try { code = readConfig(cfgRoute[1]); } catch { res.writeHead(404); return res.end(); }
-      const data = Buffer.from(code), etag = `"${crypto.createHash("sha1").update(data).digest("hex").slice(0, 16)}"`;
-      if (req.headers["if-none-match"] === etag) { res.writeHead(304, { ETag: etag, "Cache-Control": "no-cache" }); return res.end(); }
-      res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Content-Length": data.length, "Cache-Control": "no-cache", ETag: etag, "X-Content-Type-Options": "nosniff" });
+      const data = Buffer.from(code), hash = configHash(code);
+      const cache = url.searchParams.get("h") === hash ? "public, max-age=31536000, immutable" : "no-store";
+      res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Content-Length": data.length, "Cache-Control": cache, "X-Content-Type-Options": "nosniff" });
       return res.end(data);
     }
 
