@@ -1150,9 +1150,30 @@ G.module({
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
     const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
-    return tabs + upd + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
+    return tabs + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
       <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
       <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>`;
   },
+
+  /* ---------- 背景主题：存在本机（localStorage xiu_bg），只影响这台设备 ---------- */
+  bgCard() {
+    let cur = ""; try { cur = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
+    return `<div class="card"><h3>背景</h3><div class="bg-grid">${BG_THEMES.map(([id, nm]) =>
+      `<div class="bg-sw${id === cur ? " on" : ""}" data-bgsw="${id}" onclick="G.setBg('${id}')">${nm}</div>`).join("")}</div></div>`;
+  },
+  setBg(id) {
+    try { id ? localStorage.setItem("xiu_bg", id) : localStorage.removeItem("xiu_bg"); } catch (e) {}
+    applyBg(); this.render();
+  },
 });
+
+// 背景主题列表：[id, 名字]，id 为空 = 默认；样式在 style.css 的 html[data-bg="id"]
+const BG_THEMES = [["", "默认"], ["xianjie", "仙界云海"], ["mingjie", "冥界幽潭"], ["mojie", "魔界血渊"], ["dongfu", "洞府青山"], ["xiaguang", "霞光福地"], ["xingyun", "星云秘境"], ["gujuan", "古卷鎏金"]];
+function applyBg() {
+  if (typeof document === "undefined" || !document.documentElement) return;   // 服务器端引擎里没有页面
+  let id = ""; try { id = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
+  if (!BG_THEMES.some(t => t[0] === id)) id = "";
+  if (id) document.documentElement.dataset.bg = id; else delete document.documentElement.dataset.bg;
+}
+applyBg();
