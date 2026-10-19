@@ -65,7 +65,8 @@ G.module({
     // 每步灵石 = 当前地图北域一次探索平均灵石 ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）
     kuangStone(a) {
       const E = CFG.drop, X = CFG.explore, L = DATA.region(a, DATA.regionCount - 1).L, per = this.runStonePer(DATA.maps[a].w || "fan", L);
-      const run = per * 1.75 * (X.MONSTERS + (X.ELITES || 0) * E.ELITE_STONE + X.BOSS * E.BOSS_STONE) * E.STONE_RATE * DATA.mapStone(a);
+const SR = DATA.mapStoneRange(a), one = SR ? (SR[0] + SR[1]) / 2 : per * 1.75 * DATA.mapStone(a);   // 凡界：mapDrops stone 平均
+      const run = one * (X.MONSTERS + (X.ELITES || 0) * E.ELITE_STONE + X.BOSS * E.BOSS_STONE) * E.STONE_RATE;
       return Math.floor(run / X.KUANG.TIME * (0.5 + Math.random()) + Math.random());
     },
     toggleKuang(a) {
@@ -544,7 +545,8 @@ G.module({
     matPlan(x) {
       const T = CFG.dropTotal || {}, plan = x.plan || "", mp = {};
       if (x.kuang) return mp;
-      const tk = x.mj === undefined ? "explore" : x.mk === "ld" ? "lingdi" : "mijing", t = T[tk] || {};
+      const tk = x.mj === undefined ? "explore" : x.mk === "ld" ? "lingdi" : "mijing", md = tk === "explore" ? DATA.mapDrops[x.map] || {} : {};
+      const t = md.herbN || md.oreN ? { herb: md.herbN, ore: md.oreN } : T[tk] || {};   // 凡界地图按 mapDrops 每张图的范围
       const pick = (r, ok, j) => { if (!r) return; const n = U.rand(r[0], r[1]), idx = [];
         for (let i = 0; i < plan.length; i++) if (ok.includes(plan[i])) idx.push(i);
         if (!idx.length) idx.push(plan.length - 1);
@@ -576,10 +578,14 @@ G.module({
     },
     rollMonsterLoot(loot, m, a, mj, mk) {
       const E = CFG.drop, mult = m.boss ? E.BOSS_STONE : m.elite ? E.ELITE_STONE : 1, ev = m.boss ? "boss" : m.elite ? "elite" : "monster";
-      const sm = (mj !== undefined ? (this.mjDef(mj, mk).stone || 1) : DATA.mapStone(a)) * (E.MAP_STONE || 1);   // v200 地图 / 秘境 / 灵地怪物灵石 × MAP_STONE（灵矿不乘）
-      const w = mj !== undefined ? (mk === "ld" ? this.mjDef(mj, mk).w : "fan") : DATA.maps[a].w, per = this.runStonePer(w, m.Lm);
-      const raw = per * (1 + Math.random() * 1.5) * E.STONE_RATE * mult * sm;
-      const stone = Math.floor(raw + Math.random());   // 随机取整，平均值不被向下取整吃掉
+      const SR = mj === undefined ? DATA.mapStoneRange(a) : null;   // 凡界地图：config/drops.js mapDrops 每张图 stone 范围
+      let stone;
+      if (SR) stone = Math.floor(U.rand(SR[0], SR[1]) * E.STONE_RATE * mult + Math.random());
+      else {
+        const sm = (mj !== undefined ? (this.mjDef(mj, mk).stone || 1) : DATA.mapStone(a)) * (E.MAP_STONE || 1);   // v200 四界地图 / 秘境 / 灵地怪物灵石 × MAP_STONE（灵矿不乘）
+        const w = mj !== undefined ? (mk === "ld" ? this.mjDef(mj, mk).w : "fan") : DATA.maps[a].w, per = this.runStonePer(w, m.Lm);
+        stone = Math.floor(per * (1 + Math.random() * 1.5) * E.STONE_RATE * mult * sm + Math.random());   // 随机取整，平均值不被向下取整吃掉
+      }
       loot.stone += stone;
       const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk) : this.rollEvent(loot, ev, a);
       return `灵石${U.fmt(stone)}${mats ? "、" + mats : ""}`; // 怪物不掉丹药、装备
