@@ -136,7 +136,7 @@ const G = {
   bars() {
     if (!this.s) return;
     const now = Date.now();
-    // 进度是显示预测，不负责结算；按服务器周期取模，避免等下一份快照时卡在满格。
+    // 进度是显示预测，不负责结算；走满后停在满格，等服务器结算推送到达再从 0 开始，保证和结算同步。
     const cycleMs = DATA.TICK * 1000, phaseMs = this.tickElapsedMs(now);
     const pct = (cycleMs > 0 ? phaseMs / cycleMs * 100 : 0) + "%";
     const tb = $("#tick-bar");
@@ -150,9 +150,13 @@ const G = {
   },
 
   // 当前服务器结算周期内的显示时间；只绘制进度，不在浏览器执行状态结算。
+  // 走满后先停在满格等服务器结算（服务器到点立即推送）；超过 3 秒还没收到（断线等）才按周期继续走。
   tickElapsedMs(now = Date.now()) {
     const cycleMs = DATA.TICK * 1000;
-    return cycleMs > 0 ? Math.max(0, now - this._lastTick) % cycleMs : 0;
+    if (cycleMs <= 0) return 0;
+    const elapsed = Math.max(0, now - this._lastTick);
+    if (elapsed < cycleMs + 3000) return Math.min(elapsed, cycleMs);
+    return elapsed % cycleMs;
   },
   tickPct() { return this.tickElapsedMs() / (DATA.TICK * 10); },
 
