@@ -136,7 +136,7 @@ const API = {
     toast.dataset.tone = tone;
     toast.classList.add("show");
     clearTimeout(this._actionToastTimer);
-    this._actionToastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+    this._actionToastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
   },
 
   captureActionArgs(name, args) {
