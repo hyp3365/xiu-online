@@ -247,7 +247,7 @@ G.module({
       this.log(`提交 ${nm} ×${t.n}，贡献 +${U.fmt(c)}。`, "good"); this.after();
     },
     affairFightMul(t) { return (CFG.sect.affairFight.GROUPS[t.grp] || {}).mul || 1; },
-    affairFightWin(t) { const W = CFG.sect.affairFight.WIN, m = this.affairFightMul(t); return { stone: W.stone * m, contrib: W.contrib * m }; },
+    affairFightWin(t) { const W = CFG.sect.affairFight.WIN, m = this.affairFightMul(t); return { stone: W.stone * m * this.sectInfo().star, contrib: W.contrib * m }; },
     affairFightLose(t) { const L = CFG.sect.affairFight.LOSE, m = this.affairFightMul(t) * this.sectInfo().star; return { stone: L.stone * m, contrib: L.contrib * m }; },
     affairFightRow(t) { return [t.realm, t.lay, 0, [1, t.pct, t.gf], [2, 0, 0], [3, 0, 0], 1]; },
     fightAffair(i) {
@@ -638,17 +638,17 @@ G.module({
           })()]) })));
     } else if (tab === "affair") {
       const at = this.affairTab || "normal", fresh = s.affairDay === this.bjDay();
-      h += `<div class="room-grid">${[["normal", "普通任务"], ["item", "物品任务"], ["fight", "特殊任务"]].map(([k, n]) => `<button class="${at === k ? "active" : ""}" onclick="G.setAffairTab('${k}')">${n}</button>`).join("")}</div>`;
+      h += `<div class="room-grid three">${[["normal", "普通任务"], ["item", "物品任务"], ["fight", "特殊任务"]].map(([k, n]) => `<button class="${at === k ? "active" : ""}" onclick="G.setAffairTab('${k}')">${n}</button>`).join("")}</div>`;
       if (at === "item") {
-        h += `<div class="card"><h3>物品任务<small>每天北京时间 0 点刷新 · 每个任务完成一次 · 奖励 ${U.fmt(this.affairItemContrib())} 贡献</small></h3>` +
+        h += `<div class="card"><h3>物品任务</h3>` +
           (!fresh ? `<p class="desc">任务刷新中…</p>` : s.affairItems.map((t, i) => { const nm = DATA.matName(t.kind, t.g), have = this.countMat(t.kind, t.g);
             return `<div class="line"><div>提交${t.kind === "herb" ? "药材" : "矿石"} · ${nm} ×${t.n}<small>现有 ${U.fmt(have)} · 贡献 +${U.fmt(this.affairItemContrib())}</small></div>
               <button class="sm" onclick="G.submitAffairItem(${i})" ${t.done || have < t.n ? "disabled" : ""}>${t.done ? "已完成" : have < t.n ? "数量不足" : "提交"}</button></div>`; }).join("")) + `</div>`;
       } else if (at === "fight") {
-        h += `<div class="card"><h3>特殊任务<small>每天北京时间 0 点刷新 · 赢了才算完成，输了扣灵石贡献（可扣成负数）</small></h3>` +
+        h += `<div class="card"><h3>特殊任务</h3>` +
           (!fresh ? `<p class="desc">任务刷新中…</p>` : s.affairFights.map((t, i) => { const w = this.affairFightWin(t), l = this.affairFightLose(t);
-            return `<div class="line"><div>击杀 · ${t.name}<span class="tag">${DATA.realms[t.realm]}${t.lay}层</span><small>功法率 ${t.pct}% · 功法 ${t.gf} 层 · 奖励 ${U.fmt(w.stone)} 灵石 ${U.fmt(w.contrib)} 贡献 · 失败扣 ${U.fmt(l.stone)} 灵石 ${U.fmt(l.contrib)} 贡献</small></div>
-              <button class="sm" onclick="G.fightAffair(${i})" ${t.done ? "disabled" : ""}>${t.done ? "已完成" : "挑战"}</button></div>`; }).join("")) + `</div>`;
+            return `<div class="line"><div>击杀 · ${t.name}<span class="tag">${DATA.realmLabel(t.realm)}</span><small>功法率 ${t.pct}% · 功法 ${t.gf} 层 · 奖励 ${U.fmt(w.stone)} 灵石 ${U.fmt(w.contrib)} 贡献 · 失败扣 ${U.fmt(l.stone)} 灵石 ${U.fmt(l.contrib)} 贡献</small></div>
+              <button class="sm" onclick="G.fightAffair(${i})" ${t.done ? "disabled" : ""}>${t.done ? "已完成" : "执行"}</button></div>`; }).join("")) + `</div>`;
       } else {
       const a = s.affair, cur = a.task >= 0 ? DATA.affairs[a.task] : null;
       h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "affair", "事务堂")}<small>点任务开始，完成后自动继续，离线也进行</small></h3>` +
