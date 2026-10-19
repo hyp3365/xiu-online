@@ -1,12 +1,13 @@
 /* ★ 修炼肉身（代码 modules/body.js）。需学会肉身秘诀（config/gongfa.js）；所需气血、突破加属性见 config/realm.js 的 BODY_EXP / BODY_GAIN。
  * T = 要突破到的总层序（第一境界一层 = 0，每境界 10 层）。
- * 修炼速度（每 10 秒）= BASE_SPEED × SPEED_GROW^人物修为总层序 + 秘诀/秘法加成；耗灵气 = 所得肉身修为 × LING_RATE。
+ * 修炼速度（每 10 秒）= (BASE_SPEED × SPEED_GROW^人物修为总层序 + 肉身秘诀 + 炼体秘法) × (1 + (炼体圆满% + 道童% + 修炼室%)/100)
+ *   耗灵气 = 所得 × LING_RATE − 神魂之道减免。
  * 突破：灵石 = STONE_BASE × STONE_RATE^T；药材按 HERB_SEG 分段，段外境界用 HERBS_XIAN 指数公式。
  * 药材名可写 config/items.js 的药材或 content/items.js 的自定义物品。 */
 window.CFG = window.CFG || {};
 
 CFG.body = {
-  // 24 个大境界名（序号 0 起），每境界 10 层；显示名会被 config/names.js 的 body 覆盖
+  // 只用数组长度（24 境界，每境界 10 层）；显示名在 config/names.js 的 body
   names: ["淬皮", "炼肉", "锻骨", "易筋", "洗髓", "通脉", "铜皮", "铁骨", "银身", "金身", "玉骨",
           "琉璃身", "金刚体", "不坏体", "宝体", "灵体", "圣体", "仙体", "神体", "道体", "混沌体", "鸿蒙体", "不灭体", "永恒体"],
 
