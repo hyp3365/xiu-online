@@ -250,7 +250,7 @@ export class GameEngine {
     try {
       const t = s && s.trib;
       if (t && !t.result) {
-        const HS = this.CFG.trib.HIT_SEC || 1, nextHit = (Math.floor(t.sec / HS) + 1) * HS;
+        const HS = this.CFG.trib.HIT_SEC, nextHit = (Math.floor(t.sec / HS) + 1) * HS;
         times.push(t.start + Math.min(nextHit, t.time) * 1000);
       }
     } catch {}
