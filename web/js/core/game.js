@@ -175,6 +175,8 @@ const G = {
     const v = $("#view"), top = v.scrollTop;
     // 某个页面出错时不再整页空白：显示错误信息，其它页面照常可用
     // 内容没变就不重绘：避免每秒重绘时按钮被替换、点了没反应，也省手机电量
+    // 手指 / 鼠标按住时先不替换页面：否则按下和抬起之间按钮被换掉，这次点击就丢了
+    if (this._pressing && v.innerHTML !== "") { this._renderDeferred = true; return; }
     try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html; } }
     catch (err) { console.error(err); this._viewHtml = null; v.innerHTML = `<div class="card"><h3>页面出错</h3><p class="desc">${String(err && err.message || err)}<br>如果刚改过 js/config/ 里的数值，请检查有没有写错（例如少了小数点、多了问号）。</p></div>`; }
     v.scrollTop = top;
@@ -214,6 +216,13 @@ const G = {
     document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
       this.tab = b.dataset.tab; $("#view").scrollTop = 0; this.render();
     });
+    // 记录是否正在按住屏幕；抬起后再补一次重绘
+    const press = on => () => {
+      this._pressing = on;
+      if (!on && this._renderDeferred) { this._renderDeferred = false; setTimeout(() => this.render(), 0); }
+    };
+    document.addEventListener("pointerdown", press(true), true);
+    ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, press(false), true));
     $("#modal").onclick = e => { if (e.target.id === "modal" && this.s && !this._lockModal) this.closeModal(); };
     this.showLogin(); // 见 modules/account.js
   },
