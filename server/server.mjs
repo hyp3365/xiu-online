@@ -428,7 +428,7 @@ wss.on("connection", (socket, session) => {
       client.state = outcome.state;
       client.revision = (q.revision.get(user.id)?.revision || 0) + 1;
       persist(user.id, client.state); client.lastPersist = Date.now();
-      const reply = { type: "result", id, ok: true, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result, ...statePayload(client) };
+      const reply = { type: "result", id, ok: true, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result, battles: outcome.battles || [], ...statePayload(client) };
       client.lastPush = Date.now(); client.nextCheck = Date.now();
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
     } catch (err) {
