@@ -70,7 +70,7 @@ DATA.blueprintCost = (kind, g) => _FU[kind].blueprint[g];
 /* ---------- 灵田 ---------- */
 DATA.GARDEN_MAX = _GA.MAX;
 DATA.fieldCost = i => Math.floor(_GA.OPEN_COST * Math.pow(_GA.OPEN_RATE, i)); // 第 i+1 块
-DATA.herbGrow = g => _GA.herbs[DATA.herbs[g]] || { grow: 60, yield: [1, 1], ling: 0, seed: 100 };
+DATA.herbGrow = g => _GA.herbs[DATA.herbs[g]];
 DATA.growTime = g => DATA.herbGrow(g).grow * 60000;
 DATA.seedCost = g => DATA.herbGrow(g).seed;
 
