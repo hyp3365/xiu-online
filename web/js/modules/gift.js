@@ -133,8 +133,10 @@ G.module({
       if (!code || this.giftBusy) return;
       this.giftBusy = true; this.render();
       try {
-        await API.giftRedeem(code);
+        const j = await API.giftRedeem(code);
         this.giftCode = "";
+        const got = (j && j.got) || [], lost = (j && j.lost) || [];
+        API.toastLogs([{ m: `兑换成功，获得 ${got.join("、") || "无"}${lost.length ? `（背包已满，遗失 ${lost.join("、")}）` : ""}`, c: "gold" }], true);
       } catch (e) { this.log("兑换失败：" + e.message, "bad"); }
       this.giftBusy = false; this.render();
     },
