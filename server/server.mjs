@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
 import Database from "better-sqlite3";
 import { WebSocketServer, WebSocket } from "ws";
 import { GameEngine } from "./game-engine.mjs";
@@ -45,6 +46,17 @@ const tickets = new Map();
 const receipts = new WeakMap();
 const engines = new Map();
 const startedAt = Date.now();
+const REPO_DIR = path.resolve(HERE, "..");
+const UPDATE_LOG = path.join(DATA_DIR, "update.log");
+const UPDATE_TRIGGER = path.join(DATA_DIR, "update.request");
+
+function repoVersion() {
+  return new Promise(resolve => execFile("git", ["-c", "safe.directory=*", "-C", REPO_DIR, "log", "-1", "--format=%h  %s  (%cd)", "--date=format:%Y-%m-%d %H:%M"], { timeout: 5000 },
+    (err, stdout, stderr) => resolve(String(stdout || "").trim() || String(stderr || "").trim() || (err ? err.message : "未知"))));
+}
+function readUpdateLog() {
+  try { return fs.readFileSync(UPDATE_LOG, "utf8").slice(-4000); } catch { return ""; }
+}
 
 function getEngine(userId) {
   let entry = engines.get(userId);
@@ -204,7 +216,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && route === "/api/save") return error(res, 410, "客户端存档上传已停用；状态由服务器结算和保存");
 
-    if (user.is_admin && req.method === "GET" && route === "/api/admin") return sendJson(res, 200, { service: "xiu-online", version: "1.0.0", registrationOpen: registrationOpen(), startedAt });
+    if (req.method === "GET" && route === "/api/admin") {
+      if (!user.is_admin) return sendJson(res, 200, { admin: false });
+      return sendJson(res, 200, { admin: true, service: "xiu-online", version: await repoVersion(), log: readUpdateLog(), registrationOpen: registrationOpen(), startedAt });
+    }
     if (user.is_admin && req.method === "POST" && route === "/api/admin/reg") {
       const body = await readBody(req);
       db.prepare("INSERT INTO settings(key,value) VALUES('registration_open',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(body.open ? "true" : "false");
@@ -267,7 +282,15 @@ const server = http.createServer(async (req, res) => {
       const result = redeem();
       return result ? sendJson(res, 200, { ok: true, ...result, serverNow: Date.now() }) : error(res, 400, "礼包码无效、已过期、已用完或已经兑换");
     }
-    if (user.is_admin && req.method === "POST" && route === "/api/admin/update") return error(res, 501, "服务器更新由管理员手动执行 sudo xiu-online-update");
+    if (req.method === "POST" && route === "/api/admin/update") {
+      await readBody(req);
+      if (!user.is_admin) return error(res, 403, "只有管理员可以更新");
+      // 写一个请求文件，由 root 的 xiu-online-web-update.path 监听并执行 xiu-online-update（Node 服务本身不提权）
+      try { fs.rmSync(UPDATE_LOG, { force: true }); fs.writeFileSync(UPDATE_LOG, `>>> 已提交更新请求 ${new Date().toLocaleString("zh-CN", { hour12: false })}，等待更新服务启动…\n`); } catch {}
+      try { fs.writeFileSync(UPDATE_TRIGGER, String(Date.now())); }
+      catch (err) { return error(res, 500, "提交更新请求失败：" + err.message); }
+      return sendJson(res, 200, { ok: true });
+    }
     return error(res, 404, "接口不存在");
   } catch (err) {
     const status = Number(err.status) || 400;
