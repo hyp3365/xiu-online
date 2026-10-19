@@ -28,6 +28,9 @@ G.module({
     merit: 0,         // v27：功德
     salaryDay: "",    // 上次领取俸禄的日期
     affair: { task: -1, start: 0, count: 0 },     // 事务堂：正在循环执行的任务（-1 = 无）
+    affairDay: "",    // 事务堂物品 / 特殊任务的生成日期（北京时间）
+    affairItems: [],  // 物品任务 [{ kind, g, n, done }]
+    affairFights: [], // 特殊任务 [{ name, grp, realm, lay, pct, gf, done }]
     towers: {},       // 各星级试炼塔已通关层数 { 星级: 层数 }
     rankPass: -1,     // 已通过考验、可以晋升的职务序号（-1 = 没有）
     freeCult: { day: "", used: 0, left: 0, on: false },   // 免费修炼室：今天用了几次、本次剩余修炼次数
@@ -45,6 +48,7 @@ G.module({
   // 每 10 秒：事务堂任务到时间就结算一次，并自动开始下一次（离线也会补算）
   tick(offline) {
     this.freeRoomDaily(); this.poolTick();
+    if (this.s.sect) this.affairGen();
     this.autoTaskCheck();   // v229 每天北京时间 0:05 自动执行任务（修炼设置）；v230 离线补算到 0:05 也执行
     const s = this.s, a = s.affair;
     if (!s.sect || !a || a.task === undefined || a.task < 0) return;
@@ -216,6 +220,51 @@ G.module({
       Object.assign(a, { task: i, start: this.now(), count: 0 });
       this.log(`开始执行「${DATA.affairs[i].name}」，完成后自动继续。`, "good"); this.after();
     },
+
+    /* ---------- 事务堂 · 物品任务 / 特殊任务（config/sect.js 的 affairItem / affairFight，每天北京时间 0 点重置） ---------- */
+    affairGen() {
+      const s = this.s, day = this.bjDay(); if (!s.sect || s.affairDay === day) return;
+      const x = this.sectInfo(), I = CFG.sect.affairItem, F = CFG.sect.affairFight, SP = CFG.matsOther.SPECIAL || [];
+      const pool = kind => { const L = kind === "herb" ? DATA.herbs : DATA.ores, fn = kind === "herb" ? DATA.FAN_HERB_N : DATA.FAN_ORE_N;
+        return L.map((n, g) => g).filter(g => x.star <= I.FAN_STAR ? g < fn : g >= fn && !SP.includes(L[g])); };
+      const pick = (list, k) => { const a = list.slice(), o = []; while (o.length < k && a.length) o.push(a.splice(U.rand(0, a.length - 1), 1)[0]); return o; };
+      const cnt = () => { let r = Math.random() * 100; for (const [p, n] of I.N) { if ((r -= p) < 0) return n; } return I.N[I.N.length - 1][1]; };
+      s.affairItems = [...pick(pool("herb"), I.HERB).map(g => ({ kind: "herb", g })), ...pick(pool("ore"), I.ORE).map(g => ({ kind: "ore", g }))]
+        .map(o => Object.assign(o, { n: cnt(), done: false }));
+      const names = DATA.maps.slice(0, DATA.FAN_MAP_N).flatMap(m => m.monsters || []), R = a => U.rand(a[0], a[a.length - 1]);
+      s.affairFights = [];
+      F.GROUPS.forEach((G0, gi) => { for (let k = 0; k < G0.n; k++) s.affairFights.push({ name: names[U.rand(0, names.length - 1)] || "妖兽", grp: gi,
+        realm: Math.min(DATA.realms.length - 1, x.reqRealm + G0.realm), lay: R(G0.lay), pct: R(G0.pct), gf: R(G0.gf), done: false }); });
+      s.affairDay = day;
+    },
+    affairItemContrib() { const I = CFG.sect.affairItem; return I.CONTRIB + this.s.rank * I.RANK_ADD; },
+    submitAffairItem(i) {
+      this.affairGen(); const s = this.s, t = (s.affairItems || [])[i]; if (!s.sect || !t || t.done) return;
+      const nm = DATA.matName(t.kind, t.g), have = this.countMat(t.kind, t.g);
+      if (have < t.n) return this.log(`${nm}不足，需要 ${t.n} 个（现有 ${have}）。`, "sys");
+      this.takeMat(t.kind, t.g, t.n); t.done = true;
+      const c = this.affairItemContrib(); s.contrib += c;
+      this.log(`提交 ${nm} ×${t.n}，贡献 +${U.fmt(c)}。`, "good"); this.after();
+    },
+    affairFightMul(t) { return (CFG.sect.affairFight.GROUPS[t.grp] || {}).mul || 1; },
+    affairFightWin(t) { const W = CFG.sect.affairFight.WIN, m = this.affairFightMul(t); return { stone: W.stone * m, contrib: W.contrib * m }; },
+    affairFightLose(t) { const L = CFG.sect.affairFight.LOSE, m = this.affairFightMul(t) * this.sectInfo().star; return { stone: L.stone * m, contrib: L.contrib * m }; },
+    affairFightRow(t) { return [t.realm, t.lay, 0, [1, t.pct, t.gf], [2, 0, 0], [3, 0, 0], 1]; },
+    fightAffair(i) {
+      this.affairGen(); const s = this.s, t = (s.affairFights || [])[i]; if (!s.sect || !t || t.done) return;
+      if (s.hp < this.stats().hp * CFG.battle.TOWER_HP_MIN) return this.log("生命不足三成，先休养片刻。", "sys");
+      const b = DATA.mobRoll(this.affairFightRow(t), CFG.sect.affairFight.CRIT), v = (x, k) => x * DATA.mobRnd(k);
+      const m = this.addMagic({ name: t.name, boss: false, hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, "normal");
+      const res = this.battle(m); let txt;
+      if (res.win) { const w = this.affairFightWin(t); t.done = true; s.stone += w.stone; s.contrib += w.contrib;
+        txt = `${res.rounds}回合击杀${t.name}，灵石 +${U.fmt(w.stone)}，贡献 +${U.fmt(w.contrib)}。`; }
+      else { const l = this.affairFightLose(t); s.stone -= l.stone; s.contrib -= l.contrib;
+        txt = `未能击杀${t.name}${res.timeout ? "（回合耗尽）" : ""}，灵石 -${U.fmt(l.stone)}，贡献 -${U.fmt(l.contrib)}。`; }
+      this.log(txt, res.win ? "good" : "bad");
+      this.after();
+      this.playBattle(res.detail, `特殊任务 · ${t.name}`, txt, res.win);
+    },
+    setAffairTab(t) { this.affairTab = t; this.render(); },
 
     /* ---------- 免费修炼室 / 免费练功房（config/sect.js 的 freeRoom / freeGfRoom） ---------- */
     freeCultPct() { const p = CFG.sect.freeRoom.pct; return p ? p * this.starMul() : this.roomPct(0); },
@@ -588,6 +637,19 @@ G.module({
             return [this.hasGongfa(g.id), `<div class="line"><div>${DATA.skillIco(g)}《${g.name}》<span class="tag">${g.star}星</span><span class="tag">法术</span><small>${this.spellDmgTxt(g)} · 耗法力 ${U.fmt(g.mana)} · ${U.fmt(g.cost)} 贡献 · 学习 ${U.dur(DATA.gfLearnMin(g.star) * 60)}</small></div>${btn(g)}</div>`];
           })()]) })));
     } else if (tab === "affair") {
+      const at = this.affairTab || "normal", fresh = s.affairDay === this.bjDay();
+      h += `<div class="room-grid">${[["normal", "普通任务"], ["item", "物品任务"], ["fight", "特殊任务"]].map(([k, n]) => `<button class="${at === k ? "active" : ""}" onclick="G.setAffairTab('${k}')">${n}</button>`).join("")}</div>`;
+      if (at === "item") {
+        h += `<div class="card"><h3>物品任务<small>每天北京时间 0 点刷新 · 每个任务完成一次 · 奖励 ${U.fmt(this.affairItemContrib())} 贡献</small></h3>` +
+          (!fresh ? `<p class="desc">任务刷新中…</p>` : s.affairItems.map((t, i) => { const nm = DATA.matName(t.kind, t.g), have = this.countMat(t.kind, t.g);
+            return `<div class="line"><div>提交${t.kind === "herb" ? "药材" : "矿石"} · ${nm} ×${t.n}<small>现有 ${U.fmt(have)} · 贡献 +${U.fmt(this.affairItemContrib())}</small></div>
+              <button class="sm" onclick="G.submitAffairItem(${i})" ${t.done || have < t.n ? "disabled" : ""}>${t.done ? "已完成" : have < t.n ? "数量不足" : "提交"}</button></div>`; }).join("")) + `</div>`;
+      } else if (at === "fight") {
+        h += `<div class="card"><h3>特殊任务<small>每天北京时间 0 点刷新 · 赢了才算完成，输了扣灵石贡献（可扣成负数）</small></h3>` +
+          (!fresh ? `<p class="desc">任务刷新中…</p>` : s.affairFights.map((t, i) => { const w = this.affairFightWin(t), l = this.affairFightLose(t);
+            return `<div class="line"><div>击杀 · ${t.name}<span class="tag">${DATA.realms[t.realm]}${t.lay}层</span><small>功法率 ${t.pct}% · 功法 ${t.gf} 层 · 奖励 ${U.fmt(w.stone)} 灵石 ${U.fmt(w.contrib)} 贡献 · 失败扣 ${U.fmt(l.stone)} 灵石 ${U.fmt(l.contrib)} 贡献</small></div>
+              <button class="sm" onclick="G.fightAffair(${i})" ${t.done ? "disabled" : ""}>${t.done ? "已完成" : "挑战"}</button></div>`; }).join("")) + `</div>`;
+      } else {
       const a = s.affair, cur = a.task >= 0 ? DATA.affairs[a.task] : null;
       h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "affair", "事务堂")}<small>点任务开始，完成后自动继续，离线也进行</small></h3>` +
         (cur ? (() => { const T = cur.time * 60000, p = Math.min(100, (Date.now() - a.start) / T * 100);
@@ -596,6 +658,7 @@ G.module({
         DATA.affairs.map((t, i) => { const lock = t.rank > s.rank, on = a.task === i;
           return `<div class="line"><div>${t.name}<span class="tag">${DATA.ranks[t.rank].name}</span><small>每次 ${U.dur(t.time * 60)} · 贡献 +${U.fmt(this.affairContrib(i))} · 灵石 +${U.fmt(this.affairStone(i))}</small></div>
             <button class="sm ${on ? "on" : ""}" onclick="G.startAffair(${i})" ${lock ? "disabled" : ""}>${lock ? "职务不足" : on ? "停止" : "执行"}</button></div>`; }).join("") + `</div>`;
+      }
     } else if (tab === "room") {
       const FC = CFG.sect.freeRoom, fc = s.freeCult || {}, fcOn = this.freeCultOn(), fcLeft = fc.left > 0, fcDone = !fcLeft && this.freeUsed(fc) >= FC.daily;
       h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "room", "修炼室")}<small>加快修炼 · 每次修炼消耗贡献</small></h3>
