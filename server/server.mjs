@@ -164,6 +164,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
   const route = url.pathname;
   try {
+    if (restoring) return error(res, 503, "服务器正在恢复存档并重启，请稍候刷新");
     if (req.method === "GET" && route === "/health") return sendJson(res, 200, { ok: true, service: "xiu-online", uptime: Math.floor((Date.now() - startedAt) / 1000) });
     if (req.method === "POST" && route === "/api/register") {
       const body = await readBody(req);
@@ -253,7 +254,7 @@ const server = http.createServer(async (req, res) => {
     if (user.is_admin && req.method === "GET" && route === "/api/admin/server") return sendJson(res, 200, await serverInfo());
     if (user.is_admin && req.method === "POST" && route === "/api/admin/gh") {
       const body = await readBody(req);
-      const repo = String(body.repo ?? "").trim().replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/$/, "");
+      const repo = normRepo(body.repo);
       if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) return error(res, 400, "仓库格式：用户名/仓库名");
       const iv = Number(body.interval);
       if (!GH_INTERVALS.includes(iv)) return error(res, 400, "上传间隔无效");
@@ -265,6 +266,11 @@ const server = http.createServer(async (req, res) => {
         setSetting("gh_token", token);
       }
       return sendJson(res, 200, { ok: true, info: await serverInfo() });
+    }
+    if (user.is_admin && req.method === "POST" && route === "/api/admin/gh/restore") {
+      const body = await readBody(req);
+      const info = await ghRestore(body.repo, body.token);
+      return sendJson(res, 200, { ok: true, ...info });
     }
     if (user.is_admin && req.method === "POST" && route === "/api/admin/gh/upload") {
       await readBody(req);
@@ -405,6 +411,7 @@ function statePayload(client, full = false) {
   return { ...payload, seq: client.seq };
 }
 server.on("upgrade", (req, socket, head) => {
+  if (restoring) return socket.destroy();
   const url = new URL(req.url || "/", "http://localhost"), ticket = url.searchParams.get("ticket") || "";
   const session = tickets.get(ticket);
   if (url.pathname !== WS_PATH || !allowedOrigin(req)) { socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n"); return socket.destroy(); }
@@ -578,6 +585,59 @@ setInterval(() => {
   const last = cfg.last, due = !last ? 0 : last.ok ? last.time + cfg.interval * 3600_000 : last.time + 600_000;
   if (Date.now() >= due) ghUpload().catch(() => {});
 }, 60_000).unref();
+
+// ---- 从 GitHub 私有仓库下载最新备份并替换当前数据库（只有管理员；替换前先在本地备份一份当前数据库）----
+// 替换完成后进程以非 0 退出，systemd（Restart=on-failure）几秒后用恢复的数据库重新启动。
+let restoring = false;
+async function ghRestore(repoIn, tokenIn) {
+  const cfg = ghConfig();
+  const repo = normRepo(repoIn) || cfg.repo, token = String(tokenIn || "").trim() || cfg.token;
+  if (!repo || !token) throw new Error("请填写备份仓库和令牌");
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error("仓库格式：用户名/仓库名");
+  if (restoring || ghRunning) throw new Error("正在处理，请稍候");
+  ghRunning = true;
+  const tmp = path.join(DATA_DIR, "restore.tmp");
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/xiu-online.sqlite3.gz`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.raw", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "xiu-online-backup" }, signal: AbortSignal.timeout(180_000) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(r.status === 404 ? "仓库里没有找到备份文件 xiu-online.sqlite3.gz（或令牌没有这个仓库的权限）" : `GitHub ${r.status}：${j.message || "下载失败"}`); }
+    let raw;
+    try { raw = zlib.gunzipSync(Buffer.from(await r.arrayBuffer())); } catch { throw new Error("备份文件解压失败，文件可能损坏"); }
+    fs.rmSync(tmp, { force: true }); fs.writeFileSync(tmp, raw, { mode: 0o640 });
+    let info;
+    try {
+      const t = new Database(tmp);
+      try {
+        const ok = t.pragma("integrity_check", { simple: true });
+        if (ok !== "ok") throw new Error("备份数据库校验失败：" + ok);
+        const names = new Set(t.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x => x.name));
+        if (!names.has("users") || !names.has("saves")) throw new Error("这不是游戏的数据库备份");
+        info = { users: t.prepare("SELECT COUNT(*) n FROM users").get().n, saves: t.prepare("SELECT COUNT(*) n FROM saves").get().n };
+        // 恢复后继续用这个仓库和令牌自动上传
+        t.exec("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+        const up = t.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+        up.run("gh_repo", repo); up.run("gh_token", token);
+        t.prepare("DELETE FROM settings WHERE key='gh_last'").run();
+        t.pragma("journal_mode = DELETE");
+      } finally { t.close(); }
+    } catch (err) { throw new Error(/SQLITE|file is not a database/i.test(String(err.message)) ? "备份文件不是有效的数据库" : err.message); }
+    // 当前数据库先备份一份（就算恢复错了也能找回来）
+    ghRunning = false; await backupDb(); ghRunning = true;
+    restoring = true;
+    clearInterval(timer);
+    for (const [, client] of clients) { try { client.socket.close(1012, "服务器正在恢复存档"); } catch {} }
+    clients.clear();
+    db.close();
+    fs.renameSync(tmp, DB_FILE);
+    for (const f of [DB_FILE + "-wal", DB_FILE + "-shm"]) fs.rmSync(f, { force: true });
+    console.log(`restored database from github ${repo}: ${info.users} users, ${info.saves} saves; restarting`);
+    setTimeout(() => process.exit(75), 500);
+    return info;
+  } catch (err) {
+    fs.rmSync(tmp, { force: true });
+    throw new Error(String(err.message || err).split(token).join("***"));
+  } finally { if (!restoring) ghRunning = false; }
+}
+function normRepo(v) { return String(v ?? "").trim().replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/$/, ""); }
 
 // 管理员 → 服务器信息
 async function serverInfo() {

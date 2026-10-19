@@ -64,7 +64,12 @@ G.module({
       this._lockModal = true;
       this.modal(`<h2>踏入仙途</h2><p>凡人寿不过百，你于山野间偶得一卷残破古经，自此心生问道之念。</p>
         <p>道号<input id="name-input" maxlength="8" placeholder="例如：青云子"></p>
-        <div class="btns"><button class="primary" id="start-btn">开始修仙</button></div>`);
+        <div class="btns"><button class="primary" id="start-btn">开始修仙</button></div>
+        ${API.isAdmin ? `<h3 style="margin-top:16px">管理员：从 GitHub 恢复存档</h3>
+        <p class="desc">服务器存档损坏或换了服务器时，从备份私有仓库下载最新备份，替换服务器上的全部账号和存档。</p>
+        <p><input id="rs-repo" placeholder="仓库：用户名/仓库名" autocomplete="off"></p>
+        <p><input id="rs-token" type="password" placeholder="GitHub 令牌" autocomplete="new-password"></p>
+        <div class="btns"><button onclick="G.ghRestoreRun($('#rs-repo').value, $('#rs-token').value)">下载并恢复</button></div>` : ""}`);
       $("#start-btn").onclick = async () => {
         const name = ($("#name-input").value || "").trim() || "无名散修";
         try {

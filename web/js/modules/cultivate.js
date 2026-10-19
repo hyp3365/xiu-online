@@ -128,11 +128,13 @@ G.module({
         }
         return;
       }
-      if (x) return;   // 别的探索 / 出窍中：不管
+      // 修炼设置自动去的探索，但「前往」已改成别处（例如从灵矿改成青云山林东）：停下当前的，下面按新地点重新出发
+      if (x && !x.cq && !x.once && (x.cs || c.went)) { c.went = false; this.stopExplore("前往地点已更改"); }
+      else if (x) return;   // 别的探索 / 出窍中：不管
       if (s.stone < c.low && this.cultLack() && this.hasMijue()) {
         if (!this.cultTargets().some(t => t[0] === c.tgt)) return;
         if (kuang) this.toggleKuang(p[1]); else this.toggleExplore(p[1], p[2], false);
-        if (this.s.explore) { c.went = true; this.exploreOpen = false; this.log("灵石不足且灵气不够修炼，自动前往探索。", "sys"); }
+        if (this.s.explore) { c.went = true; this.s.explore.cs = 1; this.exploreOpen = false; this.log("灵石不足且灵气不够修炼，自动前往探索。", "sys"); }
       }
     },
     openCultSet() {

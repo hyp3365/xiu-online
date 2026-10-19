@@ -38,6 +38,24 @@ G.module({
       catch (e) { this.log("上传失败：" + e.message, "bad"); await this.loadSrvInfo(); }
       this.srvBusy = false; this.render();
     },
+    // 从 GitHub 下载最新备份并替换服务器数据库（创建角色页和服务器信息页共用）；repo / token 留空用已保存的
+    async ghRestoreRun(repo, token, fromSrv) {
+      if (this._restoring) return;
+      if (!fromSrv && (!String(repo || "").trim() || !String(token || "").trim())) return alert("请填写仓库和令牌。");
+      if (!confirm("从 GitHub 下载最新备份，替换服务器上的【全部账号和存档】？\n当前数据库会先在服务器上备份一份。在线玩家会断线。")) return;
+      this._restoring = true; this.srvBusy = true; if (fromSrv) this.render();
+      this._lockModal = true;
+      this.modal(`<h2>恢复存档</h2><p>正在从 GitHub 下载备份并恢复，请稍候…</p>`);
+      try {
+        const j = await API.req("admin/gh/restore", { repo: String(repo || "").trim(), token: String(token || "").trim() });
+        this.modal(`<h2>恢复完成</h2><p>已恢复 ${j.users} 个账号、${j.saves} 个角色。服务器正在重启，几秒后请用【备份里的账号和密码】重新登录。</p>`);
+        setTimeout(() => { API.logout(); location.reload(); }, 6000);
+      } catch (e) {
+        this._restoring = false; this.srvBusy = false; this._lockModal = false;
+        this.modal(`<h2>恢复失败</h2><p>${String(e.message).replace(/</g, "&lt;")}</p><div class="btns"><button onclick="${this.s ? "G.closeModal()" : "G.intro()"}">返回</button></div>`);
+        if (fromSrv) this.render();
+      }
+    },
     srvSize(b) { b = +b || 0; return b >= 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(0, Math.round(b / 1024)) + " KB"; },
     srvDur(sec) { sec = Math.max(0, Math.floor(sec)); const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
       return d ? `${d} 天 ${h} 小时` : h ? `${h} 小时 ${m} 分` : `${m} 分钟`; },
@@ -78,7 +96,10 @@ G.module({
         <div class="btns"><button class="primary" onclick="G.srvSaveGh(false)" ${this.srvBusy ? "disabled" : ""}>保存设置</button>
           <button onclick="G.srvUpload()" ${this.srvBusy || !g.repo || !g.tokenSet ? "disabled" : ""}>${this.srvBusy ? "处理中…" : "立即备份并上传"}</button>
           ${g.tokenSet ? `<button onclick="G.srvSaveGh(true)" ${this.srvBusy ? "disabled" : ""}>清除令牌</button>` : ""}</div></div>`;
-      return head + prog + host + backup + ghCard;
+      const restoreCard = `<div class="card"><h3>从 GitHub 恢复<small>替换全部账号和存档</small></h3>
+        <p class="desc">服务器存档损坏时用：下载仓库里的最新备份替换当前数据库，服务器自动重启。当前数据库会先备份到上面的备份目录。仓库和令牌用上面填的（未保存的也会用）。</p>
+        <div class="btns"><button onclick="G.ghRestoreRun(G.srvF && G.srvF.repo, G.srvF && G.srvF.token, true)" ${this.srvBusy || !(F.repo && (F.token || g.tokenSet)) ? "disabled" : ""}>下载并恢复</button></div></div>`;
+      return head + prog + host + backup + ghCard + restoreCard;
     },
   },
 });

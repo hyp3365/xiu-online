@@ -226,6 +226,7 @@ const API = {
 
   async loadSave() {
     const j = await this.req("session");
+    this.isAdmin = !!j.admin;
     this.syncClock(j.serverNow);
     this.installActions(j.actions || []);
     this.installResume();

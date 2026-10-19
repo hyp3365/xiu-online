@@ -74,6 +74,7 @@ G.module({
       if (this.cqBusy()) return;
       if (!this.mapOpen(a)) return;
       if (s.explore) this.stopExplore("更换");
+      if (s.cultSet) s.cultSet.went = false;   // 手动开始的不算修炼设置自动去的（自动去时 cultSetCheck 会再标记）
       s.explore = { map: a, reg: -1, kuang: 1, once: false, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.kuangPlan(), ms: this.exploreMs() };
       s.lastRun = null;
       this.exploreOpen = true;
@@ -630,6 +631,7 @@ G.module({
       if (!once && !this.isTrained(a, r)) return this.log("需先在此区域历练通过，才能自动探索。", "sys");
       if (s.explore) this.stopExplore("更换");
       if (once && s.hp < this.stats().hp * DATA.EXPLORE_STOP) return this.log("生命不足三成，先休养片刻（每 10 秒恢复 1%）。", "sys");
+      if (s.cultSet) s.cultSet.went = false;
       s.explore = { map: a, reg: r, once: !!once, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.makePlan(), ms: this.exploreMs() };
       if (!once && !this.exReady()) { s.explore.rest = 1; this.log(`${this.exReadyTxt()}，先原地休养，恢复后自动开始。`, "sys"); }
       s.lastRun = null;
