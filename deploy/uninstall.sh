@@ -14,11 +14,13 @@ systemctl disable --now xiu-online-web-update.path 2>/dev/null || true
 systemctl disable "$SERVICE" 2>/dev/null || true
 rm -f "/etc/systemd/system/${SERVICE}.service"
 rm -f /etc/systemd/system/xiu-online-web-update.service /etc/systemd/system/xiu-online-web-update.path
+systemctl disable --now xiu-online-backup-github.timer >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/xiu-online-backup-github.service /etc/systemd/system/xiu-online-backup-github.timer
 systemctl daemon-reload
 systemctl reset-failed "$SERVICE" 2>/dev/null || true
 rm -f /etc/nginx/conf.d/central_vps_users/*/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-test.conf /etc/nginx/snippets/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-ip-test.conf
 if command -v nginx >/dev/null && nginx -t >/dev/null 2>&1; then systemctl reload nginx || true; fi
 rm -rf /opt/xiu-online /var/lib/xiu-online
-rm -f /usr/local/bin/xiu-online-update /usr/local/bin/xiu-online-uninstall
+rm -f /usr/local/bin/xiu-online-update /usr/local/bin/xiu-online-uninstall /usr/local/bin/xiu-online-backup-github /usr/local/bin/xiu-online-backup-setup
 id xiu-online >/dev/null 2>&1 && userdel xiu-online 2>/dev/null || true
 echo "xiu-online 测试服已卸载。原版游戏与存档未动。"

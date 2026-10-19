@@ -36,6 +36,10 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE"
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+install -m 0755 "$DIR/deploy/xiu-backup-github.sh" /usr/local/bin/xiu-online-backup-github
+install -m 0755 "$DIR/deploy/xiu-backup-setup.sh" /usr/local/bin/xiu-online-backup-setup
+install -m 0644 "$DIR/deploy/xiu-backup-github.service" /etc/systemd/system/xiu-online-backup-github.service
+install -m 0644 "$DIR/deploy/xiu-backup-github.timer" /etc/systemd/system/xiu-online-backup-github.timer
 # 网页「设置 → 管理员 → 从 GitHub 更新」：root 的 path 单元监听请求文件并运行本更新器
 install -m 0644 "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-online-web-update.service
 install -m 0644 "$DIR/deploy/xiu-web-update.path" /etc/systemd/system/xiu-online-web-update.path

@@ -460,6 +460,32 @@ function pushState(client, now, logs = [], force = false, full = false) {
   client.lastPush = now;
   send(client.socket, { type: "snapshot", serverNow: now, revision: client.revision, logs, ...statePayload(client, full) });
 }
+// ---- 每小时自动备份数据库（存档、账号、礼包码），保留最近 48 份 ----
+// 备份在 数据目录/backup/xiu-年月日-时分.sqlite3（北京时间）；deploy/xiu-backup-github.sh 会把最新一份传到 GitHub 私有仓库
+const BACKUP_DIR = path.join(DATA_DIR, "backup"), BACKUP_KEEP = 48, BACKUP_MS = 3600_000;
+const BACKUP_RE = /^xiu-\d{8}-\d{4}\.sqlite3$/;
+let backupRunning = false;
+async function backupDb() {
+  if (backupRunning) return; backupRunning = true;
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o750 });
+    // 先把在线玩家的最新进度写进数据库，备份里就是此刻的进度
+    for (const [userId, client] of clients) { try { persist(userId, client.state); client.lastPersist = Date.now(); } catch {} }
+    const t = new Date(Date.now() + 8 * 3600_000).toISOString();   // 北京时间
+    const name = `xiu-${t.slice(0, 10).replace(/-/g, "")}-${t.slice(11, 16).replace(":", "")}.sqlite3`;
+    const file = path.join(BACKUP_DIR, name), tmp = file + ".tmp";
+    await db.backup(tmp);
+    fs.renameSync(tmp, file);   // 备份完整写完才改名，上传脚本不会拿到写了一半的文件
+    const old = fs.readdirSync(BACKUP_DIR).filter(f => BACKUP_RE.test(f)).sort();
+    for (const f of old.slice(0, Math.max(0, old.length - BACKUP_KEEP))) fs.rmSync(path.join(BACKUP_DIR, f), { force: true });
+    const players = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) b, COALESCE(MAX(LENGTH(data)),0) m FROM saves").get();
+    console.log(`backup ok: ${name} ${(fs.statSync(file).size / 1024).toFixed(0)} KB；角色 ${players.n} 个，存档合计 ${(players.b / 1024).toFixed(0)} KB，最大一份 ${(players.m / 1024).toFixed(0)} KB`);
+  } catch (err) { console.error("backup failed:", err?.stack || err); }
+  finally { backupRunning = false; }
+}
+setTimeout(backupDb, 60_000).unref();                       // 启动 1 分钟后先备份一次
+setInterval(backupDb, BACKUP_MS).unref();
+
 let lastHousekeeping = 0;
 const timer = setInterval(() => {
   const now = Date.now();

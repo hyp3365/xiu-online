@@ -19,6 +19,10 @@ if [ -z "${XIU_UPDATE_REEXEC:-}" ] && ! cmp -s "$DIR/deploy/xiu-update" /usr/loc
 fi
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+install -m 0755 "$DIR/deploy/xiu-backup-github.sh" /usr/local/bin/xiu-online-backup-github
+install -m 0755 "$DIR/deploy/xiu-backup-setup.sh" /usr/local/bin/xiu-online-backup-setup
+install -m 0644 "$DIR/deploy/xiu-backup-github.service" /etc/systemd/system/xiu-online-backup-github.service
+install -m 0644 "$DIR/deploy/xiu-backup-github.timer" /etc/systemd/system/xiu-online-backup-github.timer
 (cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
 # 给静态脚本生成内容哈希版本，避免测试服客户端继续使用旧缓存。
 python3 - "$DIR/web" <<'PY'
