@@ -108,6 +108,35 @@ const API = {
     }
   },
 
+  // 记住最近一次打开弹窗的函数：服务器操作完成后弹窗还开着，就用新状态重新打开它，
+  // 弹窗里的按钮、数量、状态立即刷新（以前只有少数弹窗会刷新）。
+  trackModalOpeners() {
+    if (this._modalTracking || typeof G === "undefined") return;
+    this._modalTracking = true;
+    const modal = G.modal;
+    G._modalSeq = 0;
+    G.modal = function (...args) { G._modalSeq++; return modal.apply(this, args); };
+    const closeModal = G.closeModal;
+    G.closeModal = function (...args) { G._modalOpener = null; return closeModal.apply(this, args); };
+    for (const key of Object.keys(G)) {
+      const fn = G[key];
+      if (!/^open[A-Z]/.test(key) || typeof fn !== "function" || this._wrapped.has(key) || fn.constructor.name === "AsyncFunction") continue;
+      G[key] = function (...args) {
+        const before = G._modalSeq, result = fn.apply(this, args);
+        if (G._modalSeq !== before) G._modalOpener = { key, fn, args };
+        return result;
+      };
+    }
+  },
+
+  refreshOpenModal() {
+    const m = typeof G !== "undefined" && G._modalOpener, el = document.getElementById("modal"), box = document.getElementById("modal-box");
+    if (!m || G._lockModal || G._cfgOpen || !el || el.classList.contains("hidden")) return;
+    const top = box ? box.scrollTop : 0;
+    try { m.fn.apply(G, m.args); G._modalOpener = m; } catch { return; }
+    if (box) box.scrollTop = top;
+  },
+
   installActions(names) {
     this.actions = Array.isArray(names) ? names.filter(x => typeof x === "string") : [];
     this.trackButtonClicks();
@@ -121,6 +150,7 @@ const API = {
       });
       this._wrapped.add(name);
     }
+    this.trackModalOpeners();
   },
 
   trackButtonClicks() {
@@ -234,6 +264,12 @@ const API = {
       this.setSync("已同步到服务器");
       return;
     }
+    if (message.type === "config") {
+      // 管理员改了游戏参数：重新加载网页拿新参数（正在编辑参数的管理员等关闭窗口再加载）
+      if (typeof G !== "undefined" && G._cfgOpen) { G._cfgReload = true; return; }
+      this.showActionFeedback("游戏参数已更新，正在重新加载…");
+      setTimeout(() => location.reload(), 1200); return;
+    }
     if (message.type === "error" && !message.id) {
       this.showActionFeedback(message.error || "服务器操作失败", "bad"); return;
     }
@@ -265,6 +301,7 @@ const API = {
     if (name === "doEnhance" && G.openEnhance) G.openEnhance(args[0]);
     if (name === "doReset" && G.openReset) { G._locks = Array.isArray(result && result.locks) ? result.locks : G._locks || []; G.openReset(args[0]); }
     if (refresh && typeof G[refresh] === "function") G[refresh]();
+    else this.refreshOpenModal();
     if (name === "closeTrib") {
       G.tribOpen = false;
       const trib = document.getElementById("trib");
