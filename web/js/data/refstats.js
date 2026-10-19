@@ -4,7 +4,7 @@
  * DATA.refStats(境界, 层, 功法层数, 星级, 来源) = 人物在该境界第几层（1~10）的属性（含升级成长）
  *   + 1 ~ 星级 的全部功法（来源 1 宗门 / 2 +凡界坊市 / 3 +仙魔冥神坊市 / 4 +功德司，所有类别）都练到「功法层数」
  *   不算丹药、肉身、灵根、装备；功法层数 0 = 不算功法
- * 用到的地方：试炼塔 config/sect.js 的 sect.tower、雷劫 config/trib.js 的 trib；
+ * 用到的地方：试炼塔守关者 config/mobs.js 的 tower、雷劫 config/trib.js 的 trib；
  *   怪物（地图、秘境、灵地、天将星君界主、宗门考官）另见 js/data/mobs.js（数值 config/mobs.js）
  * ===================================================================== */
 DATA.REF_KEYS = ["hp", "atk", "def", "speed", "hit", "dodge", "mana", "res"];   // res：每系抗性（RES_BASE + 修为突破 + 全部真诀）
