@@ -2,7 +2,7 @@
  * ★ 数值设置 · 功法 & 法术 ★（代码：data/gongfa.js、modules/gongfa.js）
  * 功法第 n 层效果 = 每层效果（见下面 sect.TOTAL）× LV_MULT[n-1] × 灵根加成；其他来源 = 宗门同星级 × 各自 PCT%
  * 法术伤害 = 法术攻击 × SPELL_LV_PCT[层]% × SPELL_MUL × TYPE_MULT.spell × EFFECT_PCT × 灵根 + 精研属性伤害 − 对方减免（config/battle.js）
- *   法术攻击 = min(修为 + 肉身攻击, REF 境界的参考值) + 功法攻击
+ *   法术攻击 = min(修为 + 肉身攻击, REF 境界参考值) + 其余全部攻击（功法、装备、戒指、法宝、丹药、练体池等）
  * 法力消耗 = REF 境界的修为突破法力 × MANA_PCT% × (1 + 该系灵根等级 × MANA_LINGEN)，四舍五入，至少 1
  * 修炼升层：每层 STUDY_MIN 分钟；每 STUDY_STEP 秒扣灵气 STUDY_RATE × STUDY_STAR[星级-1] × STUDY_LING（不乘层数）
  * ===================================================================== */
@@ -58,16 +58,16 @@ CFG.gongfa = {
 /* 宗门功法 & 法术（门派功法殿）
  * 每本每层 = TOTAL[属性] ÷ (Σ 1~10 星 STAT_STAR × 该星宗门数 × 该属性功法本数 × LV_MULT[MAX-1]) × STAT_STAR[星级-1] × 随机(1 ± RAND)
  * 学习贡献 = learn × LEARN_TYPE[类别] × LEARN_STAR[星级-1] × EFFECT_LEARN（取整）
- * 类别：xinfa 心法 gongjue 功诀 zhenjing 真经 mijue 秘诀 shenfa 身法 dunshu 遁术 fajue 法诀 zhenjue 真诀 tijue 肉身秘诀 spell 法术 */
+ * 类别：xinfa 心法 gongjue 功诀 zhenjing 真诀（生命） mijue 秘诀 shenfa 身法 dunshu 遁术 fajue 法诀 zhenjue 真经（抗性） tijue 肉身秘诀 spell 法术
+ *   sufa 身法·速度（倍率 / 价格同 shenfa） */
 CFG.gongfa.sect = {
   TYPE_MULT: { xinfa: 0.76, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1 },   // 类别效果倍率
-  // 1~10 星宗门功法全学满后每项属性合计（不算灵根）；res 按所有真诀合计
+  // 1~10 星宗门功法全学满后每项属性合计（不算灵根）；res 按所有真经合计
   TOTAL: { def: 913600, atk: 1057950, hp: 3496000, mana: 2700000, speed: 339300, dodge: 340000, res: 338700, hit: 339300,
     cultivate: 3000000,   // 秘诀 → 修炼速度
     body: 3000000 },      // 肉身秘诀 → 肉身修炼速度
   RAND: 0.05,        // 每本效果随机幅度（±5%，按书固定）
   STAT_STAR: [1, 1.48, 2.2, 3.27, 4.86, 7.21, 10.7, 15.88, 23.58, 35, 51.96, 77.12],   // 功法效果星级倍率：1 星 ~ 12 星（法术不用）
-  EFFECT_GONGFA: 1,  // 功法效果总倍率
   EFFECT_PCT: 1,     // 法术伤害总倍率
 
   learn: 100,        // 学习贡献基础值
@@ -81,12 +81,12 @@ CFG.gongfa.sect = {
 CFG.gongfa.shop = {
   PCT: 90,           // 效果 = 宗门同星级 × %
   price: 2000,       // 售价基础值（灵石）
-  PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, tijue: 1, spell: 1 },   // 售价类别倍率（坊市无肉身秘诀，tijue 占位）
+  PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1 },   // 售价类别倍率
   PRICE_STAR: [1, 5, 20, 50, 150],   // 售价星级倍率：1 星 ~ 5 星
   EFFECT_PRICE: 1,   // 售价总倍率
 };
 
-// 天外天功法 & 法术（11、12 星，暂未开放获取）
+// 天外天功法 & 法术（11、12 星，暂未开放获取，仅礼包码可发放）
 CFG.gongfa.tianwai = {
   PCT: 100,          // 效果 = 宗门同星级算法 × %
   REQ: [20, 22],     // 需要境界序号：11 星、12 星
@@ -105,9 +105,4 @@ CFG.gongfa.gd = {
   PCT: 120,          // 效果 = 宗门同星级 × %
   MERIT: [6000, 7000, 8000, 9000, 10000],   // 6 星 ~ 10 星
   TYPE: { tijue: 1.1 },   // 类别倍率（没写 = 1）
-};
-
-// 试炼塔秘诀：新秘诀效果在 config/sect.js 的 trial.MIJUE，这里 PCT 只用于旧秘诀
-CFG.gongfa.tower = {
-  PCT: 110,          // 旧秘诀效果 = 宗门同星级秘诀 × %
 };
