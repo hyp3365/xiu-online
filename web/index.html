@@ -48,7 +48,7 @@
 <script>
   // 数值文件写错（语法错误）时在页面顶部提示是哪个文件、第几行
   window.addEventListener("error", function (e) {
-    if (!e.filename) return;
+    if (!e.filename || window.__noCfg) return;
     var b = document.getElementById("cfg-err") || document.body.insertBefore(Object.assign(document.createElement("div"), { id: "cfg-err" }), document.body.firstChild);
     b.style.cssText = "background:#7a1f1f;color:#fff;padding:8px;font-size:13px;white-space:pre-wrap";
     b.textContent += "脚本错误：" + e.filename.split("/").slice(-2).join("/").split("?")[0] + " 第 " + e.lineno + " 行：" + e.message + "\n";
@@ -56,6 +56,14 @@
 </script>
 <!-- 游戏参数（js/config/）：由服务器按顺序加载，管理员「数据修改」改过的优先 -->
 <script src="api/config-loader.js"></script>
+<script>
+  // 参数没加载到（多半是服务器正在更新 / 重启，或网络断了）：不报一堆脚本错误，提示后自动刷新
+  if (!window.CFG) {
+    window.__noCfg = true;
+    document.body.insertBefore(Object.assign(document.createElement("div"), { textContent: "连接服务器失败（可能正在更新），3 秒后自动刷新…", style: "background:#7a1f1f;color:#fff;padding:10px;font-size:14px;text-align:center" }), document.body.firstChild);
+    setTimeout(function () { location.reload(); }, 3000);
+  }
+</script>
 <!-- 自定义物品、坊市、宗门宝库（不是数值文件） -->
 <script src="js/content/items.js?v=208"></script>
 <script src="js/data/names.js?v=208"></script>
