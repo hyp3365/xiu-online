@@ -43,20 +43,7 @@ CFG.sect = {
     { name: "天品修炼室", pct: 80, cost: 6 },
     { name: "宗主修炼室", pct: 120, cost: 1, rank: 6 },
   ],
-  // 试炼塔备用值（只在下面 trial 没写该星级时用）
-  tower: {
-    MAX: 100,      // 层数
-    REWARD: 20,    // 首通贡献 = REWARD × 层数
-  },
   SECRET_COST: 200,  // 宗门秘境每次贡献 = SECRET_COST × 门派星数（不读 STAR_MULT）
-  // 宝库「杂物」货单（content/items.js 写了 ITEMS.treasury 时以那边为准）：cost 贡献（不乘星级），可加 star: N 限 N 星以上
-  //   kind: furnace 炉子（fk dan 炼丹 / qi 炼器，g 阶 0 起）  stone 灵石 n × 星级倍率  pill 修炼丹（type juqi/juling/peiyuan）  chuqiao 出窍秘法（见 CFG.chuqiao）
-  treasury: [
-    { kind: "furnace", fk: "dan", g: 0, cost: 100 },
-    { kind: "furnace", fk: "qi",  g: 0, cost: 100 },
-    { kind: "stone", n: 2000, cost: 100, name: "一袋灵石" },
-    { kind: "chuqiao" },
-  ],
 };
 
 // 门派入门境界序号：1 星 ~ 10 星；同星级坊市功法 / 法术、试炼塔守关者也用
@@ -111,7 +98,7 @@ CFG.sect.rankTrial = {
 };
 
 /* 练体池：每天 DAILY 次，每次 MINUTES 分钟，泡完永久加肉身属性
- * 进入扣：贡献 contrib × 本池 STAR_MULT[宗门星级-1]（不读宗门通用 STAR_MULT）；气血 hp 点（或 hpPct = 气血上限 %）
+ * 进入扣：贡献 contrib × 本池 STAR_MULT[宗门星级-1]（不读宗门通用 STAR_MULT）；扣肉身气血 hp 点
  * keys 加哪些属性（hp atk def dodge res hit mana crit）；rank 需要职务序号
  * 每次加 = round(GAIN[池序号][j] × STAR_GAIN^(宗门星级-1)) ± 随机 RAND，GAIN 每行顺序同该池 keys */
 CFG.sect.pool = {
