@@ -119,7 +119,7 @@ G.module({
     rankTrialCost(i) { return Math.floor(((CFG.sect.rankTrial.cost || [])[i] || 0) * this.starMul()); },
     makeRankGuard(i) {
       const b = DATA.mobStats(DATA.mobExam(this.sectInfo().star, i), DATA.mobCrit("考官")), v = (x, k) => x * DATA.mobRnd(k);   // config/mobs.js 的 sect
-      return this.addMagic({ name: `${DATA.ranks[i].name}考官`, boss: false, hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, "tower");
+      return this.addMagic({ name: `${DATA.ranks[i].name}考官`, boss: false, hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, "考核");
     },
     challengeRank() {
       const s = this.s, i = s.rank + 1; if (i >= DATA.ranks.length || s.rankPass === i) return;
