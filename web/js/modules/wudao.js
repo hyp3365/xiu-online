@@ -17,7 +17,6 @@ G.module({
         if (!DATA.isMifa(id)) continue;
         const g = DATA.mifaInfo(id, this.s.gongfa[id]); if (g) out[g.mk.id] += g.value;
       }
-      const LX = CFG.wudao.LIANXING || {};
       for (const K of DATA.mifaKinds) { const C = K.cfg && CFG.wudao[K.cfg]; if (C) out[K.id] = Math.round(Math.min(C.MAX === undefined ? Infinity : C.MAX, out[K.id] || 0) * 1e6) / 1e6; }   // 战斗秘法几率上限
       // 破军无视防御 %、金蝉伤害降低 %：按修满的星级相加
       const PJ = CFG.wudao.POJUN || {}, JC = CFG.wudao.JINCHAN || {}, full = k => { const r = []; for (let st = 1; st <= 10; st++) if ((this.s.gongfa[DATA.mifaId(st, k)] || 0) >= DATA.GONGFA_MAX) r.push(st); return r; };
