@@ -63,9 +63,8 @@ for (const pass of [0, 1]) for (const w of ["xian", "ming", "mo", "shen"]) {
     DATA.maps.push({ name: m.name, boss: m.boss, monsters: m.monsters, w, wi: i });
     DATA.worldMapIdx[w].push(a);
     CFG.monster.regions[a] = W.regions[i];   // 只有区域名和 L；怪物属性、进入境界在 js/data/mobs.js 按 config/mobs.js 生成
-    // 四界地图的掉落：药材表 / 矿石表 / 特产，掉几种几个按 CFG.dropRule.world
-    CFG.mapDrops[a] = { stone: m.stone === undefined ? 1 : m.stone, mat: m.mat === undefined ? 1 : m.mat,
-      herb: D.herb || {}, ore: D.ore || {}, special: D.special || {}, rule: "world" };
+    // 四界地图的掉落：药材表 / 矿石表 / 特产（config/drops.js 的 worldDrops）
+    CFG.mapDrops[a] = { stone: m.stone === undefined ? 1 : m.stone, herb: D.herb || [], ore: D.ore || [], special: D.special || [] };
   });
 }
 
@@ -95,36 +94,21 @@ DATA.exploreIdle = ["四下寂静，无事发生。", "山风拂过，草木沙�
 // 以下数值来自 js/config/ 下的数值文件（explore.js 探索流程，drops.js 掉落）
 const _E = CFG.explore;
 DATA.EXPLORE_STOP = _E.STOP;
-// 该地图某个事件的掉落组：[{ items: {名字: 权重}, kinds, n }, { fixed: {名字: [最少, 最多]} }]
-//   击败怪物：药材 + 矿石合成一张表抽（种数合计）；发现灵药 / 矿脉：只用药材 / 矿石表（只有普通药材矿石）
-//   fixed 必定掉落组：四界特产 special 只在 ev === "boss"（首领）时掉；再加该地图 config/drops.js 里写的 fixed[事件]
-//   rule 不传时按地图自己的（凡界 fan / 四界 world）；秘境、灵地借用这张地图的药材矿石表时传 CFG.dropRule.mijing / lingdi，
-//     借用时没有特产、没有 fixed
-DATA.mapDrop = (a, ev, rule) => {
-  const m = (CFG.mapDrops || [])[a]; if (!m) return null;
-  const R = CFG.dropRule || {}, r = rule || (R[m.rule || "fan"] || {})[ev] || { kinds: [1, 2], n: [1, 2] };
-  const herb = m.herb || {}, ore = m.ore || {};
-  const items = ev === "herbEvent" ? herb : ev === "oreEvent" ? ore : Object.assign({}, herb, ore);
-  const fixed = {};
-  if (!rule) {
-    Object.assign(fixed, (m.fixed || {})[ev] || {});
-  }
-  return [{ items, kinds: r.kinds, n: r.n }, { fixed }];
-};
+// 该地图某个事件的必掉物品 { 名字: [最少, 最多] }（config/drops.js 的 fixed[事件]）
+DATA.mapFixed = (a, ev) => (((CFG.mapDrops || [])[a] || {}).fixed || {})[ev] || {};
 // v236 该地图药材 / 矿石的随机池（等权重，四界含特产）：{ herb: [名字], ore: [名字] }
 DATA.mapPool = a => {
   const m = (CFG.mapDrops || [])[a], o = { herb: [], ore: [] }; if (!m) return o;
-  const names = [...Object.keys(m.herb || {}), ...Object.keys(m.ore || {}), ...Object.keys(m.special || {})];
+  const names = [...(m.herb || []), ...(m.ore || []), ...(m.special || [])];
   for (const n of names) { const x = DATA.matByName[n]; if (x && o[x.kind] && !o[x.kind].includes(n)) o[x.kind].push(n); }
   return o;
 };
 DATA.mapStone = a => { const m = (CFG.mapDrops || [])[a]; return m && m.stone !== undefined ? m.stone : 1; };
-DATA.mapMat = a => { const m = (CFG.mapDrops || [])[a]; return m && m.mat !== undefined ? m.mat : 1; };
 DATA.mapReq = a => { const v = (CFG.monster.MAP_REALM || [])[a]; return v === undefined ? a : v; }; // 该地图需要的境界
 // 凡界地图会掉的全部药材、矿石名字（坊市只卖这些）
 DATA.fanMats = () => {
   const set = new Set();
-  for (const m of (CFG.mapDrops || []).slice(0, DATA.FAN_MAP_N)) Object.keys(Object.assign({}, m.herb, m.ore)).forEach(n => set.add(n));
+  for (const m of (CFG.mapDrops || []).slice(0, DATA.FAN_MAP_N)) [...(m.herb || []), ...(m.ore || [])].forEach(n => set.add(n));
   return set;
 };
 // 材料出售价、宗门兑换贡献（js/config/ 数值文件 的 mats）
