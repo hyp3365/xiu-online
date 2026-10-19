@@ -530,22 +530,11 @@ G.module({
 
     /* ---------- 掉落 ---------- */
     newLoot() { return { stone: 0, mats: {} }; },
-    // 掉落：config/drops.js 里该地图的掉落组（数量 × 该地图 mat 倍率）
-    rollEvent(loot, ev, a) { return this.rollEventMats(loot, ev, a); },
-    // 药材矿石掉落：rule = 秘境的 { kinds, n }（不传按地图自己的规则）；特产 fixed 组必定掉
-    rollEventMats(loot, ev, a, mulSet, rule) {
-      const groups = DATA.mapDrop(a, ev, rule), mul = mulSet !== undefined ? mulSet : DATA.mapMat(a);
-      if (!groups) return "";
-      const got = [];
-      const add = (name, n0) => { const m = DATA.matByName[name], n = n0 > 0 ? Math.max(1, Math.round(n0 * mul)) : 0;
-        if (!m || n <= 0) return; const key = m.kind + "|" + name;
-        (loot.mats[key] = loot.mats[key] || { kind: m.kind, name, g: m.g, n: 0 }).n += n; got.push(`${name}×${U.fmt(n)}`); };
-      for (const gr of groups) {
-        // 必定掉落：药材矿石 × mul；其它（专用材料、自定义物品）按原数量
-        if (gr.fixed) { for (const name in gr.fixed) { const r = gr.fixed[name] || [1, 1], n = U.rand(r[0], r[1]);
-          if (DATA.matByName[name]) add(name, n); else if (n > 0) { const t = this.lootAdd(loot, name, n); if (t) got.push(t); } } continue; }
-        // v236 随机药材矿石不在这里掉，改按 CFG.dropTotal 总量分到各步（见 matPlan / stepMats）
-      }
+    // 必掉物品：config/drops.js 里该地图 fixed[事件]（随机药材矿石按 CFG.dropTotal 分到各步，见 matPlan / stepMats）
+    rollEvent(loot, ev, a) {
+      const fixed = DATA.mapFixed(a, ev), got = [];
+      for (const name in fixed) { const r = fixed[name] || [1, 1], n = U.rand(r[0], r[1]);
+        if (n > 0) { const t = this.lootAdd(loot, name, n); if (t) got.push(t); } }
       return got.join("、");
     },
     // v236 本次探索的药材 / 矿石总量（CFG.dropTotal），分配到各步：返回 { 步序号: [药材个数, 矿石个数] }
@@ -948,11 +937,10 @@ G.module({
     setShopStar(n) { this.shopStar = n; this.render(); },
     shopList() {
       const g = 0, list = [];   // 只卖练气品质
-      const src = ITEMS.shop || [...Object.keys(DATA.pills).map(t => ({ kind: "pill", type: t })), ...DATA.eqSlots6.map(sl => ({ kind: "eq", slot: sl }))];
-      for (const x of src) {
+      for (const x of ITEMS.shop) {
         if (!x || (x.realm !== undefined && this.r() < x.realm)) continue;
         if (x.kind === "pill" && DATA.pills[x.type]) list.push({ kind: "pill", type: x.type, g, price: x.price || DATA.pillPrice(x.type, g), tab: "pill" });
-        else if (x.kind === "eq" && DATA.eqSlots6.includes(x.slot)) list.push({ kind: "eq", slot: x.slot, price: x.price || Math.floor(CFG.price.SHOP_EQUIP), tab: "eq" });
+        else if (x.kind === "eq" && DATA.eqSlots6.includes(x.slot)) list.push({ kind: "eq", slot: x.slot, price: x.price, tab: "eq" });
       }
       return list;
     },
@@ -1129,7 +1117,7 @@ G.module({
       const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
       if (halls && sel !== "mj") {
         // v49：仙冥魔神每张地图 7 处地点（config/worldmaps.js 的 halls，图片 img/hall_<id>.png），点进去是各自的页面
-        const hn = id => (halls[id] || "").replace("{map}", DATA.maps[sel].name), hs = halls[this.hallSel] ? this.hallSel : null;
+        const hn = id => this.xjHallName(sel, id), hs = halls[this.hallSel] ? this.hallSel : null;
         if (hs) {
           const back = `<div class="row" style="margin:6px 0"><b>${DATA.maps[sel].name} · ${hn(hs)}</b><button class="sm" onclick="G.setHall(null)">返回</button></div>`;
           const page = hs === "tg" ? this.tgView(sel) : hs === "xj" ? this.xjView(sel)
