@@ -10,8 +10,10 @@ if [ "${XIU_YES:-}" != "1" ]; then
 fi
 SERVICE=xiu-online-test
 systemctl stop "$SERVICE" 2>/dev/null || true
+systemctl disable --now xiu-online-web-update.path 2>/dev/null || true
 systemctl disable "$SERVICE" 2>/dev/null || true
 rm -f "/etc/systemd/system/${SERVICE}.service"
+rm -f /etc/systemd/system/xiu-online-web-update.service /etc/systemd/system/xiu-online-web-update.path
 systemctl daemon-reload
 systemctl reset-failed "$SERVICE" 2>/dev/null || true
 rm -f /etc/nginx/conf.d/central_vps_users/*/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-test.conf /etc/nginx/snippets/xiu-online-test.conf /etc/nginx/conf.d/xiu-online-ip-test.conf
