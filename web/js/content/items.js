@@ -30,8 +30,8 @@ ITEMS.list = {
 /* ---------------- 2. 坊市 ----------------
  * 每一行一种货品，从上到下显示，删掉一行就不卖了：
  *   { kind: "pill", type: "juqi" }        修炼丹（juqi 聚气丹 / juling 聚灵丹 / peiyuan 培元丹），品质 = 当前境界，价格自动
- *   { kind: "eq", slot: "weapon" }        一阶炼器装备（随机属性），slot 只能是 helmet armor weapon legs boots pendant（坊市不卖戒指）
- *   任意一行都可以加：price 固定价格（覆盖自动价格）  realm 需要的境界序号（0 练气 1 筑基 …，不够就不显示）
+ *   { kind: "eq", slot: "weapon", price: 2000 }  一阶炼器装备（随机属性），slot 只能是 helmet armor weapon legs boots pendant（坊市不卖戒指），必须写 price
+ *   任意一行都可以加：price 固定价格（丹药不写 = 自动价格）  realm 需要的境界序号（0 练气 1 筑基 …，不够就不显示）
  */
 ITEMS.shop = [
   { kind: "pill", type: "juqi" , price: 100 },
@@ -48,10 +48,9 @@ ITEMS.shop = [
 /* ---------------- 3. 宗门宝库 · 杂物 ----------------
  * 每一行一种，cost = 贡献（不乘星级），star = 需要门派星级（不写 = 1 星起）：
  *   { kind: "furnace", fk: "dan", g: 0, cost: 100 }   炉子（dan 炼丹炉 / qi 炼器炉，g 阶序号 0 = 一阶）
- *   { kind: "stone", n: 2000, cost: 100, name: "一袋灵石" }  灵石 n × 灵石成长^层序
+ *   { kind: "stone", n: 2000, cost: 100, name: "一袋灵石" }  灵石 n × 门派星级倍率
  *   { kind: "pill", type: "juqi", cost: 50 }          修炼丹（当前境界品质）
  *   { kind: "chuqiao" }                               元婴出窍秘法（数值在 config/sect.js 的 CFG.chuqiao）
- * 这里写了就以这里为准；把整个 ITEMS.treasury 删掉，则用 config/sect.js 里的 treasury。
  */
 ITEMS.treasury = [
   { kind: "furnace", fk: "dan", g: 0, cost: 100 },
