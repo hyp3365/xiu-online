@@ -26,12 +26,7 @@ G.module({
         ["herb", DATA.matKinds.herb], ["ore", DATA.matKinds.ore], ["tc", "特产"], ["dan", "丹药"], ["bp", "图纸"],
         ["lj", DATA.smName("lj")], ["lz", DATA.smName("lz")], ["hx", DATA.HX]];
     },
-    giftSpecial() { return (CFG.matsOther || {}).SPECIAL || this.giftSpecialList(); },
-    giftSpecialList() {
-      const out = [];
-      for (const w in CFG.worldDrops || {}) for (const n in (CFG.worldDrops[w] || {}).special || {}) out.push(n);
-      return out;
-    },
+    giftSpecial() { return CFG.matsOther.SPECIAL; },
     giftJie() { return DATA.JIE.map((n, i) => [i, n]); },
     // 每个类别要选的项：{ k, label, opts:[[值, 显示]] } 或 { k, label, num:true }
     giftFields(c, a) {
