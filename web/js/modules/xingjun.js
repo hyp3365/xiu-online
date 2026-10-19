@@ -27,7 +27,7 @@ G.module({
     xjTjName(a) { return this.xjC(this.xjW(a)).TJ || "天将"; },
     xjHallName(a, id) { const H = ((CFG.worldMaps || {})[this.xjW(a)] || {}).halls || {}; return this.xjTpl(H[id] || "", a); },
     // 挑战需要的境界（config/mobs.js 天将 / 星君 第 1 个数）
-    xjReq(a, t, seat) { return (t === "tj" ? DATA.mobTj(a) : DATA.mobXj(a, seat))[0] || 0; },
+    xjReq(a, t) { return (DATA.maps[a].mob || {})[t === "tj" ? "天将需" : "星君需"] || 0; },
     // 职位：1 天将；星君名单第 i 位（0 起）= 职位 i + 2（名单从低到高）
     xjPos(a, t, seat) { return t === "tj" ? 1 : t === "jz" ? CFG.xingjun.JZ_POS : seat + 2; },
     // 每张地图的贡献
@@ -86,7 +86,7 @@ G.module({
       if (o) { o.T = this.now(); this.s.offices[w] = o; if (o.t !== "jz") this.xjMarkHeld(o.map, this.xjPos(o.map, o.t, o.seat)); }
       else delete this.s.offices[w];
     },
-    // NPC：属性按 config/mobs.js 的 [进入境界, 境界, 层, 功法层, 倍率]（tu）生成；ck = 暴击分类（天将 / 星君 / 界主）
+    // NPC：属性按 config/mobs.js 的一行怪物数据（tu）生成；ck = 暴击分类（天将 / 星君 / 界主）
     xjNpc(a, name, tu, ck) {
       const b = DATA.mobRoll(tu, DATA.mobCrit(ck)), v = (x, k) => x * DATA.mobRnd(k);   // v168 功法随机
       const m = this.addMagic({ name, a, Lm: DATA.region(a, 3).L, kind: "boss", boss: true,
