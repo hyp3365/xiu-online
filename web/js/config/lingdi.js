@@ -1,136 +1,86 @@
 /* =====================================================================
- * ★ 数值设置 · 灵地 ★
- * ---------------------------------------------------------------------
- * 所有数值文件都在 js/config/ 下，一个部分一个文件；改完把 index.html 里的 ?v=数字 加 1。
- * 代码：js/modules/world.js（和秘境共用一套：mjDiscover / makeMjMob / rollMj / mjAll，灵地用 kind = "ld"）
- * 仙界、冥界、魔界、神界各 3 处灵地，共 12 处。
- *
- * 【发现】在灵地所在那一界的 find.map 那张地图（东西南北任一域）历练 / 自动探索 / 元婴出窍，每走完一次（没战败），
- *   对「能在这张地图发现、还没发现」的灵地按 find.chance% 依次判定，一次最多发现一处。发现后永久保留。
- * 【进入】在仙冥魔神任一张地图的「灵地」里，能看到四界全部已发现的灵地（按界分组）。
- *   每处灵地每天只能进 DAILY 次（历练、探索都算），先历练通过（走完不战败）才能自动探索。
- *   「一键探索」= 把今天还能进、已历练通过的灵地按顺序依次自动探索一遍。
- *   境界要求见 config/mobs.js 的 lingdi（「普通」的第 1 个数）。
- *   生命低于上限 × config/explore.js 的 STOP 不能进入。
- * 【走路】一次 TIME 步；每步秒数、每步恢复用凡界的设置（config/explore.js）。事件排法同秘境：
- *   普通怪 MONSTERS + 精英 ELITES + 灵药 HERB_MIN~HERB_MAX + 矿脉 ORE_MIN~ORE_MAX，其余无事发生，打乱后最后 BOSS 步是首领。
- *
- * 【怪物属性】在 config/mobs.js 的 lingdi（每处灵地 普通 / 精英 / 首领 单独设置）
- *
- * 【掉落】（击败怪物 / 发现灵药 / 发现矿脉 时）
- *   灵石 = 所在界 RUN_STONE 按 L 算的每只普通怪灵石基数 × 随机(1~2.5) × STONE_RATE × 种类倍率 × 该灵地 stone（config/drops.js）
- *   药材矿石 = 从 find.map 那张地图（即这一界）的药材 + 矿石表合起来抽（config/drops.js 的 worldDrops[界].herb / ore），
- *            掉几种、每种几个按 config/drops.js 的 CFG.dropRule.lingdi（kinds / n），
- *            每种个数 = max(1, 四舍五入(随机(n) × 该灵地 mat))；不掉四界特产
- *   extra 额外掉落（单独判定，不占种数）：写法同 config/mijing.js 的 extra，
- *         每条 { item 物品名, chance 几率%, n [最少, 最多] }
- *         现在只有首领有：耀石、
- *         另有火髓、空间晶核（这两样没有品阶）
- *
- * 【每处灵地的字段】
- *   name 名字（和 config/mobs.js 的 lingdi 对应）   w 所在界（xian 仙界 / ming 冥界 / mo 魔界 / shen 神界）
- *   find  { map 在这一界第几张地图能发现（0 起：2 = 第 3 张，5 = 第 6 张，8 = 第 9 张），chance 每走完一次发现的几率% }
- *   mat 药材矿石数量倍率   stone 灵石倍率   L 层序（只用来算灵石，见 config/drops.js 的 RUN_STONE；现在写的是发现地图北域的 L）
- *   bossName 首领名字   monsters 普通怪名字（随机取一个；精英怪 = "精英·" + 名字）
- *   extra 额外掉落（见上）
+ * ★ 数值设置 · 灵地 ★（代码：modules/world.js，和秘境共用 mjXxx 函数，k = "ld"；怪物属性、境界要求在 config/mobs.js 的 lingdi）
+ * 发现：在 w 那一界第 find.map 张地图（0 起）走完一次历练 / 探索，按 find.chance% 判定，一次最多发现一处
+ * 一次 TIME 步：普通怪 MONSTERS + 精英 ELITES + 灵药 HERB_MIN~MAX + 矿脉 ORE_MIN~MAX，其余空步，最后 BOSS 步是首领
+ * 灵石 = 所在界 RUN_STONE(L) × 随机(1~2.5) × STONE_RATE × 种类倍率 × stone（config/drops.js）
+ * 药材矿石 = 这一界的药材 + 矿石表（config/drops.js 的 dropRule.lingdi），每种个数 = max(1, 四舍五入(随机n × mat))
+ * 字段：w 界（xian 仙 / ming 冥 / mo 魔 / shen 神）  L 层序（只算灵石，取发现地图北域的层序）  bossName 首领  monsters 普通怪（精英 = "精英·"+名）
+ *       extra 额外掉落，按事件分（monster / elite / boss / herbEvent / oreEvent），每条 { item 物品名, chance 几率%, n [最少, 最多] }，物品名写法见 config/mijing.js
  * ===================================================================== */
 window.CFG = window.CFG || {};
 
 CFG.lingdi = {
-  DAILY: 1,          // 每处灵地每天能进几次（历练、探索合计）
+  DAILY: 1,          // 每处每天能进几次（历练、探索合计）
   TIME: 100,         // 一次走多少步
-  // 一次固定遇到的事件数量（其余步数无事发生）：
   MONSTERS: 12,      // 普通怪个数
   ELITES: 5,         // 精英怪个数
-  BOSS: 1,           // 首领个数（放在最后几步）
-  HERB_MIN: 5,       // 发现灵药次数下限
-  HERB_MAX: 10,      // 发现灵药次数上限
-  ORE_MIN: 5,        // 发现矿脉次数下限
-  ORE_MAX: 10,       // 发现矿脉次数上限
+  BOSS: 1,           // 首领个数（放在最后）
+  HERB_MIN: 5,       // 灵药次数下限
+  HERB_MAX: 10,      // 灵药次数上限
+  ORE_MIN: 5,        // 矿脉次数下限
+  ORE_MAX: 10,       // 矿脉次数上限
 
-
-  // ---------- 灵地列表（顺序 = 灵地序号，不要调换，存档按序号记录） ----------
+  // 灵地列表：顺序 = 存档序号，不要调换或插入
   list: [
-    // ---------- 仙界 · 瑶池仙境 ----------
-    { name: "瑶池仙境", w: "xian", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 119,   // 在仙界第 3 张地图（妙成天）探索时发现；药材矿石 ×2，灵石 ×2，层序 119
-      bossName: "瑶池圣母·青鸾仙后", monsters: ["瑶池仙鹤", "碧波仙鲤", "守池仙娥", "琼花灵"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "瑶池仙境", w: "xian", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 119,   // 仙界第 3 张图（妙成天）
+      bossName: "瑶池圣母·青鸾仙后", monsters: ["瑶池仙鹤", "碧波仙鲤", "守池仙娥", "琼花灵"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 仙界 · 蟠桃灵园 ----------
-    { name: "蟠桃灵园", w: "xian", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 149,   // 在仙界第 6 张地图（七曜天）探索时发现；药材矿石 ×2，灵石 ×2，层序 149
-      bossName: "蟠桃园主·千年桃仙", monsters: ["桃林仙猿", "护园力士", "蟠桃花妖", "仙果灵童"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "蟠桃灵园", w: "xian", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 149,   // 仙界第 6 张图（七曜天）
+      bossName: "蟠桃园主·千年桃仙", monsters: ["桃林仙猿", "护园力士", "蟠桃花妖", "仙果灵童"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 仙界 · 九天云阙 ----------
-    { name: "九天云阙", w: "xian", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 179,   // 在仙界第 9 张地图（西极天）探索时发现；药材矿石 ×2，灵石 ×2，层序 179
-      bossName: "云阙天尊·九天玄鹤", monsters: ["云阙天兵", "九天雷鹏", "云中仙将", "飞霞剑灵"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "九天云阙", w: "xian", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 179,   // 仙界第 9 张图（西极天）
+      bossName: "云阙天尊·九天玄鹤", monsters: ["云阙天兵", "九天雷鹏", "云中仙将", "飞霞剑灵"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 冥界 · 黄泉幽谷 ----------
-    { name: "黄泉幽谷", w: "ming", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 119,   // 在冥界第 3 张地图（奈何桥）探索时发现；药材矿石 ×2，灵石 ×2，层序 119
-      bossName: "幽谷之主·黄泉鬼母", monsters: ["黄泉游魂", "幽谷鬼蝠", "引路阴差", "枯骨妖藤"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "黄泉幽谷", w: "ming", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 119,   // 冥界第 3 张图（奈何桥）
+      bossName: "幽谷之主·黄泉鬼母", monsters: ["黄泉游魂", "幽谷鬼蝠", "引路阴差", "枯骨妖藤"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 冥界 · 忘川冥渊 ----------
-    { name: "忘川冥渊", w: "ming", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 149,   // 在冥界第 6 张地图（刀山地狱）探索时发现；药材矿石 ×2，灵石 ×2，层序 149
-      bossName: "冥渊之主·忘川冥龙", monsters: ["忘川水鬼", "冥渊骨鱼", "渡魂舟灵", "彼岸花妖"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "忘川冥渊", w: "ming", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 149,   // 冥界第 6 张图（刀山地狱）
+      bossName: "冥渊之主·忘川冥龙", monsters: ["忘川水鬼", "冥渊骨鱼", "渡魂舟灵", "彼岸花妖"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 冥界 · 轮回古殿 ----------
-    { name: "轮回古殿", w: "ming", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 179,   // 在冥界第 9 张地图（无间炼狱）探索时发现；药材矿石 ×2，灵石 ×2，层序 179
-      bossName: "古殿殿主·六道轮回使", monsters: ["轮回鬼卒", "古殿判官", "六道残魂", "业火鬼将"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "轮回古殿", w: "ming", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 179,   // 冥界第 9 张图（无间炼狱）
+      bossName: "古殿殿主·六道轮回使", monsters: ["轮回鬼卒", "古殿判官", "六道残魂", "业火鬼将"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 魔界 · 血煞魔渊 ----------
-    { name: "血煞魔渊", w: "mo", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 149,   // 在魔界第 3 张地图（噬魂魔渊）探索时发现；药材矿石 ×2，灵石 ×2，层序 149
-      bossName: "魔渊之主·血煞魔尊", monsters: ["血煞魔兵", "血河魔蛟", "煞气魔灵", "嗜血魔蝠"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "血煞魔渊", w: "mo", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 149,   // 魔界第 3 张图（噬魂魔渊）
+      bossName: "魔渊之主·血煞魔尊", monsters: ["血煞魔兵", "血河魔蛟", "煞气魔灵", "嗜血魔蝠"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 魔界 · 噬魂魔窟 ----------
-    { name: "噬魂魔窟", w: "mo", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 179,   // 在魔界第 6 张地图（天魔宫）探索时发现；药材矿石 ×2，灵石 ×2，层序 179
-      bossName: "魔窟之主·噬魂魔君", monsters: ["噬魂魔蛛", "窟中魔影", "摄魂魔女", "魂火魔灵"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "噬魂魔窟", w: "mo", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 179,   // 魔界第 6 张图（天魔宫）
+      bossName: "魔窟之主·噬魂魔君", monsters: ["噬魂魔蛛", "窟中魔影", "摄魂魔女", "魂火魔灵"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 魔界 · 万魔古坛 ----------
-    { name: "万魔古坛", w: "mo", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 209,   // 在魔界第 9 张地图（魔神殿）探索时发现；药材矿石 ×2，灵石 ×2，层序 209
-      bossName: "古坛祭主·万魔天尊", monsters: ["古坛魔祭", "万魔傀儡", "魔纹石像", "祭坛魔将"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "万魔古坛", w: "mo", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 209,   // 魔界第 9 张图（魔神殿）
+      bossName: "古坛祭主·万魔天尊", monsters: ["古坛魔祭", "万魔傀儡", "魔纹石像", "祭坛魔将"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 神界 · 太初神域 ----------
-    { name: "太初神域", w: "shen", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 159,   // 在神界第 3 张地图（变天）探索时发现；药材矿石 ×2，灵石 ×2，层序 159
-      bossName: "太初神主·先天神祇", monsters: ["太初神兵", "先天灵兽", "神域守卫", "初光之灵"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "太初神域", w: "shen", find: { map: 2, chance: 5 }, mat: 2, stone: 2, L: 159,   // 神界第 3 张图（变天）
+      bossName: "太初神主·先天神祇", monsters: ["太初神兵", "先天灵兽", "神域守卫", "初光之灵"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 神界 · 鸿蒙神墟 ----------
-    { name: "鸿蒙神墟", w: "shen", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 189,   // 在神界第 6 张地图（颢天）探索时发现；药材矿石 ×2，灵石 ×2，层序 189
-      bossName: "神墟之主·鸿蒙古神", monsters: ["鸿蒙古兽", "神墟残灵", "紫气神将", "墟中石神"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "鸿蒙神墟", w: "shen", find: { map: 5, chance: 5 }, mat: 2, stone: 2, L: 189,   // 神界第 6 张图（颢天）
+      bossName: "神墟之主·鸿蒙古神", monsters: ["鸿蒙古兽", "神墟残灵", "紫气神将", "墟中石神"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
-    // ---------- 神界 · 混元神殿 ----------
-    { name: "混元神殿", w: "shen", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 219,   // 在神界第 9 张地图（阳天）探索时发现；药材矿石 ×2，灵石 ×2，层序 219
-      bossName: "神殿之主·混元神帝", monsters: ["混元神卫", "神殿金甲", "混元灵龙", "殿前神将"],   // 首领名、普通怪名
-      extra: {   // 额外掉落：只有首领有
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],   // 首领：火髓、空间晶核、耀石
+    { name: "混元神殿", w: "shen", find: { map: 8, chance: 5 }, mat: 2, stone: 2, L: 219,   // 神界第 9 张图（阳天）
+      bossName: "神殿之主·混元神帝", monsters: ["混元神卫", "神殿金甲", "混元灵龙", "殿前神将"],
+      extra: {
+        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }],
       } },
   ],
-
-  // ---------- 天外天灵地（预留，暂未开放：代码不读这一项，开放时再接入） ----------
-  //   计划：首领额外掉落 耀石
-  tianwai: {
-    open: false,     // 未开放
-    extra: {
-      boss: [{ item: "耀石", chance: 50, n: [1, 5] }],   // 预留：耀石
-    },
-  },
 };
