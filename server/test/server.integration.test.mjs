@@ -168,6 +168,22 @@ test("HTTP auth and WebSocket actions use authoritative server state", { timeout
   assert.equal(gift.state.stone, persisted.data.stone + 25);
   assert.equal(gift.got.length, 1);
 
+  // Admin config editing: invalid code is rejected, valid code is served and used immediately.
+  const cfgList = await fetch(`${base}/api/admin/config`, { headers: { "X-Token": token } }).then(r => r.json());
+  assert.ok(cfgList.list.some(f => f.name === "start.js"));
+  const original = await fetch(`${base}/api/config/start.js`).then(r => r.text());
+  const bad = await fetch(`${base}/api/admin/config/save`, { method: "POST", headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify({ name: "start.js", content: "CFG.start = {" }) });
+  assert.equal(bad.status, 400);
+  const edited = original + "\n// edited-by-admin-test\n";
+  const configNotice = waitFor(m => m.type === "config");
+  await post(base, "/api/admin/config/save", token, { name: "start.js", content: edited });
+  await configNotice;
+  assert.equal(await fetch(`${base}/api/config/start.js`).then(r => r.text()), edited);
+  const notAdmin = await fetch(`${base}/api/admin/config/file?name=start.js`).then(r => r.status);
+  assert.equal(notAdmin, 401);
+  await post(base, "/api/admin/config/reset", token, { name: "start.js" });
+  assert.equal(await fetch(`${base}/api/config/start.js`).then(r => r.text()), original);
+
   // A second user has a separate VM and state even while the first socket is live.
   const secondToken = (await post(base, "/api/register", null, { username: `test2_${Date.now()}`, password: "test-password-456" })).token;
   const secondChar = await post(base, "/api/character", secondToken, { name: "隔离账号" });
