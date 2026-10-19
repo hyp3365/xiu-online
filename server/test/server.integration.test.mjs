@@ -172,6 +172,8 @@ test("HTTP auth and WebSocket actions use authoritative server state", { timeout
   const cfgList = await fetch(`${base}/api/admin/config`, { headers: { "X-Token": token } }).then(r => r.json());
   assert.ok(cfgList.list.some(f => f.name === "start.js"));
   const original = await fetch(`${base}/api/config/start.js`).then(r => r.text());
+  const loaderBefore = await fetch(`${base}/api/config-loader.js`).then(r => r.text());
+  assert.match(loaderBefore, /api\/config\/start\.js\?h=[0-9a-f]{12}/);
   const bad = await fetch(`${base}/api/admin/config/save`, { method: "POST", headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify({ name: "start.js", content: "CFG.start = {" }) });
   assert.equal(bad.status, 400);
   const edited = original + "\n// edited-by-admin-test\n";
@@ -179,6 +181,8 @@ test("HTTP auth and WebSocket actions use authoritative server state", { timeout
   await post(base, "/api/admin/config/save", token, { name: "start.js", content: edited });
   await configNotice;
   assert.equal(await fetch(`${base}/api/config/start.js`).then(r => r.text()), edited);
+  const loaderAfter = await fetch(`${base}/api/config-loader.js`).then(r => r.text());
+  assert.notEqual(loaderAfter.match(/start\.js\?h=\w+/)[0], loaderBefore.match(/start\.js\?h=\w+/)[0], "edited config gets a new URL");
   const notAdmin = await fetch(`${base}/api/admin/config/file?name=start.js`).then(r => r.status);
   assert.equal(notAdmin, 401);
   await post(base, "/api/admin/config/reset", token, { name: "start.js" });
