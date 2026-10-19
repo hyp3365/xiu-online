@@ -140,10 +140,10 @@ G.module({
     const cap = this.lingCap(), max = a.lv >= DATA.array.MAX, f = this.arrayFactor();
     return rooms + `<div class="card"><h3>${DATA.caveName("array")} · ${a.lv} / ${DATA.array.MAX} 级</h3>
       <div class="row small"><span>聚灵中（每 10 秒 +${U.num(this.gatherAmount())} 灵气）${(u => u > 0 ? `　修炼消耗 <b class="c-red">-${U.num(u)}</b>` : "")(this.lingUse())}</span></div>
-      <div class="bar tick"><div id="gather-bar" style="width:${this.tickPct()}%"></div></div>
+      <div class="bar tick"><div id="gather-bar"></div></div>
       <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
       <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
-      <div class="line"><div>每 10 秒聚灵</div><b>+${U.num(this.gatherAmount())}${this.gatherServant() > 0 ? `<small>道童 +${U.num(this.gatherServant())}</small>` : ""}${this.gatherLz() > 0 ? `<small>灵珠 +${U.num(this.gatherLz())}</small>` : ""}${a.lv > 0 ? `<small>固定 +${U.num(DATA.array.flat(a.lv))}</small>` : ""}</b></div>
+      <div class="line"><div>每 10 秒聚灵</div><b>+${U.num(this.gatherAmount())}${this.gatherServant() > 0 ? `<small>道童 +${U.num(this.gatherServant())}</small>` : ""}${this.gatherLz() > 0 ? `<small>灵珠 +${U.num(this.gatherLz())}</small>` : ""}</b></div>
       <div class="line"><div>修炼速度加成</div><b>+${U.num((f - 1) * 100)}%</b></div>
       <div class="line"><div>下一级<small>加成 +${U.num((DATA.array.factor(a.lv + 1) - 1) * 100)}%，聚灵 +${U.num(DATA.array.gather(a.lv + 1) + DATA.array.flat(a.lv + 1))}</small></div><b>${max ? "满级" : U.fmt(DATA.array.cost(a.lv)) + " 灵石"}</b></div>
       <div class="btns">
