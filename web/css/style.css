@@ -482,6 +482,7 @@ button small .cd{min-width:0}
 
 /* v196 功法层数：绿色「第N层」 */
 .tag.gf-lv { color: #6fd46f; border-color: #3f8f3f; }
+.tag.gf-to { color: #ff5a5a; border-color: #d04545; margin-left: 0; }
 
 /* v199 神识 · 养神：人物打坐动画 */
 #view:has(.ys-card) { display: flex; flex-direction: column; overflow: hidden; }
