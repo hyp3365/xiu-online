@@ -48,10 +48,10 @@ DATA.maps.forEach((m, i) => { const n = ((CFG.names.map || {}).fan || [])[i]; if
 // v45：仙界 / 冥界 / 魔界 / 神界各 10 张地图（config/worldmaps.js）接在凡界后面，序号 9 起
 //   DATA.maps[a].w = 所在界；DATA.worldMapIdx[界] = 这一界的地图序号列表
 DATA.FAN_MAP_N = DATA.maps.length;
-// 各地图掉落（下标 = 地图序号）：凡界来自 config/drops.js 的 mapDrops（共用药材矿石名 + 每张图 stone / herb / ore 范围）
-//   每项 { stone: 凡界[最少,最多] / 四界倍率, herb: [名字], ore: [名字], special?, herbN?, oreN?, fixed? }
-DATA.mapDrops = (() => { const M = CFG.mapDrops || {}; if (Array.isArray(M)) return M.map(m => ({ ...m }));   // 旧格式（管理员保存过的旧覆盖）
-  return (M.maps || []).map(m => ({ stone: m.stone, herb: M.herb || [], ore: M.ore || [], herbN: m.herb, oreN: m.ore, fixed: m.fixed })); })();
+// 各地图药材矿石表（下标 = 地图序号）：凡界 9 张共用 config/drops.js 的 mapDrops，fixed 按地图序号单独写
+//   每项 { herb: [名字], ore: [名字], special?, fixed? }
+DATA.mapDrops = (() => { const M = CFG.mapDrops || {}; if (Array.isArray(M)) return M.map(m => ({ herb: m.herb || [], ore: m.ore || [], fixed: m.fixed }));   // 旧格式（管理员保存过的旧覆盖）
+  return DATA.maps.map((m, a) => ({ herb: M.herb || [], ore: M.ore || [], fixed: (M.fixed || {})[a] })); })();
 // 怪物数据容器（js/data/mobs.js 填）：regions[地图][区域] = { name, L, normal, elite, boss }，MAP_REALM[地图] = 进入境界
 CFG.monster = { regions: [], MAP_REALM: [] };
 DATA.maps.forEach(m => { m.w = "fan"; });
@@ -68,7 +68,7 @@ for (const pass of [0, 1]) for (const w of ["xian", "ming", "mo", "shen"]) {
     DATA.worldMapIdx[w].push(a);
     CFG.monster.regions[a] = W.regions[i];   // 只有区域名和 L；怪物属性、进入境界在 js/data/mobs.js 按 config/mobs.js 生成
     // 四界地图的掉落：药材表 / 矿石表 / 特产（config/drops.js 的 worldDrops）
-    DATA.mapDrops[a] = { stone: m.stone === undefined ? 1 : m.stone, herb: D.herb || [], ore: D.ore || [], special: D.special || [] };
+    DATA.mapDrops[a] = { herb: D.herb || [], ore: D.ore || [], special: D.special || [] };
   });
 }
 
@@ -107,8 +107,6 @@ DATA.mapPool = a => {
   for (const n of names) { const x = DATA.matByName[n]; if (x && o[x.kind] && !o[x.kind].includes(n)) o[x.kind].push(n); }
   return o;
 };
-DATA.mapStone = a => { const m = DATA.mapDrops[a]; return m && typeof m.stone === "number" ? m.stone : 1; };   // 四界地图灵石倍率
-DATA.mapStoneRange = a => { const m = DATA.mapDrops[a]; return m && Array.isArray(m.stone) ? m.stone : null; };   // 凡界地图每只普通怪灵石[最少, 最多]
 DATA.mapReq = a => { const v = (CFG.monster.MAP_REALM || [])[a]; return v === undefined ? a : v; }; // 该地图需要的境界
 // 凡界地图会掉的全部药材、矿石名字（坊市只卖这些）
 DATA.fanMats = () => {
