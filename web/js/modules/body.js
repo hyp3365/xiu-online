@@ -41,8 +41,11 @@ G.module({
     // 肉身修炼速度（每 10 秒）
     bodySpeed() {
       const s = this.s, base = (CFG.body.BASE_SPEED || 0) * Math.pow(CFG.body.SPEED_GROW, s.mortal ? 0 : s.L);
-      const M = this.mifaBonus(), gf = this.gongfaBonus().body || 0, mf = M.bodySpeed || 0, pct = (M.bodySpeedPct || 0) + (this.servantPct ? this.servantPct("cult") : 0);   // 炼体秘法圆满额外 % + 道童辅助修炼 %
-      return { base, gf, mf, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100)) };
+      const M = this.mifaBonus(), gf = this.gongfaBonus().body || 0, mf = M.bodySpeed || 0;
+      // 修炼室加成同样作用于肉身修炼（免费修炼室优先，和修为修炼一致）
+      const room = this.freeCultOn && this.freeCultOn() ? this.freeCultPct() : s.room >= 0 && s.sect && this.roomPct ? this.roomPct(s.room) : 0;
+      const pct = (M.bodySpeedPct || 0) + (this.servantPct ? this.servantPct("cult") : 0) + room;   // 炼体秘法圆满额外 % + 道童辅助修炼 % + 修炼室 %
+      return { base, gf, mf, room, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100)) };
     },
     // 突破到第 T 层的消耗
     bodyCost(T) {
@@ -92,13 +95,15 @@ G.module({
       const s = this.s, B = CFG.body, sp = this.bodySpeed(), has = this.hasTijue(), max = this.bodyMax(), cap = this.lingCap();
       const need = this.bodyNeed(), c = max ? null : this.bodyCost(), why = this.bodyBlock(), bb = this.bodyBonus();
       const status = !s.bodyAuto ? "未修炼" : !has ? "<b class='q5'>未学肉身秘诀</b>" : this.exBlocksCult() ? "<b class='q5'>历练 / 探索中，无法修炼</b>" : max ? "已达极境" : s.ling < 1 ? "<b class='q5'>灵气耗尽</b>" : "自动修炼中";
-      const names = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", speed: "速度", hit: "命中", dodge: "闪避", crit: "暴击%", res: "各系抗性" };
-      const bonus = Object.keys(names).filter(k => bb[k]).map(k => `<div><span>${names[k]}</span>+${k === "crit" ? U.num(bb[k]) : U.fmt(bb[k])}</div>`).join("");
-      return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}<small>${s.bodyL < 0 ? "" : `第 ${Math.floor(s.bodyL / DATA.LAYERS) + 1} / ${B.names.length} 境`}</small></h3>
+      const names = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", speed: "速度", hit: "命中", dodge: "闪避", crit: "暴击%" };
+      // 抗性：每系（金木水火土雷）单独一行
+      const bonus = Object.keys(names).filter(k => bb[k]).map(k => `<div><span>${names[k]}</span>+${k === "crit" ? U.num(bb[k]) : U.fmt(bb[k])}</div>`).join("")
+        + (bb.res ? DATA.elements.map(e => `<div><span>${e.name}抗性</span>+${U.fmt(bb.res)}</div>`).join("") : "");
+      return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}</h3>
         ${has ? "" : `<p class="desc q5">需要先学会一本肉身秘诀（宗门 → 功法殿）。</p>`}
         <div class="row small"><span>肉身修炼速度 <b class="q4">${U.num(sp.total)}</b> / 10秒</span><span>${status}</span></div>
-        <p class="desc">基础 ${U.num(sp.base)} + 肉身秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}</p>
-        <div class="bar tick"><div id="body-bar" style="width:${this.bodyActive() ? this.tickPct() : 0}%"></div></div>
+        <p class="desc">基础 ${U.num(sp.base)} + 肉身秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}</p>
+        <div class="bar tick"><div id="body-bar"></div></div>
         <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
         <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
         <div class="btns">
@@ -110,7 +115,7 @@ G.module({
         <div class="bar"><div style="width:${Math.min(100, s.bodyExp / need * 100)}%"></div></div>
         <p class="desc">突破消耗：<span class="${s.stone >= c.stone ? "" : "q5"}">灵石 ${U.fmt(c.stone)}</span>、${c.herbs.map(h => { const hv = this.herbCount(h.name); return `<span class="${hv >= h.n ? "" : "q5"}">${h.name} ${U.fmt(hv)}/${U.fmt(h.n)}</span>`; }).join("、")}</p>`}
         </div>
-        <div class="card"><h3>肉身加成<small>已突破 ${s.bodyL + 1} 层</small></h3>${bonus ? `<div class="stats">${bonus}</div>` : `<p class="desc">尚未突破，突破后每层增加属性。</p>`}</div>`;
+        <div class="card"><h3>肉身加成</h3>${bonus ? `<div class="stats">${bonus}</div>` : `<p class="desc">尚未突破，突破后每层增加属性。</p>`}</div>`;
     },
   },
 });
