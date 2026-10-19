@@ -12,6 +12,11 @@ fi
 printf '>>> 拉取 hyp3699/xiu-online 的 main 分支\n'
 git -C "$DIR" fetch --depth 1 origin main
 git -C "$DIR" reset --hard FETCH_HEAD
+# 更新器自己有新版本时，装好后用新版本重新执行一遍（否则本次仍按旧脚本跑，新增步骤要等下次才生效）
+if [ -z "${XIU_UPDATE_REEXEC:-}" ] && ! cmp -s "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update; then
+  install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
+  XIU_UPDATE_REEXEC=1 exec /usr/local/bin/xiu-online-update "$@"
+fi
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
 (cd "$DIR/server" && npm ci --omit=dev --no-audit --no-fund)
