@@ -68,6 +68,8 @@ G.module({
     roomLocked(i) { return (DATA.rooms[i].rank || 0) > this.s.rank; },
     gfRoomPct(i) { return DATA.gfRooms[i].pct; },   // v97：减少修炼时间 %，不乘星级
     gfRoomCost(i) { return DATA.gfRooms[i].cost; },   // v98：写多少就是多少，不乘星级
+    gfRoomUnits() { return Math.max(1, Math.round((CFG.sect.gfRoomSec || 5) / DATA.STUDY_STEP)); },   // 几个 5 秒单位扣一次贡献
+    gfRoomSec() { return this.gfRoomUnits() * DATA.STUDY_STEP; },
     gfRoomLocked(i) { return (DATA.gfRooms[i].rank || 0) > this.s.rank; },
     // 当前练功房：{ name, pct, mul, cost, cur: "contrib" } 或 null
     // pct = 减少修炼时间 %；mul = 修炼进度倍率 = 100 ÷ (100 − pct)
@@ -671,11 +673,11 @@ G.module({
       }).join("") + `</div>`;
     } else if (tab === "gfroom") {
       const FG = CFG.sect.freeGfRoom, fg = s.freeGf || {}, fgOn = this.freeGfOn(), fgDone = !fgOn && this.freeUsed(fg) >= FG.daily;
-      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "gfroom", "练功房")}<small>减少功法修炼时间 · 修炼功法时每 5 秒消耗贡献</small></h3>
+      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "gfroom", "练功房")}<small>减少功法修炼时间 · 修炼功法时每 ${this.gfRoomSec()} 秒消耗贡献</small></h3>
         <div class="line"><div>${FG.name}<span class="tag">修炼时间 -${U.num(this.freeGfPct())}%</span><small>${fgOn ? `剩余 ${U.cd(Math.ceil((fg.end - this.now()) / 1000))}` : `每天 ${FG.daily} 次 · 每次 ${FG.minutes} 分钟 · 不消耗贡献`}</small></div>
           <button class="sm ${fgOn ? "on" : ""}" onclick="G.enterFreeGfRoom()" ${fgOn || fgDone ? "disabled" : ""}>${fgOn ? "使用中" : fgDone ? "今日已用" : "进入"}</button></div>` + DATA.gfRooms.map((r, i) => {
         const on = s.gfRoom === i, lock = !on && this.gfRoomLocked(i);
-        return `<div class="line"><div>${r.name}<span class="tag">修炼时间 -${U.num(this.gfRoomPct(i))}%</span>${r.rank ? `<span class="tag">${DATA.ranks[r.rank].name}专用</span>` : ""}<small>每 5 秒消耗 ${U.fmt(this.gfRoomCost(i))} 贡献</small></div>
+        return `<div class="line"><div>${r.name}<span class="tag">修炼时间 -${U.num(this.gfRoomPct(i))}%</span>${r.rank ? `<span class="tag">${DATA.ranks[r.rank].name}专用</span>` : ""}<small>每 ${this.gfRoomSec()} 秒消耗 ${U.fmt(this.gfRoomCost(i))} 贡献</small></div>
           <button class="sm ${on ? "on" : ""}" onclick="G.enterGfRoom(${i})" ${lock ? "disabled" : ""}>${on ? "使用中" : lock ? "职务不足" : "进入"}</button></div>`;
       }).join("") + `<p class="desc">只在功法修炼队列有功法在修炼时才消耗；功法修炼时间缩短，消耗的修为不变。</p></div>`;
     } else if (tab === "pool") {
