@@ -309,7 +309,9 @@ const API = {
       pending.reject(new Error(error)); return;
     }
     this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result, pending.exStart, message.logs || []);
-    if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true, failed);
+    const bt = Array.isArray(message.battles) && message.battles[message.battles.length - 1];
+    if (bt && bt.b && G.playBattle) { G.playBattle(bt.b, bt.title, bt.txt, bt.win, bt.logs || undefined, bt.replay, bt.opt || {}); }   // 服务器打完的战斗在这里播放
+    else if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true, failed);
     pending.resolve(message);
   },
 
