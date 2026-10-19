@@ -88,11 +88,11 @@ CFG.wudao = {
   // 怪物秘法：按 CHANCE% 判定有无，有则从 POOL 随机 N[0]~N[1] 种（不重复）
   MOB_MIFA: {
     POOL: ["lianxing", "yutian", "pojun", "xuesha", "zhenhun", "jinchan"],
-    normal: { CHANCE: 20, N: [1, 1] },
-    elite:  { CHANCE: 60, N: [1, 2] },
-    boss:   { CHANCE: 100, N: [2, 3] },
+    normal: { CHANCE: 20, N: [0, 1] },
+    elite:  { CHANCE: 30, N: [0, 1] },
+    boss:   { CHANCE: 50, N: [1, 2] },
     // 四界官位 NPC：必有，种数 = 随机[最少, 最多]
-    官位: { 天将: [3, 3], 星君: [4, 4], 界主: [5, 6] },
+    官位: { 天将: [2, 3], 星君: [3, 4], 界主: [5, 6] },
   },
   STUDY_MIN_SEC: 10,  // 功法 / 法术被悟道、悟法减时后每层最少秒数
 
