@@ -7,6 +7,23 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
 const TICK_MS = 10_000;
+// 游戏参数（web/js/config/*.js）：管理员在网页里改过的版本存放在数据目录，不进 git，GitHub 更新也不会覆盖。
+export const CONFIG_DIR = path.join(ROOT, "web/js/config");
+export const CONFIG_OVERRIDE_DIR = path.resolve(process.env.XIU_CONFIG_DIR || path.join(process.env.XIU_DATA_DIR || path.join(HERE, "data"), "config"));
+export function configNames() {
+  return fs.readdirSync(CONFIG_DIR).filter(f => /^[a-z0-9_-]+\.js$/i.test(f)).sort();
+}
+export function validConfigName(name) {
+  const n = String(name || "");
+  if (!/^[a-z0-9_-]+\.js$/i.test(n) || !configNames().includes(n)) throw Object.assign(new Error("没有这个参数文件"), { status: 404 });
+  return n;
+}
+export function configOverridden(name) { return fs.existsSync(path.join(CONFIG_OVERRIDE_DIR, name)); }
+export function readConfig(name, { original = false } = {}) {
+  const n = validConfigName(name);
+  if (!original && configOverridden(n)) return fs.readFileSync(path.join(CONFIG_OVERRIDE_DIR, n), "utf8");
+  return fs.readFileSync(path.join(CONFIG_DIR, n), "utf8");
+}
 const MAX_TICKS_PER_ADVANCE = 3_000_000;
 
 function elementStub() {
@@ -46,7 +63,8 @@ function safeClone(value) {
 }
 
 export class GameEngine {
-  constructor() {
+  // overrides：{ "mobs.js": "代码" }，用于保存前先用新参数完整加载一遍做检查
+  constructor(overrides = {}) {
     this.clock = { now: Date.now() };
     this.random = Math.random;
     this.sequence = 0;
@@ -89,9 +107,14 @@ export class GameEngine {
     const html = fs.readFileSync(path.join(ROOT, "web/index.html"), "utf8");
     const sources = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1].split("?")[0]);
     for (const source of sources) {
-      const fullPath = path.resolve(ROOT, "web", source);
-      if (!fullPath.startsWith(path.join(ROOT, "web") + path.sep)) throw new Error(`Invalid game script path: ${source}`);
-      const code = fs.readFileSync(fullPath, "utf8");
+      let code;
+      const cfg = source.match(/^(?:api|js)\/config\/([^/]+\.js)$/);
+      if (cfg) code = Object.prototype.hasOwnProperty.call(overrides, cfg[1]) ? overrides[cfg[1]] : readConfig(cfg[1]);
+      else {
+        const fullPath = path.resolve(ROOT, "web", source);
+        if (!fullPath.startsWith(path.join(ROOT, "web") + path.sep)) throw new Error(`Invalid game script path: ${source}`);
+        code = fs.readFileSync(fullPath, "utf8");
+      }
       vm.runInContext(code, sandbox, { filename: source, timeout: 5_000 });
     }
     vm.runInContext("globalThis.__xiuGame = G; globalThis.__xiuData = DATA; globalThis.__xiuConfig = CFG;", sandbox, { timeout: 1_000 });
