@@ -36,6 +36,11 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE"
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+# 网页「设置 → 管理员 → 从 GitHub 更新」：root 的 path 单元监听请求文件并运行本更新器
+install -m 0644 "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-online-web-update.service
+install -m 0644 "$DIR/deploy/xiu-web-update.path" /etc/systemd/system/xiu-online-web-update.path
+systemctl daemon-reload
+systemctl enable --now xiu-online-web-update.path
 NGX_DIR=$(find /etc/nginx/conf.d/central_vps_users -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null || true)
 if [ -n "$NGX_DIR" ]; then
   install -m 0644 "$DIR/deploy/nginx-xiuxian.conf" "$NGX_DIR/xiu-online-test.conf"
