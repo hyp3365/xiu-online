@@ -31,7 +31,7 @@ const SECT_NAMES = [
   [["道源","道源圣地","金"],["万象","万象天宫","金"],["长生","长生天","木"],["青帝","青帝神宫","木"],["沧溟","沧溟神宫","水"],["天河","天河圣宫","水"],["炎帝","炎帝神庭","火"],["不死","不死火山","火"],["后土","后土神殿","土"],["盘古","盘古圣殿","土"],["雷帝","雷帝神宫","雷"],["九霄","九霄神庭","雷"]],
 ];
 DATA.SECT_STARS = SECT_NAMES.length;   // 门派星级数（10）
-DATA.sectReq = star => (CFG.sect.REQ_REALM || [])[star - 1] !== undefined ? CFG.sect.REQ_REALM[star - 1] : Math.min(DATA.realms.length - 1, (star - 1) * 2); // -1 = 凡人
+DATA.sectReq = star => CFG.sect.REQ_REALM[star - 1]; // -1 = 凡人
 const EL_ID = { 金: "jin", 木: "mu", 水: "shui", 火: "huo", 土: "tu", 雷: "lei" };
 
 DATA.sects = [];
@@ -50,14 +50,12 @@ SECT_NAMES.forEach((list, i) => {
   });
 });
 
-/* 宗门大殿、事务堂、练功房、试炼塔、秘境、宝库的数值都在 js/config/ 下的数值文件 第十三部分 sect */
+/* 宗门大殿、事务堂、练功房、试炼塔、秘境、宝库的数值在 config/sect.js */
 const _SC = CFG.sect;
 DATA.ranks = _SC.ranks;
 DATA.affairs = _SC.affair.tasks;
 DATA.rooms = _SC.rooms;                 // 修炼室（原练功房）
 DATA.gfRooms = _SC.gfRooms || [];       // v27 练功房：加快功法修炼
-DATA.treasury = _SC.treasury;
-DATA.towerMax = star => ((_SC.trial || {}).FLOORS || [])[star - 1] || _SC.tower.MAX;   // v25：N 星试炼塔层数
-// v26：每层贡献 = trial.floor.contrib[星级-1] × 层数（没设置时用 tower.REWARD）
-DATA.towerReward = (floor, star) => { const c = (((_SC.trial || {}).floor || {}).contrib || [])[star - 1]; return (c === undefined ? _SC.tower.REWARD : c) * floor; }; // 首次通关奖励贡献
+DATA.towerMax = star => _SC.trial.FLOORS[star - 1];   // N 星试炼塔层数
+DATA.towerReward = (floor, star) => _SC.trial.floor.contrib[star - 1] * floor;   // 首次通关奖励贡献
 DATA.secretCost = star => _SC.SECRET_COST * star;
