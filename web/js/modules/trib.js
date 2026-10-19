@@ -25,27 +25,23 @@ G.module({
     /* ---------- 数值 ---------- */
     // 渡劫时长（秒）：按突破后的大境界查 TIME（键 = 境界原名或改名后的名字）
     tribTime(L) {
-      const T = CFG.trib, ri = Math.floor(L / DATA.LAYERS), o = T.TIME || {};
-      const v = o[DATA.realms[ri]] !== undefined ? o[DATA.realms[ri]] : o[DATA.NM_DEF.realm[ri]];
-      return Math.max(1, v !== undefined ? v : T.TIME_DEFAULT || 60);
+      const ri = Math.floor(L / DATA.LAYERS), o = CFG.trib.TIME;
+      return Math.max(1, o[DATA.realms[ri]] !== undefined ? o[DATA.realms[ri]] : o[DATA.NM_DEF.realm[ri]]);
     },
     // 劫云（v226）：属性 = 突破后那一层（境界、层）的修为 + 肉身 + 三类功法（学% 按层平均递增）× 当层倍率 × 随机 CFG.trib.RAND
     tribRow(L) {
       const T = CFG.trib, ri = Math.floor(L / DATA.LAYERS), lay = L % DATA.LAYERS + 1;
-      const rows = Array.isArray(T.MOB) ? T.MOB : [];
-      const R = DATA.mobRange, hit = r => Array.isArray(r) && r[0] === ri && lay >= R(r[1])[0] && lay <= R(r[1])[1];
-      let r = rows.find(hit);
-      if (!r) { const d = T.MOB_DEFAULT || [0, [1, 10], [1, 100, 4], [2, 0, 0], [3, 0, 0], 0]; r = [ri].concat(d.slice(1)); }
+      const R = DATA.mobRange, r = T.MOB.find(r => r[0] === ri && lay >= R(r[1])[0] && lay <= R(r[1])[1]);
       const ly = R(r[1]), p = ly[1] > ly[0] ? (lay - ly[0]) / (ly[1] - ly[0]) : 0;   // 这一层在分段里的位置 0 ~ 1
       const lerp = (v, round) => { const a = R(v), x = a[0] + (a[1] - a[0]) * p; return round ? Math.round(x) : x; };
-      const cat = c => { const x = r.slice(2, 5).find(y => Array.isArray(y) && y[0] === c) || [c, 0, 0]; return [c, lerp(x[1]), lerp(x[2], true)]; };
-      const k = 1 + (lay - ly[0]) * (r[5] || 0);
+      const cat = c => { const x = r.slice(2, -1).find(y => y[0] === c) || [c, 0, 0]; return [c, lerp(x[1]), lerp(x[2], true)]; };   // 没写的类别 = 不学
+      const k = 1 + (lay - ly[0]) * r[r.length - 1];   // 最后一个数 = 每层倍率
       return [0, ri, lay, 0, cat(1), cat(2), cat(3), k];   // 怪物 8 个数格式，功法星级 0 = 该境界能学到的全部星级
     },
     makeTrib(L) {
       const T = CFG.trib, st = DATA.mobStats(this.tribRow(L));
-      const R = T.RAND || [1, 1], rnd = R[0] + Math.random() * (R[1] - R[0]);
-      return { atk: st.atk * rnd, crit: T.crit === undefined ? 5 : T.crit };
+      const R = T.RAND, rnd = R[0] + Math.random() * (R[1] - R[0]);
+      return { atk: st.atk * rnd, crit: T.crit };
     },
     // 劫云劈一次的伤害 [伤害, 是否暴击]
     tribHit(x) {
@@ -56,7 +52,7 @@ G.module({
     },
 
     /* ---------- 准备页的格子 ---------- */
-    tribSlotN() { return CFG.trib.SLOTS || 10; },
+    tribSlotN() { return CFG.trib.SLOTS; },
     // 找格子里的东西；找不到（卖了、用了、遗忘了）返回 null
     tribFind(c) {
       const s = this.s; if (!c) return null;
@@ -109,14 +105,14 @@ G.module({
       const s = this.s; if (s.trib || !this.canBreak() || !this.needTrib()) return;
       const L = s.L + 1, t = this.makeTrib(L), st = this.stats();
       s.hp = st.hp; s.mana = st.mana;   // 开始时生命法力回满
-      s.trib = { v: 2, L, start: this.now() + (CFG.trib.PRE_SEC || 0) * 1000, time: this.tribTime(L), sec: 0, atk: t.atk, crit: t.crit, taken: 0, hits: 0, log: [], result: "", shield: null, cd: {}, used: {} };
+      s.trib = { L, start: this.now() + CFG.trib.PRE_SEC * 1000, time: this.tribTime(L), sec: 0, atk: t.atk, crit: t.crit, taken: 0, hits: 0, log: [], result: "", shield: null, cd: {}, used: {} };
       this.log(`劫云压顶，${this.realmName(L)}天劫降临！`, "gold");
       this.tribOpen = true; this.save && this.save(); this.tribRender(true);
     },
     // 按时间推进：每 HIT_SEC 秒劈一次（离线回来一次算完）
     advanceTrib() {
       const s = this.s, x = s.trib; if (!x || x.result) return;
-      const HS = CFG.trib.HIT_SEC || 1;
+      const HS = CFG.trib.HIT_SEC;
       let hit = null;
       while (!x.result) {
         const nextHit = (Math.floor(x.sec / HS) + 1) * HS;
@@ -299,7 +295,7 @@ G.module({
     tribUse(i) {
       const s = this.s, x = s.trib; if (!x || x.result) return;
       this.advanceTrib(); if (x.result) return this.tribRender(false);
-      const c = s.tribSlots[i], f = this.tribFind(c), U0 = CFG.trib.USE || {}; if (!f) return;
+      const c = s.tribSlots[i], f = this.tribFind(c), U0 = CFG.trib.USE; if (!f) return;
       if (!x.cd) x.cd = {}; if (!x.used) x.used = {};
       if (x.used[i]) return this.tribToast("这颗丹药已经用了");
       if ((x.cd[i] || 0) > this.now()) return this.tribToast(`还要 ${Math.ceil((x.cd[i] - this.now()) / 1000)} 秒才能再用`);
@@ -316,22 +312,22 @@ G.module({
         if ((s.mana || 0) < fb.mana) return this.tribToast("法力不足");
         s.mana -= fb.mana;
         const o = fb.shield ? { hp: fb.shield.hp, def: fb.shield.def, red: fb.shield.red }
-          : { hp: (Math.max(0, fb.atk * fb.pct / 100) + (fb.addDmg || 0)) * (U0.FB_SHIELD === undefined ? 1 : U0.FB_SHIELD) };
-        addSh(o); x.cd[i] = this.now() + (U0.FB_CD || 0) * 1000;
+          : { hp: (Math.max(0, fb.atk * fb.pct / 100) + (fb.addDmg || 0)) * U0.FB_SHIELD };
+        addSh(o); x.cd[i] = this.now() + U0.FB_CD * 1000;
         msg = `祭出${fb.name}，护盾 +${U.fmt(o.hp)}`;
       } else if (c.k === "sp") {
         const sp = DATA.spellInfo(c.id, s.gongfa[c.id]);
         if ((s.mana || 0) < sp.mana) return this.tribToast("法力不足");
         s.mana -= sp.mana;
-        const hp = Math.max(0, sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id)) * (U0.SP_SHIELD === undefined ? 1 : U0.SP_SHIELD);
-        addSh({ hp }); x.cd[i] = this.now() + (U0.SP_CD || 0) * 1000;
+        const hp = Math.max(0, sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id)) * U0.SP_SHIELD;
+        addSh({ hp }); x.cd[i] = this.now() + U0.SP_CD * 1000;
         msg = `施展《${sp.name}》，护盾 +${U.fmt(hp)}`;
       } else if (c.k === "it") {
         const bi = s.bag.findIndex(it => (it.t === "pill" || it.t === "dan") && this.itemName(it) === c.name); if (bi < 0) return;
         const it = s.bag[bi];
         if (it.t === "dan" && this.danLeft(it.type, it.g) > 0) { const key = it.type + "|" + it.g; s.danEaten[key] = (s.danEaten[key] || 0) + 1; this.dirty(); }
         this.removeAt(bi, 1);
-        const st2 = this.stats(), hp = st2.hp * (U0.PILL_HP || 0) / 100, mp = (st2.mana || 0) * (U0.PILL_MP || 0) / 100;
+        const st2 = this.stats(), hp = st2.hp * U0.PILL_HP / 100, mp = (st2.mana || 0) * U0.PILL_MP / 100;
         s.hp = Math.min(st2.hp, s.hp + hp); s.mana = Math.min(st2.mana || 0, (s.mana || 0) + mp);
         x.used[i] = true;
         msg = `服下${c.name}，生命 +${U.fmt(hp)}、法力 +${U.fmt(mp)}`;
