@@ -36,7 +36,7 @@ G.module({
       const lerp = (v, round) => { const a = R(v), x = a[0] + (a[1] - a[0]) * p; return round ? Math.round(x) : x; };
       const cat = c => { const x = r.slice(2, -1).find(y => y[0] === c) || [c, 0, 0]; return [c, lerp(x[1]), lerp(x[2], true)]; };   // 没写的类别 = 不学
       const k = 1 + (lay - ly[0]) * r[r.length - 1];   // 最后一个数 = 每层倍率
-      return [0, ri, lay, 0, cat(1), cat(2), cat(3), k];   // 怪物 8 个数格式，功法星级 0 = 该境界能学到的全部星级
+      return [ri, lay, 0, cat(1), cat(2), cat(3), k];   // 怪物 7 个数格式，功法星级 0 = 该境界能学到的全部星级
     },
     makeTrib(L) {
       const T = CFG.trib, st = DATA.mobStats(this.tribRow(L));
