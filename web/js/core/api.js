@@ -52,8 +52,15 @@ const API = {
 
   syncClock(serverNow) {
     if (!Number.isFinite(Number(serverNow))) return;
+    // 时钟只往前平滑校准：快照路上的网络延迟每次不同，直接覆盖会让时间前后跳，进度条一顿一顿。
+    // 差距超过 1.5 秒（首次同步、休眠恢复）才直接重设。
+    const perf = typeof performance !== "undefined" ? performance.now() : 0;
+    if (this.serverNow) {
+      const cur = this.serverNow + (perf - this._clockPerf), next = Number(serverNow);
+      if (Math.abs(next - cur) <= 1500 && next <= cur) return;
+    }
     this.serverNow = Number(serverNow);
-    this._clockPerf = typeof performance !== "undefined" ? performance.now() : 0;
+    this._clockPerf = perf;
     if (!this._clockInstalled) {
       const api = this, nativeNow = Date.now.bind(Date);
       Date.now = function () {
@@ -188,8 +195,7 @@ const API = {
         }
         if (event.code === 4001 && typeof G !== "undefined" && G.kicked) G.kicked();
         else if (this.token && this.serverState && event.code !== 1000) {
-          this.setSync("连接中断，正在重连…");
-          this.showActionFeedback("连接中断，正在重连…", "bad");
+          // 后台静默重连，不在前台弹提示
           clearTimeout(this._reconnectTimer);
           this._reconnectTimer = setTimeout(() => this.connectSocket().catch(() => {}), 1500);
         }
