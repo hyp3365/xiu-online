@@ -76,7 +76,7 @@ G.module({
       const esc = x => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
       (this._sels || (this._sels = {}))[key] = { opts, cur, fn };
       const o = opts.find(x => String(x[0]) === String(cur)) || opts[0] || ["", ""];
-      return `<button class="sel" onclick="G.openSel('${esc(key)}')"><span${o[2] ? ` class="${o[2]}"` : ""}>${esc(o[1])}</span><i>▾</i></button>`;   // o[2]：显示颜色 class
+      return `<button class="sel" data-sel="${esc(key)}" onclick="G.openSel('${esc(key)}')"><span${o[2] ? ` class="${o[2]}"` : ""}>${esc(o[1])}</span><i>▾</i></button>`;   // o[2]：显示颜色 class
     },
     openSel(key) {
       const o = (this._sels || {})[key]; if (!o) return;
@@ -85,7 +85,15 @@ G.module({
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
       const cur = document.querySelector(".sel-list button.on"); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "center" });
     },
-    pickSel(key, i) { const o = (this._sels || {})[key]; this.closeModal(); if (o && o.opts[i]) o.fn(o.opts[i][0]); },
+    pickSel(key, i) {
+      const o = (this._sels || {})[key]; this.closeModal(); if (!o || !o.opts[i]) return;
+      const [v, t, c] = o.opts[i];
+      // 先在界面上显示选中的项（不等服务器往返），服务器结果回来后会按真实状态重绘
+      o.cur = v;
+      const span = typeof document !== "undefined" && document.querySelector && [...document.querySelectorAll("button.sel")].find(b => b.dataset && b.dataset.sel === key)?.querySelector("span");
+      if (span) { span.textContent = t; span.className = c || ""; }
+      o.fn(v);
+    },
     bsetView() {
       const b = this.bsetGet(), acts = this.bsetActs(), esc = x => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
       const opt = (opts, cur) => opts.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(cur || "") ? "selected" : ""}>${esc(t)}</option>`).join("");
