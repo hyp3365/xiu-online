@@ -100,7 +100,10 @@ const API = {
       const button = event.target && event.target.closest ? event.target.closest("button") : null;
       if (!button) return;
       this._clickedButton = button;
-      Promise.resolve().then(() => { if (this._clickedButton === button) this._clickedButton = null; });
+      // 必须用 setTimeout（宏任务）清除：真实点击时，捕获监听器返回后浏览器会立刻跑微任务，
+      // 用 Promise.resolve().then 会在按钮自己的 onclick 执行前就把记录清掉，
+      // 导致按钮没有“处理中”状态、data-refresh 弹窗也不会刷新。
+      setTimeout(() => { if (this._clickedButton === button) this._clickedButton = null; }, 0);
     }, true);
     this._clickTracking = true;
   },
