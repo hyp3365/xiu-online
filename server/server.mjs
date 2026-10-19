@@ -286,7 +286,7 @@ const server = http.createServer(async (req, res) => {
       await readBody(req);
       if (!user.is_admin) return error(res, 403, "只有管理员可以更新");
       // 写一个请求文件，由 root 的 xiu-online-web-update.path 监听并执行 xiu-online-update（Node 服务本身不提权）
-      try { fs.rmSync(UPDATE_LOG, { force: true }); fs.writeFileSync(UPDATE_LOG, `>>> 已提交更新请求 ${new Date().toLocaleString("zh-CN", { hour12: false })}，等待更新服务启动…\n`); } catch {}
+      try { fs.rmSync(UPDATE_LOG, { force: true }); fs.writeFileSync(UPDATE_LOG, `>>> 已提交更新请求 ${new Date().toLocaleString("zh-CN", { hour12: false, timeZone: "Asia/Shanghai" })}，等待更新服务启动…\n（一直停在这里：说明服务器还没装好网页更新服务，请在服务器上手动运行一次 sudo xiu-online-update）\n`); } catch {}
       try { fs.writeFileSync(UPDATE_TRIGGER, String(Date.now())); }
       catch (err) { return error(res, 500, "提交更新请求失败：" + err.message); }
       return sendJson(res, 200, { ok: true });
