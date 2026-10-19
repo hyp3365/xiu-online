@@ -23,6 +23,9 @@ const API = {
   _connectPromise: null,
   _reconnectTimer: null,
   _actionCounter: 0,
+  _seq: 0,
+  // 开关 / 设置类操作：先在本地改好显示，服务器结果到了再以服务器为准（失败会自动恢复）。
+  OPTIMISTIC: new Set(["toggleAuto", "toggleAutoPill", "toggleBodyAuto", "toggleRefill", "bsetToggle", "bsetMove", "bsetFoe", "bsetRound", "bsetSet", "autoTaskSet", "cultSetSave", "atPickSet"]),
 
   async req(path, body, method) {
     const opt = { method: method || (body === undefined ? "GET" : "POST"), headers: { "Content-Type": "application/json" }, cache: "no-store" };
@@ -72,14 +75,33 @@ const API = {
     }
   },
 
+  // 应用服务器补丁（格式见 server.mjs 的 diffState）
+  patchState(target, patch) {
+    if (!patch || patch.$p !== 1 || !target || typeof target !== "object" || Array.isArray(target)) return patch;
+    for (const k of patch.d || []) delete target[k];
+    for (const [k, v] of Object.entries(patch.s || {})) target[k] = v && v.$p === 1 ? this.patchState(target[k], v) : v;
+    return target;
+  },
+
   applyState(message) {
-    if (!message || !message.state) return;
+    if (!message) return;
+    if (message.state) this.serverState = message.state;
+    else if ("patch" in message) {
+      // 序号对不上（漏了消息）就请服务器重发完整状态
+      if (!this.serverState || message.base !== this._seq) {
+        if (this._socket && this._socket.readyState === WebSocket.OPEN) this._socket.send(JSON.stringify({ type: "resync" }));
+        return;
+      }
+      if (message.patch) this.serverState = this.patchState(this.serverState, message.patch);
+    } else return;
+    if (message.seq) this._seq = message.seq;
     this.syncClock(message.serverNow);
-    this.serverState = message.state;
     if (typeof G !== "undefined") {
       const tab = G.tab;
-      G.s = message.state;
-      if (Number.isFinite(Number(message.state.last))) G._lastTick = Number(message.state.last);
+      // 界面用副本：本地先显示的改动不会污染服务器基准状态
+      G.s = JSON.parse(JSON.stringify(this.serverState));
+      const state = G.s;
+      if (Number.isFinite(Number(state.last))) G._lastTick = Number(state.last);
       if (tab) G.tab = tab;
       G.dirty();
       if (!G._stopped) { G.render(); G.renderLog(); G.bars(); }
@@ -270,6 +292,9 @@ const API = {
       const error = new Error("游戏服务器暂不可用");
       this.showActionFeedback(error.message, "bad");
       throw error;
+    }
+    if (this.OPTIMISTIC.has(name) && typeof G !== "undefined" && G.s) {
+      try { this._originalActions.get(name).apply(G, args); G.dirty(); G.render(); G.bars(); } catch {}
     }
     const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now().toString(36)}-${(++this._actionCounter).toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return new Promise((resolve, reject) => {
