@@ -280,7 +280,7 @@ DATA.capStat = (cap, k) => { const o = DATA.ownStat(k); return o.br || o.gf ? Ma
 DATA.capAtk = (cap, own) => { const o = own || DATA.ownAtk(); return Math.min(o.br, cap) + o.gf; };
 // 法术第 star 星对应境界（config/gongfa.js 的 REF）的人物属性：修为突破 + 肉身突破（不算功法），含 manaBr
 DATA._spRef = {};
-DATA.spellRef = star => DATA._spRef[star] || (DATA._spRef[star] = (() => { const r = (_GF.REF || [])[star - 1] || [2 * star - 1, 10]; return DATA.mobStats([0, r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
+DATA.spellRef = star => DATA._spRef[star] || (DATA._spRef[star] = (() => { const r = (_GF.REF || [])[star - 1] || [2 * star - 1, 10]; return DATA.mobStats([r[0], r[1], 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1]); })());
 // 法术法力消耗的基数：该星级对应境界的修为突破法力
 DATA.spellManaBase = star => DATA.spellRef(star).manaBr;
 DATA.skillInfo = (id, lv) => DATA.isSpell(id) ? DATA.spellInfo(id, lv) : DATA.isMifa(id) ? DATA.mifaInfo(id, lv) : DATA.gongfaInfo(id, lv);
