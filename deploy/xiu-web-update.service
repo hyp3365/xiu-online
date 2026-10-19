@@ -1,5 +1,9 @@
 [Unit]
-Description=Disabled legacy updater for the xiu-online test service
+Description=xiu-online test server: update from web (设置 → 管理员 → 从 GitHub 更新)
+# 由 xiu-online-web-update.path 在 /var/lib/xiu-online/update.request 出现时触发；
+# 等于在服务器上运行 sudo xiu-online-update，输出写到 /var/lib/xiu-online/update.log
+
 [Service]
 Type=oneshot
-ExecStart=/bin/false
+ExecStartPre=/bin/rm -f /var/lib/xiu-online/update.request
+ExecStart=/bin/sh -c '/usr/local/bin/xiu-online-update > /var/lib/xiu-online/update.log 2>&1 || echo "更新失败（退出码 $?）" >> /var/lib/xiu-online/update.log; chmod 0644 /var/lib/xiu-online/update.log'
