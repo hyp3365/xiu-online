@@ -1070,6 +1070,17 @@ G.module({
           return `<div class="line"><div>${DATA.li(DATA.matImg(t, g))}${DATA.matFull(t, g)}<small>${U.fmt(c)} 灵石/个 · 已有 ${U.fmt(this.countMat(t, g))}</small></div>
             <button class="sm" onclick="G.buyMat('${t}',${g})" ${s.stone < c ? "disabled" : ""}>购买</button></div>`; }).join("") + `</div>`;
     },
+
+    /* ---------- 背景主题：存在本机（localStorage xiu_bg），只影响这台设备 ---------- */
+    bgCard() {
+      let cur = ""; try { cur = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
+      return `<div class="card"><h3>背景</h3><div class="bg-grid">${BG_THEMES.map(([id, nm]) =>
+        `<div class="bg-sw${id === cur ? " on" : ""}" data-bgsw="${id}" onclick="G.setBg('${id}')">${nm}</div>`).join("")}</div></div>`;
+    },
+    setBg(id) {
+      try { id ? localStorage.setItem("xiu_bg", id) : localStorage.removeItem("xiu_bg"); } catch (e) {}
+      applyBg(); this.render();
+    },
   },
 
   view() {
@@ -1156,20 +1167,10 @@ G.module({
       <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>`;
   },
 
-  /* ---------- 背景主题：存在本机（localStorage xiu_bg），只影响这台设备 ---------- */
-  bgCard() {
-    let cur = ""; try { cur = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
-    return `<div class="card"><h3>背景</h3><div class="bg-grid">${BG_THEMES.map(([id, nm]) =>
-      `<div class="bg-sw${id === cur ? " on" : ""}" data-bgsw="${id}" onclick="G.setBg('${id}')">${nm}</div>`).join("")}</div></div>`;
-  },
-  setBg(id) {
-    try { id ? localStorage.setItem("xiu_bg", id) : localStorage.removeItem("xiu_bg"); } catch (e) {}
-    applyBg(); this.render();
-  },
 });
 
 // 背景主题列表：[id, 名字]，id 为空 = 默认；样式在 style.css 的 html[data-bg="id"]
-const BG_THEMES = [["", "默认"], ["xianjie", "仙界云海"], ["mingjie", "冥界幽潭"], ["mojie", "魔界血渊"], ["dongfu", "洞府青山"], ["xiaguang", "霞光福地"], ["xingyun", "星云秘境"], ["gujuan", "古卷鎏金"]];
+const BG_THEMES = [["", "默认"], ["qingming", "青冥"], ["zixiao", "紫霄"], ["chixia", "赤霞"], ["bihai", "碧海"], ["cangsong", "苍松"], ["xuanbing", "玄冰"], ["liuli", "琉璃"], ["jinwu", "金乌"], ["yueying", "月影"], ["moyun", "墨云"], ["taohua", "桃花"], ["youming", "幽冥"], ["rongyan", "熔岩"], ["jiuxiao", "九霄"], ["qingci", "青瓷"], ["xingye", "星夜"]];
 function applyBg() {
   if (typeof document === "undefined" || !document.documentElement) return;   // 服务器端引擎里没有页面
   let id = ""; try { id = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
