@@ -1170,7 +1170,7 @@ G.module({
 });
 
 // 背景主题列表：[id, 名字]，id 为空 = 默认；样式在 style.css 的 html[data-bg="id"]
-const BG_THEMES = [["", "默认"], ["qingming", "青冥"], ["zixiao", "紫霄"], ["chixia", "赤霞"], ["cangsong", "苍松"], ["taohua", "桃花"], ["jinwu", "金乌"], ["qingci", "青瓷"]];
+const BG_THEMES = [["", "默认"], ["xuanzhi", "宣纸"], ["xinghuang", "杏黄"], ["zhuqing", "竹青"], ["qingci", "青瓷"], ["yunbai", "云白"], ["yuebai", "月白"], ["yanmo", "烟墨"]];
 function applyBg() {
   if (typeof document === "undefined" || !document.documentElement) return;   // 服务器端引擎里没有页面
   let id = ""; try { id = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
