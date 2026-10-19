@@ -27,7 +27,7 @@ CFG.battle = {
 };
 
 // 属性抗性（法术 / 法宝减免，双方相同）
-CFG.battle.RES_RATE = 0.631;      // 对方防御 × 此值
+CFG.battle.RES_RATE = 0.601;      // 对方防御 × 此值
 CFG.battle.RES_EL_RATE = 0.462;   // 对方该系抗性 × 此值
 
 // 战斗画面播放（结果已算好，只是播放）
