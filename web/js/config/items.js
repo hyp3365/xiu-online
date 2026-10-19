@@ -27,36 +27,36 @@ CFG.mats = {
 };
 
 /* 四界药材矿石：前 5 种四界通用，后 4 种为仙 / 冥 / 魔 / 神各界特色（炼对应界丹药要用）。
- * 通用的：STAR 星及以上门派宝库可兑换（种子、种植见 config/garden.js）；SPECIAL 里的不能兑换、没有种子，第 2 个数不用。 */
+ * 通用的：STAR 星及以上门派宝库可兑换（种子、种植见 config/garden.js）；SPECIAL 里的不能兑换、没有种子，只写出售价。 */
 CFG.matsOther = {
   STAR: 6,     // 几星门派起宝库可兑换四界通用药材、矿石、种子
   SPECIAL: ["琼华仙草", "冥魂花", "噬血魔莲", "神曦花", "仙霞玉髓", "冥河寒晶", "魔焰晶", "神辉金"],   // 各界特色药材、矿石
   herb: {
     天元草: [5, 5], 玄霜花: [5, 5], 紫府灵根: [5, 5], 万年雪莲: [7, 7], 星河藤: [7, 7],   // 通用
-    琼华仙草: [7, 7], 冥魂花: [7, 7], 噬血魔莲: [7, 7], 神曦花: [7, 7],              // 特色：仙 冥 魔 神
+    琼华仙草: [7], 冥魂花: [7], 噬血魔莲: [7], 神曦花: [7],              // 特色：仙 冥 魔 神
   },
   ore: {
     天外陨铁: [5, 5], 玄晶石: [5, 5], 星辰金: [5, 5], 混沌铜: [7, 7], 太虚玉: [7, 7],   // 通用
-    仙霞玉髓: [7, 7], 冥河寒晶: [7, 7], 魔焰晶: [7, 7], 神辉金: [7, 7],             // 特色：仙 冥 魔 神
+    仙霞玉髓: [7], 冥河寒晶: [7], 魔焰晶: [7], 神辉金: [7],             // 特色：仙 冥 魔 神
   },
 };
 
 /* 修炼速度丹：只能服与当前境界同品质的（品质序号：练气 = 0、筑基 = 1 ……）
- * pct 修炼速度加成 %（各品质相同）；dur 持续修炼次数；price 练气品质坊市售价（灵石），高品质 = floor(price × PILL_PRICE_STEP^品质序号）
+ * pct 修炼速度加成 %（各品质相同）；dur 持续修炼次数；price 基准价（灵石）：出售价 = floor(price × PILL_PRICE_STEP^品质序号) × PILL_SELL，向下取整
+ *   坊市买价以 content/items.js 的 ITEMS.shop 的 price 为准（没写才按 price 算）
  * 药力未尽再服：加成取较大，次数累加。xian: true = 仙界丹，只能在 6~10 星门派炼丹房学丹方炼制，秘境不掉 */
 CFG.pills = {
-  juqi:    { name: "聚气丹", pct: 10, dur: 180, price: 10, desc: "增加修炼速度" },
-  juling:  { name: "聚灵丹", pct: 20, dur: 180, price: 30, desc: "大幅增加修炼速度" },
-  peiyuan: { name: "培元丹", pct: 40, dur: 180, price: 60, desc: "极大增加修炼速度" },
-  taixu:    { name: "太虚悟道丹", pct: 30,  dur: 180, price: 100, desc: "大幅提升修炼速度，感悟太虚大道", xian: true },
-  jiuxuan:  { name: "九转玄灵丹", pct: 60,  dur: 180, price: 150, desc: "汇聚九天玄灵之气，加速灵力运转", xian: true },
-  hongmeng: { name: "鸿蒙紫极丹", pct: 120, dur: 180, price: 200, desc: "蕴含鸿蒙紫气，极大提升修炼效率", xian: true },
+  juqi:    { name: "聚气丹", pct: 10, dur: 180, price: 10 },
+  juling:  { name: "聚灵丹", pct: 20, dur: 180, price: 30 },
+  peiyuan: { name: "培元丹", pct: 40, dur: 180, price: 60 },
+  taixu:    { name: "太虚悟道丹", pct: 30,  dur: 180, price: 100, xian: true },
+  jiuxuan:  { name: "九转玄灵丹", pct: 60,  dur: 180, price: 150, xian: true },
+  hongmeng: { name: "鸿蒙紫极丹", pct: 120, dur: 180, price: 200, xian: true },
 };
 
 CFG.price = {
   PILL_PRICE_STEP: 1.2,   // 修炼丹每高一品质售价倍率
-  PILL_SELL: 0.3,         // 修炼丹出售价 = 坊市售价 × 此值（向下取整）
-  SHOP_EQUIP: 2000,       // 坊市装备默认售价（灵石），content/items.js 的 ITEMS.shop 没写 price 时用
+  PILL_SELL: 0.3,         // 修炼丹出售价 = 该品质基准价 × 此值（向下取整）
 };
 
 CFG.price.SHOP_MAT = 2;     // 坊市药材矿石买价 = max(1, 向上取整(出售价 × 此值))
