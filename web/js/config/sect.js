@@ -147,7 +147,7 @@ CFG.sect.pool = {
 
 // 免费修炼室 / 练功房（每天北京时间 0 点重置，不扣贡献）：pct 写 0 = 同最低一档；修炼室 pct × 星级倍率，练功房不乘
 CFG.sect.freeRoom   = { name: "免费修炼室", pct: 0, times: 500, daily: 1 };   // 每天 daily 次，每次 times 次修炼（每次 10 秒）
-CFG.sect.freeGfRoom = { name: "免费练功房", pct: 15, minutes: 60, daily: 1 };  // 每天 daily 次，每次 minutes 分钟
+CFG.sect.freeGfRoom = { name: "免费练功房", pct: 15, minutes: 120, daily: 1 };  // 每天 daily 次，每次 minutes 分钟
 
 // 元婴出窍秘法：宝库兑换；每天出窍次数 = 神识强度（config/shenshi.js）
 CFG.chuqiao = {
