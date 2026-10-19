@@ -1866,13 +1866,13 @@ CFG.mobs = {
  * 每次出手：先判法术，没放出再判法宝，都没有就普攻；放出条件 = 法力 ≥ 消耗 且 掷中 chance%
  *   消耗 = 该境界修为突破总法力 × mana[0] × mana[1]；伤害 = max(保底, 攻击 × pct% − 人物该系抗性 × 战斗.DEF_RATE)，之后同普攻判闪避 / 浮动 / 暴击（config/battle.js） */
 CFG.mobs.magic = {
-  OWN_RES: 1.2,   // 本属性那一系抗性倍数
+  OWN_RES: 1.18,   // 本属性那一系抗性倍数
   // 护盾：每次出手前几率 = 法宝 chance × CHANCE_PCT%（不占出手，耗法力同法宝），盾没破不再祭，每场最多 MAX 次
   //   护盾值 = 生命 × HP_PCT%，盾防御 = 防御 × DEF_PCT%（[最小, 最大] 随机）；受伤先减盾防御 × DEF_RATE，再减 RED%，余下扣护盾值
-  SHIELD: { CHANCE_PCT: 30, MAX: 3, HP_PCT: [80, 105], DEF_PCT: [75, 95], RED: 0 },
+  SHIELD: { CHANCE_PCT: 25, MAX: 3, HP_PCT: [80, 105], DEF_PCT: [75, 95], RED: 0 },
   // spell 法术 / fabao 法宝：chance 施放几率%，pct 伤害 = 攻击 × pct%，mana [比例, 倍率] 每次耗法力
-  normal: { spell: { chance: 35, pct: 113, mana: [0.45, 1] }, fabao: { chance: 30, pct: 118, mana: [0.49, 1] } },
-  elite:  { spell: { chance: 35, pct: 121, mana: [0.45, 1] }, fabao: { chance: 35, pct: 126, mana: [0.49, 1] } },
-  boss:   { spell: { chance: 40, pct: 133, mana: [0.42, 1] },  fabao: { chance: 40, pct: 136, mana: [0.46, 1] } },
-  tower:  { spell: { chance: 40, pct: 118, mana: [0.42, 1] }, fabao: { chance: 35, pct: 125, mana: [0.46, 1] } },
+  normal: { spell: { chance: 30, pct: 113, mana: [0.48, 1] }, fabao: { chance: 25, pct: 118, mana: [0.54, 1] } },
+  elite:  { spell: { chance: 35, pct: 121, mana: [0.48, 1] }, fabao: { chance: 30, pct: 126, mana: [0.54, 1] } },
+  boss:   { spell: { chance: 40, pct: 133, mana: [0.46, 1] },  fabao: { chance: 35, pct: 136, mana: [0.52, 1] } },
+  tower:  { spell: { chance: 35, pct: 118, mana: [0.46, 1] }, fabao: { chance: 30, pct: 125, mana: [0.52, 1] } },
 };
