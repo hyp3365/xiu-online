@@ -18,12 +18,46 @@ G.module({
       catch (e) { this._cfgList = []; this.cfgMsg = "读取失败：" + e.message; }
       this.cfgListView();
     },
+    // 每个参数文件的中文名和主要内容
+    CFG_INFO: {
+      alchemy: ["丹方", "炼丹丹方、学习星级、炼制材料和成功率"],
+      array: ["聚灵阵", "聚灵阵等级、修炼加成、升级灵石"],
+      bag: ["背包", "物品堆叠上限、一格只放一个的物品"],
+      battle: ["战斗", "保底伤害、防御、命中、暴击、回合数"],
+      body: ["肉身", "肉身修炼速度、灵气消耗"],
+      craftsman: ["炼丹师/炼器师/灵植夫", "技艺等级、经验、成功率加成"],
+      drops: ["掉落", "各地图怪物灵石、药材矿石、物品掉落"],
+      equip: ["装备栏", "法宝栏、法术栏开格数"],
+      explore: ["历练探索", "探索步数、怪物数量、灵药矿脉、耗时"],
+      forge: ["炼器", "装备、空间石、戒指、法宝、强化、洗练"],
+      furnace: ["丹炉/器炉", "炼丹炉、炼器炉、仙炉的图纸和加成"],
+      garden: ["灵药园", "灵田开垦、种植时间和产量"],
+      gongfa: ["功法法术", "功法每层效果、法术、学习消耗"],
+      items: ["物品价格", "储物格、药材矿石、修炼丹、坊市价格"],
+      lingdi: ["灵地", "灵地发现、探索次数、怪物、首领奖励"],
+      lingen: ["灵根", "金木水火土雷升级、加成、灵石"],
+      mijing: ["秘境", "秘境发现、探索次数、怪物、首领奖励"],
+      mobs: ["怪物", "各地图怪物境界、属性、倍率"],
+      names: ["名字", "游戏里显示的各种名字"],
+      player: ["人物属性", "基础属性、属性计算"],
+      realm: ["境界", "修为/肉身突破所需和每层属性"],
+      sect: ["宗门", "职务俸禄、事务堂、修炼室、试炼塔、宝库、晋升"],
+      servant: ["道童", "道童选拔、资质、升级、职司、月钱"],
+      shenshi: ["神识", "神识强度、养神丹、灵识点"],
+      start: ["开局", "新角色初始物品"],
+      trib: ["雷劫", "渡劫层数、时间、雷击伤害"],
+      worldmaps: ["四界地图", "仙冥魔神地图、区域、境界要求"],
+      wudao: ["宗门秘法", "秘法殿秘法效果和学习"],
+      wudaoshi: ["悟道室", "悟道次数、悟道果、悟道奖励"],
+      xingjun: ["四界官位", "界主、星君、天将职位和俸禄"],
+    },
     cfgListView() {
       const L = this._cfgList || [];
       this.modal(`<h2>数据修改</h2><p class="desc">选择要修改的参数文件（js/config/）。标「已修改」的是改过的版本，可恢复默认。</p>
         ${this.cfgMsg ? `<p class="c-red">${this.cfgEsc(this.cfgMsg)}</p>` : ""}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0">
-        ${L.map(f => `<button class="sm" onclick="G.cfgOpenFile('${f.name}')">${f.name}${f.overridden ? ` <b class="c-green">已修改</b>` : ""}</button>`).join("")}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin:8px 0">
+        ${L.map(f => { const k = String(f.name).replace(/\.js$/, ""), inf = this.CFG_INFO[k] || [k, ""];
+          return `<button class="sm" style="text-align:left;padding:6px 10px" onclick="G.cfgOpenFile('${f.name}')"><b>${inf[0]}</b> <small style="opacity:.6">${f.name}</small>${f.overridden ? ` <b class="c-green">已修改</b>` : ""}${inf[1] ? `<br><small style="opacity:.75">${inf[1]}</small>` : ""}</button>`; }).join("")}</div>
         <div class="btns"><button onclick="G.cfgClose()">关闭</button></div>`);
       this.cfgMsg = "";
     },
@@ -32,7 +66,7 @@ G.module({
       try {
         const j = await API.req("admin/config/file?name=" + encodeURIComponent(name));
         this._cfgFile = { name: j.name, overridden: j.overridden };
-        this.modal(`<h2>${this.cfgEsc(j.name)}${j.overridden ? ` <small class="c-green">已修改</small>` : ""}</h2>
+        this.modal(`<h2>${(this.CFG_INFO[String(j.name).replace(/\.js$/, "")] || [""])[0]} ${this.cfgEsc(j.name)}${j.overridden ? ` <small class="c-green">已修改</small>` : ""}</h2>
           <p class="desc">改完点「保存」，服务器检查无误后立即使用新参数。</p>
           <textarea id="cfg-text" spellcheck="false" autocapitalize="off" autocomplete="off" style="width:100%;height:58vh;background:#14110f;color:#e8dcc4;border:1px solid #4a3d31;border-radius:4px;padding:8px;font-family:Consolas,Menlo,monospace;font-size:12px;line-height:1.5;white-space:pre;overflow:auto;tab-size:2">${this.cfgEsc(j.content)}</textarea>
           <p id="cfg-msg" class="desc" style="margin-top:6px"></p>
