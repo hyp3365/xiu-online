@@ -195,7 +195,30 @@ export class GameEngine {
     // Preserve the partial 10-second interval; the server owns this timestamp.
     if (due < MAX_TICKS_PER_ADVANCE) s.last = this.clock.now - ((this.clock.now - last) % TICK_MS);
     this.G._simNow = this.clock.now;
-    return { state: safeClone(s), logs: safeClone(this.logs), serverNow: this.clock.now, processedTicks: due };
+    return { state: safeClone(s), logs: safeClone(this.logs), serverNow: this.clock.now, processedTicks: due, nextDue: this.nextDue(s) };
+  }
+
+  // 下一次会改变状态的时间点（修炼周期、探索下一步、下一道劫雷）；服务器在这一刻立即结算并推送。
+  nextDue(s = this.G.s) {
+    const times = [];
+    const last = Number(s && s.last);
+    if (Number.isFinite(last)) times.push(last + TICK_MS);
+    try {
+      const x = s && s.explore;
+      if (x && !x.rest && x.ms > 0) {
+        const T = this.G.exCfg(x).TIME, W = (this.CFG.explore.END_WAIT || 0) * 1000;
+        times.push(x.lostWait ? x.start + (x.step + 1) * x.ms : x.step >= T ? x.start + T * x.ms + W : x.start + (x.step + 1) * x.ms);
+      }
+    } catch {}
+    try {
+      const t = s && s.trib;
+      if (t && !t.result) {
+        const HS = this.CFG.trib.HIT_SEC || 1, nextHit = (Math.floor(t.sec / HS) + 1) * HS;
+        times.push(t.start + Math.min(nextHit, t.time) * 1000);
+      }
+    } catch {}
+    const valid = times.filter(Number.isFinite);
+    return valid.length ? Math.min(...valid) : this.clock.now + TICK_MS;
   }
 
   act(state, action, args = [], now = Date.now()) {
