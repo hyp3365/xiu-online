@@ -35,7 +35,8 @@ G.module({
       // 练功房（扣贡献）：减少修炼时间，进度 × mul，每单位灵气同比例多扣，总消耗不变
       let R = this.gfRoomNow();
       const remU = Math.ceil((st.total - st.done) / (STEP * (R ? R.mul : 1)));
-      if (R && R.cost > 0 && Math.floor(s[R.cur] / Math.max(1, R.cost)) < Math.min(2 * steps, remU)) { this.leaveGfRoom("门派贡献不足"); R = null; }
+      const RU = this.gfRoomUnits(), rU = st.rU || 0;   // 练功房每 RU 个 5 秒单位扣一次贡献；rU 已用还没扣的单位
+      if (R && R.cost > 0 && Math.floor((rU + Math.min(2 * steps, remU)) / RU) * R.cost > s[R.cur]) { this.leaveGfRoom("门派贡献不足"); R = null; }
       const mul = R ? R.mul : 1, per = st.per * mul;
       // 灵气（秘法还要灵石）够几次就走几次；灵气不够且开了自动补充：用灵石补（秘法要的灵石先留够）
       const sp = (st.stone || 0) * mul, rem = Math.ceil((st.total - st.done) / (STEP * mul)), want = Math.min(2 * steps, rem);
@@ -45,7 +46,7 @@ G.module({
       if (can < rem && can % 2) can--;   // 只按整 10 秒走（最后一次除外）
       s.ling -= can * per; st.spent += can * per; st.done = can >= rem ? st.total : Math.min(st.total, st.done + can * STEP * mul);
       if (sp) { s.stone -= can * sp; st.spentStone = (st.spentStone || 0) + can * sp; }
-      if (R) s[R.cur] -= can * R.cost;
+      if (R) { const n = rU + can; s[R.cur] -= Math.floor(n / RU) * R.cost; st.rU = n % RU; }
       st.stalled = can < want && st.done < st.total;   // 灵气 / 灵石不够，暂停
       if (st.done < st.total) break;
       // 完成，升一层
