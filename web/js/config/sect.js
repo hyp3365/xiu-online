@@ -127,12 +127,12 @@ CFG.sect.pool = {
   DAILY: 1,
   STAR_MULT: [1, 1.5, 2.5, 4, 6, 9, 13, 18, 25, 35],   // 1 星 ~ 10 星宗门
   list: [
-    { name: "免费练体池", contrib: 0,   hp: 75000,  keys: ["hp"] },
-    { name: "下品练体池", contrib: 100,  hp: 150000, keys: ["hp", "def"] },
-    { name: "中品练体池", contrib: 200, hp: 300000, keys: ["hp", "def", "atk"] },
-    { name: "上品练体池", contrib: 300, hp: 600000, keys: ["hp", "def", "atk", "dodge"] },
-    { name: "天品练体池", contrib: 400, hp: 1200000, keys: ["hp", "def", "atk", "dodge", "res", "hit"] },
-    { name: "宗主练体池", contrib: 100, hp: 1500000, keys: ["hp", "def", "atk", "dodge", "res", "hit"], rank: 6 },
+    { name: "免费练体池", contrib: 0,   hp: 10000,  keys: ["hp"] },
+    { name: "下品练体池", contrib: 100,  hp: 30000, keys: ["hp", "def"] },
+    { name: "中品练体池", contrib: 200, hp: 60000, keys: ["hp", "def", "atk"] },
+    { name: "上品练体池", contrib: 300, hp: 120000, keys: ["hp", "def", "atk", "dodge"] },
+    { name: "天品练体池", contrib: 400, hp: 240000, keys: ["hp", "def", "atk", "dodge", "res", "hit"] },
+    { name: "宗主练体池", contrib: 100, hp: 500000, keys: ["hp", "def", "atk", "dodge", "res", "hit"], rank: 6 },
   ],
   STAR_GAIN: 1.2,
   RAND: 3,
