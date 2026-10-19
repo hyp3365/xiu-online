@@ -75,25 +75,4 @@ Cloudflare Tunnel 在 Cloudflare 边缘提供浏览器侧 HTTPS，Tunnel 到本�
 
 Node API 只绑定 `127.0.0.1:18301`，不要把 `18301` 端口直接暴露到公网。若改用域名和 HTTPS，请将 `deploy/nginx-xiuxian.conf` include 到对应 HTTPS `server {}` 中，并让页面/API/WebSocket 使用同源 HTTPS/WSS。
 
-**安全提示：**当前 IP 测试入口使用 HTTP 明文传输，账号和密码可被同网络路径上的人读取；只用一次性测试账号和密码，不要填写常用密码或真实数据。正式使用前请配置域名和 HTTPS。
 
-## 设置页与自动保存
-
-玩家操作由服务器处理，服务器在操作后保存状态，并定期写入数据库；关浏览器或更换设备后，重新登录即可继续。设置页不再需要“立即同步”按钮。
-
-## 本地运行与测试
-
-要求 Node.js 20 或更新版本：
-
-```bash
-cd server
-npm ci
-XIU_HOST=127.0.0.1 XIU_PORT=18301 XIU_DATA_DIR=./data npm start
-```
-
-健康检查与测试：
-
-```bash
-curl http://127.0.0.1:18301/health
-cd server && npm test
-```
