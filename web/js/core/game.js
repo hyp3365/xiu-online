@@ -58,7 +58,7 @@ const G = {
     // 信息栏只在修炼页显示，其他页面用浮动提示
     if (this.tab !== "cultivate") {
       const t = $("#toast"); if (!t) return;
-      t.innerHTML = `<p class="${c}">${m}</p>`; t.classList.add("show");
+      t.innerHTML = `<p class="${c}">${m}</p>`; t.classList.remove("center"); delete t.dataset.tone; t.classList.add("show");
       clearTimeout(this._toastT); this._toastT = setTimeout(() => t.classList.remove("show"), 1800);
     }
   },
@@ -181,9 +181,15 @@ const G = {
     // 内容没变就不重绘：避免每秒重绘时按钮被替换、点了没反应，也省手机电量
     // 手指 / 鼠标按住时先不替换页面：否则按下和抬起之间按钮被换掉，这次点击就丢了
     if (this._pressing && v.innerHTML !== "") { this._renderDeferred = true; return; }
+    // 正在输入框里打字时也先不替换页面：否则输入框被换掉，手机输入法会自动收起
+    if (this.editing(v)) { this._renderDeferred = true; return; }
     try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html; } }
     catch (err) { console.error(err); this._viewHtml = null; v.innerHTML = `<div class="card"><h3>页面出错</h3><p class="desc">${String(err && err.message || err)}<br>如果刚改过 js/config/ 里的数值，请检查有没有写错（例如少了小数点、多了问号）。</p></div>`; }
     v.scrollTop = top;
+  },
+  editing(root) {
+    const a = document.activeElement;
+    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && root && root.contains(a));
   },
   renderLog() { $("#log").innerHTML = this.s.log.map(l => `<p class="${l.c}">${l.m}</p>`).join(""); },
   // 进度条（叠在“学习中 / 剩余时间”文字下面）：left 剩余毫秒，total 总毫秒；外层元素加 class="pg"
@@ -227,6 +233,10 @@ const G = {
     };
     document.addEventListener("pointerdown", press(true), true);
     ["pointerup", "pointercancel"].forEach(t => document.addEventListener(t, press(false), true));
+    // 输入框失去焦点后补一次重绘
+    document.addEventListener("focusout", () => setTimeout(() => {
+      if (this._renderDeferred && !this._pressing && !this.editing($("#view"))) { this._renderDeferred = false; this.render(); }
+    }, 0), true);
     $("#modal").onclick = e => { if (e.target.id === "modal" && this.s && !this._lockModal) this.closeModal(); };
     this.showLogin(); // 见 modules/account.js
   },
