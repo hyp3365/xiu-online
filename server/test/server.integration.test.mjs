@@ -21,11 +21,28 @@ async function freePort() {
   });
 }
 
+function applyPatch(target, patch) {
+  if (!patch || patch.$p !== 1) return patch;
+  for (const k of patch.d || []) delete target[k];
+  for (const [k, v] of Object.entries(patch.s || {})) target[k] = v && v.$p === 1 ? applyPatch(target[k], v) : v;
+  return target;
+}
+
+// Rebuilds full state from the server's full snapshots and diffs, in arrival order.
 function messageQueue(socket) {
   const messages = [];
   const waiters = [];
+  let state = null, seq = 0;
   socket.on("message", raw => {
     const message = JSON.parse(raw.toString("utf8"));
+    if (message.state) state = message.state;
+    else if ("patch" in message) {
+      assert.equal(message.base, seq, "diff must apply to the previous message");
+      if (message.patch) state = applyPatch(state, message.patch);
+      message.diff = true;
+    }
+    if (message.seq) seq = message.seq;
+    if (state && (message.type === "snapshot" || message.type === "result")) message.state = JSON.parse(JSON.stringify(state));
     const i = waiters.findIndex(w => w.predicate(message));
     if (i >= 0) { const [waiter] = waiters.splice(i, 1); clearTimeout(waiter.timer); waiter.resolve(message); }
     else messages.push(message);
@@ -104,6 +121,7 @@ test("HTTP auth and WebSocket actions use authoritative server state", { timeout
   socket.send(JSON.stringify({ type: "action", id, action: "toggleAuto", args: [] }));
   const success = await waitFor(m => m.type === "result" && m.id === id);
   assert.equal(success.ok, true);
+  assert.equal(success.diff, true, "action results carry only the changed fields");
   assert.equal(success.state.auto, true);
 
   const combatSettings = [
