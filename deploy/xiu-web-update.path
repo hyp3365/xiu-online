@@ -1,0 +1,9 @@
+[Unit]
+Description=xiu-online test server: watch for web update requests
+
+[Path]
+PathExists=/var/lib/xiu-online/update.request
+Unit=xiu-online-web-update.service
+
+[Install]
+WantedBy=multi-user.target
