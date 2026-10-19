@@ -90,6 +90,7 @@ button.sel i{font-style:normal;color:#c9a45c;font-size:12px}
 .room-grid button{padding:8px 2px;font-size:13px;line-height:1.3}
 .room-grid button small{display:block;font-size:10px;color:#8c7e66}
 .room-grid button.active{background:#5a4220;border-color:#c9a45c;color:#f3d48b}
+.room-grid.three{grid-template-columns:repeat(3,1fr)}
 .room-grid.five{grid-template-columns:repeat(5,1fr)}
 .room-grid.six{grid-template-columns:repeat(6,1fr)}
 .trib-log{max-height:34vh;overflow-y:auto;font-size:12px;background:#14110f;border:1px solid #3a3027;border-radius:6px;padding:6px;margin-top:6px}
