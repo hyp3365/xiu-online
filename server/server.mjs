@@ -412,7 +412,12 @@ wss.on("connection", (socket, session) => {
     if (now - client.rateWindow >= 1000) { client.rateWindow = now; client.rateCount = 0; }
     if (++client.rateCount > 12) { send(socket, { type: "error", error: "操作过于频繁，请稍后重试" }); return; }
     let msg; try { msg = JSON.parse(raw.toString("utf8")); } catch { send(socket, { type: "error", error: "消息格式错误" }); return; }
-    if (msg && msg.type === "resync") { pushState(client, Date.now(), [], true, true); return; }
+    if (msg && msg.type === "resync") {
+      // 客户端从后台切回来会发 resync：先把到现在为止的进度结算完，再推完整状态
+      let logs = [];
+      try { const o = client.engine.advance(client.state, now); client.state = o.state; logs = o.logs || []; client.nextCheck = Math.min(now + CHECK_MS, Math.max(now + 50, (o.nextDue || 0) + DUE_MARGIN_MS)); } catch (err) { console.error("resync advance failed:", err?.stack || err); }
+      pushState(client, now, logs, true, true); return;
+    }
     if (!msg || msg.type !== "action") { send(socket, { type: "error", error: "未知消息类型" }); return; }
     const id = String(msg.id || "");
     if (!/^[A-Za-z0-9_-]{8,80}$/.test(id)) { send(socket, { type: "error", id, error: "操作编号无效" }); return; }

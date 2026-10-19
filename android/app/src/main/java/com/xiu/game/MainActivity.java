@@ -90,10 +90,22 @@ public class MainActivity extends Activity {
     }
 
     // 切后台 / 切回来：通知 WebView（切回来时马上恢复绘制，减少黑屏）；不暂停 JS 定时器，切后台时网页还要上传存档
+    // 切回来时告诉网页离开了多久（window.__appResume），网页显示「加载游戏中…」直到服务器结算完
+    private long pausedAt = 0;
     @Override
-    protected void onPause() { super.onPause(); if (web != null) web.onPause(); }
+    protected void onPause() { super.onPause(); pausedAt = android.os.SystemClock.elapsedRealtime(); if (web != null) web.onPause(); }
     @Override
-    protected void onResume() { super.onResume(); if (web != null) { web.onResume(); web.resumeTimers(); web.invalidate(); } }
+    protected void onResume() {
+        super.onResume();
+        if (web != null) {
+            web.onResume(); web.resumeTimers(); web.invalidate();
+            if (pausedAt > 0) {
+                long away = android.os.SystemClock.elapsedRealtime() - pausedAt;
+                pausedAt = 0;
+                web.evaluateJavascript("window.__appResume&&window.__appResume(" + away + ")", null);
+            }
+        }
+    }
 
     private void loadImgVer() {
         try (BufferedReader r = new BufferedReader(new InputStreamReader(getAssets().open("img_ver.txt"), "UTF-8"))) {

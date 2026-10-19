@@ -228,6 +228,7 @@ const API = {
     const j = await this.req("session");
     this.syncClock(j.serverNow);
     this.installActions(j.actions || []);
+    this.installResume();
     this.serverState = j.data || null;
     if (j.data) await this.connectSocket();
     return j.data;
@@ -237,6 +238,7 @@ const API = {
     const j = await this.req("character", { name: String(name || "无名散修").slice(0, 12) });
     this.serverState = j.data;
     this.syncClock(j.serverNow);
+    this.installResume();
     await this.connectSocket();
     return j.data;
   },
@@ -281,6 +283,7 @@ const API = {
     try { message = JSON.parse(raw); } catch { return; }
     if (message.type === "snapshot") {
       this.applyState(message);
+      if (this._resumeWait && message.state) this.resumeDone();   // 切回前台后服务器推回了结算好的完整状态
       this.toastLogs(message.logs);
       this.setSync("已同步到服务器");
       return;
@@ -420,5 +423,67 @@ const API = {
   async userList() { return this.req("admin/users"); },
   async setRegOpen(open) { return this.req("admin/reg", { open }); },
   async userDelete(id) { return this.req("admin/user/del", { id }); },
+  // ---- 从后台切回游戏：显示「加载游戏中…」，等服务器把离开这段时间结算完、推回完整状态再关闭 ----
+  _hiddenAt: 0, _resumeWait: false, _resumeTimer: 0, _resumeKick: 0, _resumeRetry: 0,
+  RESUME_MIN_MS: 1500,   // 离开不到 1.5 秒（如下拉通知栏）不显示
+  installResume() {
+    if (this._resumeInstalled || typeof document === "undefined") return;
+    this._resumeInstalled = true;
+    const mono = () => (typeof performance !== "undefined" ? performance.now() : 0);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { this._hiddenAt = mono(); return; }
+      const away = this._hiddenAt ? mono() - this._hiddenAt : 0;
+      this._hiddenAt = 0;
+      this.onResume(away);
+    });
+    window.addEventListener("pageshow", e => { if (e.persisted) this.onResume(this.RESUME_MIN_MS); });
+    // 安卓安装版：MainActivity.onResume 会调用 window.__appResume(离开的毫秒数)
+    window.__appResume = ms => this.onResume(Number(ms) || 0);
+  },
+  onResume(awayMs) {
+    if (!this.token || !this.serverState || this._resumeWait) return;
+    if (!(awayMs >= this.RESUME_MIN_MS)) return;
+    this._resumeWait = true;
+    this.showResume(true);
+    const s = this._socket;
+    if (s && s.readyState === WebSocket.OPEN) {
+      try { s.send(JSON.stringify({ type: "resync" })); } catch {}
+      // 连接可能在后台已经断了但还没发现：2.5 秒没收到结算结果就换一条新连接
+      clearTimeout(this._resumeKick);
+      this._resumeKick = setTimeout(() => {
+        if (!this._resumeWait) return;
+        if (this._socket === s) { this._socket = null; s.onmessage = null; try { s.close(4000, "resume"); } catch {} }
+        this.connectSocket().catch(() => {});
+      }, 2500);
+    } else this.connectSocket().catch(() => {});
+    // 连不上就每 3 秒再试一次；最多等 20 秒，之后关掉提示（后台继续自动重连）
+    clearInterval(this._resumeRetry);
+    this._resumeRetry = setInterval(() => {
+      if (!this._resumeWait) return clearInterval(this._resumeRetry);
+      if (!this._socket && !this._connectPromise) this.connectSocket().catch(() => {});
+    }, 3000);
+    clearTimeout(this._resumeTimer);
+    this._resumeTimer = setTimeout(() => {
+      if (!this._resumeWait) return;
+      this.resumeDone();
+      this.showActionFeedback("连接服务器较慢，正在后台重试…", "bad");
+    }, 20_000);
+  },
+  resumeDone() {
+    this._resumeWait = false;
+    clearTimeout(this._resumeTimer); clearTimeout(this._resumeKick); clearInterval(this._resumeRetry);
+    this.showResume(false);
+  },
+  showResume(on) {
+    let el = document.getElementById("resume-load");
+    if (!el) {
+      if (!on) return;
+      el = document.createElement("div"); el.id = "resume-load";
+      el.innerHTML = "<span>加载游戏中…</span>";
+      document.body.appendChild(el);
+    }
+    el.classList.toggle("show", !!on);
+  },
+
   setSync(text) { const el = document.getElementById("sync"); if (el) el.textContent = text; },
 };
