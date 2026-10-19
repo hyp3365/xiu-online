@@ -1,6 +1,7 @@
 /* =====================================================================
  * 怪物属性生成（数值在 config/mobs.js）
- * 每个怪物 8 个数 [进入境界, 境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]：
+ * 每个怪物 7 个数 [境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]：
+ * 进入境界写在每组的「进入」（天将 / 星君就任写「天将需」「星君需」，宗门考官 = 考官境界，可用「晋升需」单独改）：
  *   怪物基础属性 = (修为突破属性 + 肉身突破属性 + 功法属性) × 倍率
  *   遇到时 × 随机(RAND[0] ~ RAND[1])；暴击 = CRIT
  * 生成后写进：
@@ -20,16 +21,16 @@ DATA.mobBody = n => { const o = {}; for (const k of DATA.MOB_KEYS) o[k] = DATA.b
 //   1 宗门功法（宗门功法殿，不含传承功法）  2 坊市功法（凡阶坊市 + 四界坊市）  3 四界功德司功法
 DATA.MOB_GF_CAT = { 1: "宗门功法", 2: "坊市功法", 3: "功德司功法" };
 DATA.mobCatSrcs = c => c === 1 ? DATA.sects : c === 2 ? [...DATA.shopSources, ...((DATA.jieGf || {}).jshop || [])] : c === 3 ? (DATA.jieGf || {}).gd || [] : [];
-// v219 一行怪物数据统一成对象：8 个数 [进入境界, 境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]
+// 一行怪物数据转成对象：7 个数 [境界, 层, 功法星级, [1, 宗门%, 宗门层], [2, 坊市%, 坊市层], [3, 功德司%, 功德司层], 倍率]
 //   层、各类学%、各类功法层都可以写一个数，或 [最小, 最大]（每次遇到随机；层、功法层取整数，学% 可带小数）
 //   cats = [{ c: 1/2/3, pct: [最小, 最大], gf: [最小, 最大] }]，学 0% 或功法层 0 的那类不算
-DATA.MOB_NONE = [0, 0, 1, 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1];   // 没写时：练气一层、不算功法
+DATA.MOB_NONE = [0, 1, 0, [1, 0, 0], [2, 0, 0], [3, 0, 0], 1];   // 没写时：练气一层、不算功法
 DATA.mobRange = v => Array.isArray(v) ? [v[0], v[v.length - 1]] : [v || 0, v || 0];
 DATA.mobRow = t => {
   t = t || DATA.MOB_NONE;
-  const cats = [t[4], t[5], t[6]].map(x => ({ c: x[0], pct: DATA.mobRange(x[1]), gf: DATA.mobRange(x[2]) })).filter(x => DATA.MOB_GF_CAT[x.c] && x.pct[1] > 0 && x.gf[1] > 0);
-  return { enter: t[0], realm: Math.max(0, Math.min(DATA.realms.length - 1, t[1])), lay: DATA.mobRange(t[2]), star: t[3] || 0,
-    cats, k: t[7] };
+  const cats = [t[3], t[4], t[5]].map(x => ({ c: x[0], pct: DATA.mobRange(x[1]), gf: DATA.mobRange(x[2]) })).filter(x => DATA.MOB_GF_CAT[x.c] && x.pct[1] > 0 && x.gf[1] > 0);
+  return { realm: Math.max(0, Math.min(DATA.realms.length - 1, t[0])), lay: DATA.mobRange(t[1]), star: t[2] || 0,
+    cats, k: t[6] };
 };
 // 1 ~ 星级、某一类来源里的全部功法，按种类分组：{ 种类id: [{ id, stat, stat2 }] }（缓存）
 DATA._mobBooks = {};
@@ -85,13 +86,13 @@ DATA.mobMeet = (grp, kind) => { const t = grp && grp._t && grp._t[kind]; return 
   for (let a = 0; a < DATA.FAN_MAP_N; a++) {
     const c = DATA.mobPick(M.fan, DATA.maps[a].name, a) || {};
     CFG.monster.regions[a] = DATA.regionDirs.map((n, r) => Object.assign({ name: n, L: a * 10 + M.FAN_L[r] }, DATA.mobGroup(c[n])));
-    CFG.monster.MAP_REALM[a] = ((c["东"] || {})["普通"] || [0])[0];
+    CFG.monster.MAP_REALM[a] = c["进入"] || 0;
   }
   for (const w of ["xian", "ming", "mo", "shen"]) for (const a of DATA.worldMapIdx[w] || []) {
     const m = DATA.maps[a], c = DATA.mobPick(M[w], m.name, m.wi) || {}, R = CFG.monster.regions[a] || [];
     CFG.monster.regions[a] = DATA.regionDirs.map((n, r) => Object.assign({ name: n, L: (R[r] || {}).L || 0 }, DATA.mobGroup(c[n])));
-    CFG.monster.MAP_REALM[a] = (c["界主"] || [0])[0];
-    m.mob = c;   // 天将 / 星君 / 界主
+    CFG.monster.MAP_REALM[a] = c["进入"] || 0;
+    m.mob = c;   // 天将 / 星君 / 界主，就任境界「天将需」「星君需」
   }
 })();
 DATA.mobTj = a => (DATA.maps[a].mob || {})["天将"] || DATA.MOB_NONE;
@@ -105,7 +106,7 @@ DATA.mobJz = a => (DATA.maps[a].mob || {})["界主"] || DATA.MOB_NONE;
     C.list.forEach((d, i) => {
       const g = DATA.mobPick(CFG.mobs[key], d.name, i) || {};
       Object.assign(d, DATA.mobGroup(g));
-      d.realm = (g["普通"] || [0])[0];
+      d.realm = g["进入"] || 0;
     });
   }
 })();
