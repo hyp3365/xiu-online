@@ -581,7 +581,9 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 /* v250 炼丹房 / 炼器室：三个框固定大小 */
 .card.mini{height:34px;box-sizing:border-box;overflow:hidden;display:flex;align-items:center}
 .card.mini h3{width:100%;white-space:nowrap;overflow:hidden}
-.job-card{height:190px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
-.job-card .job-q{flex:1;min-height:0;overflow-y:auto}
-.craft-logbtn{display:flex;justify-content:flex-end;margin:0 0 6px}
+.job-card{height:112px;box-sizing:border-box;display:flex;gap:8px;align-items:stretch;overflow:hidden}
+.job-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;overflow:hidden;font-size:13px}
+.job-info small{color:var(--t-sub);font-size:11px}
+.job-btns{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;flex:0 0 auto}
+.job-btns .sm{white-space:nowrap}
 .craft-log{max-height:60vh;overflow-y:auto}
