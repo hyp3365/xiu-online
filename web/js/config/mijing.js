@@ -40,8 +40,8 @@ CFG.mijing = {
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    { name: "卧牛岗", find: { map: 1, chance: 5 }, drops: 1,
-      bossName: "卧牛石精", monsters: ["石傀儡", "山魈", "石甲蜥", "噬灵鼠"],
+    { name: "苍梧原", find: { map: 1, chance: 5 }, drops: 1,
+      bossName: "苍梧石精", monsters: ["石傀儡", "山魈", "石甲蜥", "噬灵鼠"],
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
@@ -60,7 +60,7 @@ CFG.mijing = {
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    { name: "断魂坡", find: { map: 4, chance: 5 }, drops: 4,
+    { name: "埋骨战场", find: { map: 4, chance: 5 }, drops: 4,
       bossName: "断魂将", monsters: ["残兵魂", "骷髅兵", "战场怨灵", "血煞兵"],
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
@@ -70,17 +70,17 @@ CFG.mijing = {
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    { name: "阴山坳", find: { map: 6, chance: 5 }, drops: 6,
-      bossName: "阴山老鬼", monsters: ["游魂", "厉鬼", "冥鬼", "骨妖"],
+    { name: "阴风鬼窟", find: { map: 6, chance: 5 }, drops: 6,
+      bossName: "阴风老鬼", monsters: ["游魂", "厉鬼", "冥鬼", "骨妖"],
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    { name: "白雾泽", find: { map: 6, chance: 5 }, drops: 6,
-      bossName: "雾泽狐妖", monsters: ["幻影修士", "雾妖", "迷魂灵", "幻狐"],
+    { name: "迷雾幻林", find: { map: 6, chance: 5 }, drops: 6,
+      bossName: "迷雾狐妖", monsters: ["幻影修士", "雾妖", "迷魂灵", "幻狐"],
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
       } },
-    { name: "苍梧原", find: { map: 7, chance: 5 }, drops: 7,
+    { name: "荒古遗迹", find: { map: 7, chance: 5 }, drops: 7,
       bossName: "独角荒兽", monsters: ["荒兽", "野魔灵", "荒原之灵", "石巨人"],
       extra: {
         boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
