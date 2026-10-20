@@ -34,7 +34,7 @@ sudo xiu-online-uninstall
 
 ## 绑定域名（HTTPS）
 
-SSH 里输入 `x`：从 `/root/cert/<域名>/` 或 `/etc/nginx/cert/<域名>/`（需有 `fullchain.pem`、`privkey.pem`）选证书，自动生成 `/etc/nginx/conf.d/xiu-online-domain-<域名>.conf` 并重载 Nginx，可选加入游戏「游戏线路」。也支持输入子域名自动匹配泛域名或父域名证书。`/usr/local/bin/x` 被别的程序占用时用 `xiu-online-domain`。
+SSH 里输入 `x`：直接列出 `/root/cert/<域名>/` 和 `/etc/nginx/cert/<域名>/`（需有 `fullchain.pem`、`privkey.pem`）里的域名，选一个就把域名和证书写进 `/etc/nginx/conf.d/xiu-online-domain.conf` 并重载 Nginx，同时加入游戏「游戏线路」。再运行 `x` 选别的就是换域名，选 1 取消域名。`x 子域名` 可匹配泛域名或父域名证书。`/usr/local/bin/x` 被别的程序占用时用 `xiu-online-domain`。
 
 ## 打包 APK 时设置服务器地址
 

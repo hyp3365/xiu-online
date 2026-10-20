@@ -1,14 +1,15 @@
 #!/bin/bash
-# xiu-online 域名管理（快捷命令 x）：从本机已有证书里选域名，自动生成 Nginx HTTPS 站点并填好证书路径。
+# xiu-online 域名（快捷命令 x）：直接列出本机已有证书的域名，选一个就把域名和证书写进 Nginx 配置并重载；再运行 x 选别的就是换域名。
 # 证书目录：/root/cert/<域名>/ 或 /etc/nginx/cert/<域名>/，里面要有 fullchain.pem 和 privkey.pem。
-# 生成的配置：/etc/nginx/conf.d/xiu-online-domain-<域名>.conf（游戏路径直接 include 仓库里的 deploy/nginx-xiuxian.conf，更新游戏自动跟着更新）。
+# 生成的配置：/etc/nginx/conf.d/xiu-online-domain.conf，只有一份，换域名就覆盖（游戏路径直接 include 仓库里的 deploy/nginx-xiuxian.conf，更新游戏自动跟着更新）。
 # XIU-ONLINE-DOMAIN-TOOL（安装器靠这行识别 /usr/local/bin/x 是不是本工具）
 set -uo pipefail
 [ "$(id -u)" = 0 ] || exec sudo bash "$0" "$@"
 
 DIR=/opt/xiu-online
 DB=/var/lib/xiu-online/xiu-online.sqlite3
-CONF_PREFIX=/etc/nginx/conf.d/xiu-online-domain-
+CONF=/etc/nginx/conf.d/xiu-online-domain.conf
+OLD_PREFIX=/etc/nginx/conf.d/xiu-online-domain-   # 旧版每个域名一份，换成单份时清掉
 GAME_PATH=/xiuxian-test/
 
 re='\033[0m'; red='\033[1;91m'
@@ -39,7 +40,9 @@ check_and_issue_ssl() {
         shopt -u nullglob
 
         echo
-        skyblue "============== 本地已有证书列表 =============="
+        local cur_domain=""; [[ -f "$CONF" ]] && cur_domain=$(awk '$1=="server_name"{sub(/;$/,"",$2); print $2; exit}' "$CONF")
+        skyblue "============== 选择游戏使用的域名 =============="
+        [[ -n "$cur_domain" ]] && echo -e " 当前域名：\033[1;32m${cur_domain}\033[0m"
         local i=2 idx
         if [[ ${#cert_domains[@]} -eq 0 ]]; then
             echo "  (未检测到任何本地证书)"
@@ -49,17 +52,20 @@ check_and_issue_ssl() {
                 if openssl x509 -in "$cert_file_tmp" -noout -issuer 2>/dev/null | grep -qi "CloudFlare Origin SSL"; then
                     cert_mark=" ${red}【15年证书】${re}"
                 fi
+                [[ "${cert_domains[$idx]}" == "$cur_domain" ]] && cert_mark+=" \033[1;32m【当前】\033[0m"
                 echo -e " ${i}) ${cert_domains[$idx]}${cert_mark}  (路径: ${cert_paths[$idx]})"
                 ((i++))
             done
         fi
         skyblue "=============================================="
+        [[ -n "$cur_domain" ]] && echo " 1) 取消域名（删除域名配置）"
         echo " 0) 退出"
         echo
 
         local menu_choice
         reading "请选择已有证书序号 [2-$((i-1))] 或 0 退出: " menu_choice
         if [[ "$menu_choice" == "0" ]]; then red "已取消操作。"; return 1; fi
+        if [[ "$menu_choice" == "1" && -n "$cur_domain" ]]; then domain=""; return 2; fi
         if [[ "$menu_choice" =~ ^[0-9]+$ ]] && [[ "$menu_choice" -ge 2 ]] && [[ "$menu_choice" -lt "$i" ]]; then
             local sel_idx=$((menu_choice - 2))
             domain="${cert_domains[$sel_idx]}"
@@ -129,13 +135,11 @@ check_and_issue_ssl() {
     return 1
 }
 
-conf_of() { echo "${CONF_PREFIX}${1//\*/_wild}.conf"; }
-
 # 把域名加进游戏「游戏线路」列表（管理员 → 服务器信息），安卓客户端就能切换到这个域名
 add_line() {
     local url="https://${1}${GAME_PATH}"
-    [[ -f "$DB" && -d "$DIR/server/node_modules/better-sqlite3" ]] || { yellow "没找到游戏数据库，跳过加入线路。"; return; }
-    cd "$DIR/server" && runuser -u xiu-online -- env XIU_DB="$DB" XIU_URL="$url" XIU_NAME="$1" node --input-type=module -e '
+    [[ -f "$DB" && -d "$DIR/server/node_modules/better-sqlite3" ]] || return 0
+    ( cd "$DIR/server" && runuser -u xiu-online -- env XIU_DB="$DB" XIU_URL="$url" XIU_NAME="$1" node --input-type=module -e '
 import { createRequire } from "node:module";
 const require = createRequire(process.cwd() + "/");
 const Database = require("better-sqlite3");
@@ -143,43 +147,50 @@ const db = new Database(process.env.XIU_DB);
 db.exec("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
 let lines = []; try { lines = JSON.parse(db.prepare("SELECT value FROM settings WHERE key=?").get("lines")?.value || "[]"); } catch {}
 if (!Array.isArray(lines)) lines = [];
-if (lines.some(l => l.url === process.env.XIU_URL)) { console.log("游戏线路里已经有这个地址。"); process.exit(0); }
+if (lines.some(l => l.url === process.env.XIU_URL)) process.exit(0);
 lines.push({ name: process.env.XIU_NAME, url: process.env.XIU_URL });
 db.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run("lines", JSON.stringify(lines));
 console.log("已加入游戏线路：" + process.env.XIU_URL);
-' 2>&1 | sed 's/^/  /' || true
-} 
+' 2>&1 | sed 's/^/  /' ) || true
+}
 
-bind_domain() {
-    local input
-    echo
-    reading "输入要绑定的域名（直接回车 = 从本机已有证书里选）: " input
-    check_and_issue_ssl "$input" || return 1
+reload_or_rollback() {   # $1 = 备份文件（空 = 原来没有配置）
+    local out
+    if out=$(nginx -t 2>&1); then systemctl reload nginx; rm -f "$1"; return 0; fi
+    if [[ -n "$1" ]]; then mv "$1" "$CONF"; else rm -f "$CONF"; fi
+    red "Nginx 配置检查没通过，已恢复原来的配置："
+    echo "$out" | sed 's/^/  /'
+    return 1
+}
 
-    local conf; conf=$(conf_of "$domain")
-    # 别的 Nginx 配置已经用了这个域名：提醒（同一域名两个 server 块，Nginx 只认第一个）
-    local other
-    local pat="${domain//./\\.}"; pat="${pat//\*/\\*}"
-    other=$(grep -rlsE "server_name[^;]*[[:space:]]${pat}([[:space:];]|$)" /etc/nginx/ 2>/dev/null | grep -v "^${conf}$" | grep -v "^${CONF_PREFIX}" || true)
-    if [[ -n "$other" ]]; then
-        yellow "注意：下面的 Nginx 配置已经在用 ${domain}："
-        echo "$other" | sed 's/^/  /'
-        yellow "继续的话可能冲突（Nginx 会提示 conflicting server name，只有一个生效）。"
-        local go; reading "仍然继续？(y/n): " go
-        [[ "$go" == "y" || "$go" == "Y" ]] || { red "已取消。"; return 1; }
-    fi
+check_and_issue_ssl "${1:-}"; rc=$?
+[[ $rc == 1 ]] && exit 1
 
-    local backup=""
-    [[ -f "$conf" ]] && { backup=$(mktemp); cp "$conf" "$backup"; }
-    cat > "$conf" <<EOF
-# xiu-online 域名站点（由快捷命令 x 生成，可用 x 删除）
+backup=""
+[[ -f "$CONF" ]] && { backup=$(mktemp); cp "$CONF" "$backup"; }
+
+if [[ $rc == 2 ]]; then
+    rm -f "$CONF"
+    reload_or_rollback "$backup" && green "已取消域名（证书文件没动）。"
+    exit
+fi
+
+# 别的 Nginx 配置已经用了这个域名：提醒（同一域名两个 server 块，Nginx 只认第一个）
+pat="${domain//./\\.}"; pat="${pat//\*/\\*}"
+other=$(grep -rlsE "server_name[^;]*[[:space:]]${pat}([[:space:];]|$)" /etc/nginx/ 2>/dev/null | grep -v "^${CONF}$" | grep -v "^${OLD_PREFIX}" || true)
+if [[ -n "$other" ]]; then
+    yellow "注意：下面的 Nginx 配置也在用 ${domain}，可能冲突（只有一个生效）："
+    echo "$other" | sed 's/^/  /'
+fi
+
+cat > "$CONF" <<EOF
+# xiu-online 游戏域名（由快捷命令 x 生成；再运行 x 可换域名）
 server {
     listen 443 ssl;
     server_name ${domain};
     ssl_certificate     ${cert_file};
     ssl_certificate_key ${key_file};
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_session_cache shared:xiu_ssl:10m;
 
     location = / { return 302 ${GAME_PATH}; }
     include ${DIR}/deploy/nginx-xiuxian.conf;
@@ -190,73 +201,15 @@ server {
     location / { return 301 https://\$host\$request_uri; }
 }
 EOF
-    local out
-    if out=$(nginx -t 2>&1); then
-        systemctl reload nginx
-        rm -f "$backup"
-        green "绑定成功：https://${domain}${GAME_PATH}"
-        echo "  配置文件：${conf}"
-        echo "  证书：${cert_file}"
-        echo "  私钥：${key_file}"
-        if [[ "$domain" != \** ]]; then
-            local add; reading "加入游戏「游戏线路」列表（安卓客户端可切换到这个域名）？(y/n): " add
-            [[ "$add" == "y" || "$add" == "Y" ]] && add_line "$domain"
-        fi
-    else
-        if [[ -n "$backup" ]]; then mv "$backup" "$conf"; else rm -f "$conf"; fi
-        red "Nginx 配置检查没通过，已撤销："
-        echo "$out" | sed 's/^/  /'
-        return 1
-    fi
-}
-
-list_domains() {
-    local f found=0 n
-    echo
-    skyblue "============== 已绑定的游戏域名 =============="
-    shopt -s nullglob
-    for f in ${CONF_PREFIX}*.conf; do
-        n=$(grep -m1 -oE "server_name [^;]+" "$f" | cut -d' ' -f2)
-        echo "  https://${n}${GAME_PATH}"
-        echo "     证书 $(awk '$1=="ssl_certificate"{sub(/;$/,"",$2); print $2; exit}' "$f")"
-        found=1
-    done
-    shopt -u nullglob
-    [[ $found == 1 ]] || echo "  (还没有绑定域名)"
-    skyblue "=============================================="
-}
-
-remove_domain() {
-    local files=() f i=1 n c
-    shopt -s nullglob; files=(${CONF_PREFIX}*.conf); shopt -u nullglob
-    [[ ${#files[@]} -gt 0 ]] || { yellow "还没有绑定域名。"; return; }
-    echo
-    for f in "${files[@]}"; do
-        n=$(grep -m1 -oE "server_name [^;]+" "$f" | cut -d' ' -f2)
-        echo " ${i}) ${n}"; ((i++))
-    done
-    echo " 0) 返回"
-    reading "选择要删除的域名: " c
-    [[ "$c" =~ ^[0-9]+$ && "$c" -ge 1 && "$c" -lt "$i" ]] || return
-    rm -f "${files[$((c-1))]}"
-    nginx -t >/dev/null 2>&1 && systemctl reload nginx
-    green "已删除（证书文件没动；游戏线路列表请在游戏「服务器信息」里自己删）。"
-}
-
-while true; do
-    echo
-    skyblue "========== xiu-online 域名管理 =========="
-    echo " 1) 绑定域名（选择已有证书，自动填写证书路径）"
-    echo " 2) 查看已绑定的域名"
-    echo " 3) 删除已绑定的域名"
-    echo " 0) 退出"
-    skyblue "========================================="
-    reading "请选择: " ch
-    case "$ch" in
-        1) bind_domain ;;
-        2) list_domains ;;
-        3) remove_domain ;;
-        0|"") exit 0 ;;
-        *) red "无效的选择！" ;;
-    esac
-done
+olds=( ${OLD_PREFIX}*.conf ); old_bak=$(mktemp -d)
+for f in "${olds[@]}"; do [[ -f "$f" ]] && mv "$f" "$old_bak/"; done
+if reload_or_rollback "$backup"; then
+    rm -rf "$old_bak"
+    green "游戏域名已设置：https://${domain}${GAME_PATH}"
+    echo "  证书：${cert_file}"
+    echo "  私钥：${key_file}"
+    [[ "$domain" == \** ]] || add_line "$domain"
+else
+    mv "$old_bak"/* /etc/nginx/conf.d/ 2>/dev/null; rm -rf "$old_bak"
+    exit 1
+fi
