@@ -324,7 +324,7 @@ G.module({
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.k < 3 && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMe, php, st.hp, meJc, mobJc);
-        if (act.k < 3 && act.f !== 1 && !(act.x & 128) && !mobSeal && cnt.me.zh < pMe.zhT && ch(pMe.zh)) { mobSeal = pMe.zhR; sealR.mob = rounds; cnt.me.zh++; act.x = (act.x || 0) | 64; }
+        if (act.k < 3 && act.f !== 1 && !(act.x & 640) && !mobSeal && cnt.me.zh < pMe.zhT && ch(pMe.zh)) { mobSeal = pMe.zhR; sealR.mob = rounds; cnt.me.zh++; act.x = (act.x || 0) | 64; }
         if (mShield && act.k < 3 && act.f !== 1 && d > 0) {   // v165 怪物护盾
           const dSo = d;   // 减伤%之前（盾碎后溢出部分不再吃盾的减伤%）
           if (mShield.red) d = Math.max(MIN(st), d * (1 - mShield.red / 100));   // 盾防御已在出手时代替本身防御，这里只算额外减伤%
@@ -534,8 +534,10 @@ G.module({
         if (fx & 4) this.btRing(1 - w, false);   // v165 护盾破碎：光圈消失
         if (k === 3 || k === 4 || k === 5) return;
         if (fx & 128) { add("btv-pop gray", "免疫", 1 - w); return; }
+        if (fx & 512) { add("btv-pop gray", "吸收", 1 - w); return; }
         if (f === 1) { re(tg, "btv-dodge"); add("btv-pop gray", "闪避", 1 - w); return; }
         re(tg, "btv-hit"); add("btv-pop" + (f === 2 ? " crit" : ""), (f === 2 ? "暴击 " : "") + "-" + U.fmt(d), 1 - w);
+        if (fx & 2048) setTimeout(() => add("btv-pop", "神佑复活", 1 - w), 400 * SL);
         this.btHp();
       };
       // v170 人物不挥剑：普攻 / 法术 / 法宝 = 原地抖动 + 放大，放完恢复原大小；（v159）怪物普攻 = 冲过去扑 / 挥爪（随机）；怪物法术 / 法宝 = 原地前扑 / 挥手（随机）
