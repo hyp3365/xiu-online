@@ -76,7 +76,6 @@ G.module({
       if (s.explore) this.stopExplore("更换");
       if (s.cultSet) s.cultSet.went = false;   // 手动开始的不算修炼设置自动去的（自动去时 cultSetCheck 会再标记）
       s.explore = { map: a, reg: -1, kuang: 1, once: false, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.kuangPlan(), ms: this.exploreMs() };
-      s.lastRun = null;
       this.exploreOpen = true;
       this.log(`开始在${this.kuangName(a)}挖矿（期间无法修炼）。`, "sys");
       this.after();
@@ -384,7 +383,7 @@ G.module({
     },
     // 看详情：src = "cur" 本次探索 / "last" 上一次结果，i = 事件序号；用战斗过程画面重放，随时可跳过
     showBattle(src, i) {
-      const s = this.s, hi = /^h\d+$/.test(src) ? +src.slice(1) : -1, list = hi >= 0 ? ((s.exHist || [])[hi] || {}).ev : src === "cur" ? (s.explore && s.explore.ev) : (s.lastRun && s.lastRun.ev), e = list && list[i];   // v205 "h序号" = 全部探索里的第几次
+      const s = this.s, hi = /^h\d+$/.test(src) ? +src.slice(1) : -1, list = hi >= 0 ? ((this._hist || [])[hi] || {}).ev : src === "cur" ? (s.explore && s.explore.ev) : (s.lastRun && s.lastRun.ev), e = list && list[i];   // v205 "h序号" = 全部探索里的第几次
       if (!e || !e.b) return;
       this._backHist = hi >= 0;   // 从全部探索点进来：关闭回放后回到全部探索窗口
       const b = e.b, last = b.log[b.log.length - 1], win = last ? last[8] <= 0 && last[6] > 0 : false;
@@ -650,7 +649,6 @@ G.module({
       if (s.cultSet) s.cultSet.went = false;
       s.explore = { map: a, reg: r, once: !!once, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.makePlan(), ms: this.exploreMs() };
       if (!once && !this.exReady()) { s.explore.rest = 1; this.log(`${this.exReadyTxt()}，先原地休养，恢复后自动开始。`, "sys"); }
-      s.lastRun = null;
       this.exploreOpen = true;
       this.log(`开始在${DATA.regionName(a, r)}${once ? "历练" : "自动探索"}（期间无法修炼）。`, "sys");
       this.after();
@@ -683,7 +681,6 @@ G.module({
       s.explore = { map: a, reg: r, once: false, cq: n, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: r < 0 ? this.kuangPlan() : this.makePlan(), ms: this.exploreMs() };
       if (r < 0) s.explore.kuang = 1;   // 灵矿
       if (r >= 0 && !this.exReady()) { s.explore.rest = 1; this.log(`${this.exReadyTxt()}，先原地休养，恢复后自动开始出窍。`, "sys"); }
-      s.lastRun = null;
       this.exploreOpen = true;
       this.log(`元婴出窍，前往${r < 0 ? this.kuangName(a) : DATA.regionName(a, r)}探索 ${n} 次（期间可以继续修炼）。`, "sys");
       this.after();
@@ -775,7 +772,7 @@ G.module({
           this.log(x.mj !== undefined ? this.exName(x) + x.last : x.last, lost ? "bad" : "gold");
           // 保存这一次的全部事件，结束后也能查看（含失败那一步）
           s.lastRun = { title: `${this.exName(x)} · ${x.last}`, ev: x.ev.slice(), bad: lost };
-          this.exHistAdd(s.lastRun);   // v204 全部探索：保留最近 EX_HIST 次
+          this.exHistAdd(s.lastRun, x);   // 全部信息：服务器保存最近 100 条
           if (x.mj !== undefined) { if (!this.mjFinish(x, lost)) break; x = s.explore; continue; }   // 秘境：每处只走一次，一键探索接着走下一处
           if (!lost && !x.kuang) this.mjDiscover(x.map);   // 地图走完一次：有几率发现秘境（凡界）/ 灵地（四界）
           if (x.once) { // 历练只走一次；走完且未战败 = 通过，解锁该区域自动探索
@@ -794,7 +791,6 @@ G.module({
             x.rest = 1; x.step = 0; x.loot = this.newLoot(); x.ev = []; break;
           }
           x.start = at; x.ms = this.exploreMs(); x.step = 0; x.loot = this.newLoot(); x.ev = []; x.plan = this.exPlan(x); delete x.rs;
-          s.lastRun = null; // 开始新一次：不保留上一次的记录
         }
       }
       if (changed) this.dirty();
@@ -874,7 +870,7 @@ G.module({
       const n = { map: -1, reg: 0, mj: i, once: !!once, queue: queue || [], start: x ? x.start + x.step * x.ms : this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.makePlan(this.mjCfg(k)), ms: this.exploreMs() };
       if (k === "ld") n.mk = "ld";
       else if (d.realm === CFG.chuqiao.LU_MJ_REALM && CFG.chuqiao.LU_DROP > 0) this.lootAdd(n.loot, DATA.smName("lu"), CFG.chuqiao.LU_DROP);   // 元婴期秘境必定掉落养神露
-      s.explore = n; s.lastRun = x ? s.lastRun : null;
+      s.explore = n;   // 本次结果一直保留到下一次结算
       this.log(`进入${this.mjLabel(k)}「${d.name}」${once ? "历练" : "探索"}（期间无法修炼）。`, "sys");
     },
     // 历练 / 探索一处秘境 / 灵地
@@ -944,20 +940,25 @@ G.module({
     },
     setExploreOpen(v) { this.exploreOpen = v; this.render(); },
     // 探索信息一行：战斗事件后面带「详情」按钮
-    evLine(e, src, i) { return `<p class="${e.c}"><b>第${e.n}步</b> ${e.t}${e.b ? ` <button class="sm" onclick="G.showBattle('${src}',${i})">详情</button>` : ""}</p>`; },
+    evLine(e, src, i) { return `<p class="${e.c}">${e.n ? `<b>第${e.n}步</b> ` : ""}${e.t}${e.b ? ` <button class="sm" onclick="G.showBattle('${src}',${i})">详情</button>` : ""}</p>`; },
     setLastOpen(v) { this.lastOpen = v; this.render(); },
-    // v205 全部探索记录：最近 10 次（新的在前），含战斗回放
-    exHistAdd(r) {
-      const s = this.s, h = s.exHist || (s.exHist = []);
-      h.unshift({ title: r.title, bad: !!r.bad, ev: r.ev.slice() });
-      if (h.length > 10) h.length = 10;
+    // 全部信息：探索、出窍、历练、秘境每次结束记一条，战斗（实力测试除外）在服务器 playBattle 里记，天劫在 trib.js endTrib 记；
+    //   放进 s.histQ，服务器取走存 hist 表（最近 100 条），客户端打开时用 /api/hist 读
+    exHistAdd(r, x) {
+      const s = this.s, k = !x ? "探索" : x.mj !== undefined ? this.mjLabel(x.mk) : x.once ? "历练" : x.cq ? "出窍" : x.kuang ? "挖矿" : "探索";
+      (s.histQ || (s.histQ = [])).push({ at: this.now(), k, title: r.title, bad: !!r.bad, ev: r.ev.slice() });
     },
-    openExHist(k) {
-      if (k !== undefined) this.exHistSel = this.exHistSel === k ? -1 : k;
-      const h = this.s.exHist || [], sel = this.exHistSel;
-      this.modal(`<h2>全部探索<small style="color:#8c7e66;font-size:12px;margin-left:6px">最近 ${h.length} 次</small></h2>
-        ${h.length ? h.map((r, i) => `<div class="line" style="align-items:center"><div class="${r.bad ? "q5" : ""}" style="font-size:13px">${i + 1}. ${r.title}</div><button class="sm ${sel === i ? "on" : ""}" style="flex-shrink:0" onclick="G.openExHist(${i})">${sel === i ? "收起" : "详细"}</button></div>
-          ${sel === i ? `<div class="explore-log">${r.ev.map((e, j) => this.evLine(e, "h" + i, j)).join("")}</div>` : ""}`).join("") : "<p>还没有探索记录。</p>"}
+    async openExHist(k) {
+      if (k === undefined) {   // 打开时从服务器读最近 100 条
+        this.exHistSel = -1;
+        this.modal(`<h2>全部信息</h2><p class="desc">读取中…</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+        try { this._hist = (await API.req("hist")).list || []; } catch (e) { this._hist = []; this.log("读取全部信息失败：" + e.message, "bad"); }
+      } else this.exHistSel = this.exHistSel === k ? -1 : k;
+      const h = this._hist || [], sel = this.exHistSel, z = n => String(n).padStart(2, "0");
+      const tm = t => { const d = new Date(t); return `${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+      this.modal(`<h2>全部信息<small style="color:#8c7e66;font-size:12px;margin-left:6px">最近 ${h.length} 条</small></h2>
+        ${h.length ? h.map((r, i) => `<div class="line" style="align-items:center"><div class="${r.bad ? "q5" : ""}" style="font-size:13px">${r.k ? `<span class="tag">${r.k}</span> ` : ""}${r.title}<small>${r.at ? tm(r.at) : ""}</small></div><button class="sm ${sel === i ? "on" : ""}" style="flex-shrink:0" onclick="G.openExHist(${i})">${sel === i ? "收起" : "详细"}</button></div>
+          ${sel === i ? `<div class="explore-log">${(r.ev || []).map((e, j) => this.evLine(e, "h" + i, j)).join("")}</div>` : ""}`).join("") : "<p>还没有记录。</p>"}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     setMapSel(a) { this.mapSel = a; this.render(); },   // a = 地图序号，"mj" = 秘境
@@ -1134,7 +1135,7 @@ G.module({
       const bars = `<div class="row small"><span>生命 ${U.fmt(s.hp)} / ${U.fmt(st.hp)}</span><span>斩妖 ${s.kills}</span></div>
         <div class="bar hp"><div style="width:${s.hp / st.hp * 100}%"></div></div>
         <div class="row small"><span>法力 ${U.fmt(s.mana)} / ${U.fmt(st.mana)}</span><span>灵石 ${U.fmt(s.stone)}</span></div>`;
-      const status = (() => s.explore ? (() => { const x = s.explore, T = this.exCfg(x).TIME, L = x.loot;
+      const status = (() => (s.explore ? (() => { const x = s.explore, T = this.exCfg(x).TIME, L = x.loot;
           const mats = Object.values(L.mats).map(m => `${m.name}×${U.fmt(m.n)}`);
           if (L.hx) mats.push(`${DATA.HX}×${U.fmt(L.hx)}`);
           for (const k in L.sm || {}) { const p = DATA.smParse(k); mats.push(`${DATA.smName(p.k, p.ft, p.tier)}×${U.fmt(L.sm[k])}`); }
@@ -1146,10 +1147,11 @@ G.module({
             <button class="sm" onclick="G.setExploreOpen(${!this.exploreOpen})">${this.exploreOpen ? "收起信息" : "探索信息"}</button>
             <button class="sm" onclick="G.stopNow()">停止</button></span></div>
           <p class="desc">本次收获（结束后放入背包）：灵石 ${U.fmt(L.stone)}${mats.length ? "、" + mats.join("、") : ""}</p>
-          ${this.exploreOpen ? `<div class="btns" style="margin-top:6px"><button class="sm on">当前探索</button><button class="sm" onclick="G.openExHist()">全部探索</button></div><div class="explore-log">${x.ev.map((e, i) => this.evLine(e, "cur", i)).join("") || "<p>出发……</p>"}</div>` : ""}</div>`; })()
-        : s.lastRun ? `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.setLastOpen(${!this.lastOpen})">${this.lastOpen ? "收起" : "详细"}</button></small></h3>
+          ${this.exploreOpen ? `<div class="btns" style="margin-top:6px"><button class="sm on">本次探索信息</button><button class="sm" onclick="G.openExHist()">全部信息</button></div><div class="explore-log">${x.ev.map((e, i) => this.evLine(e, "cur", i)).join("") || "<p>出发……</p>"}</div>` : ""}</div>`; })()
+        : "") + (s.lastRun ? `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.setLastOpen(${!this.lastOpen})">${this.lastOpen ? "收起" : "详细"}</button></small></h3>
           <p class="desc ${s.lastRun.bad ? "q5" : ""}">${s.lastRun.title}</p>
-          ${this.lastOpen ? `<div class="explore-log">${s.lastRun.ev.map((e, i) => this.evLine(e, "last", i)).join("")}</div>` : ""}</div>` : "")();
+          ${this.lastOpen ? `<div class="btns" style="margin-top:6px"><button class="sm on">本次探索信息</button><button class="sm" onclick="G.openExHist()">全部信息</button></div><div class="explore-log">${s.lastRun.ev.map((e, i) => this.evLine(e, "last", i)).join("")}</div>` : ""}</div>`
+          : `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.openExHist()">全部信息</button></small></h3><p class="desc">还没有探索结果。</p></div>`))();
       // 地图选择（9 张）+ 选中地图的 东西南北 四个区域
       // v45：只列当前这一界的 9 张地图；秘境只在凡界
       const idx = (DATA.worldMapIdx[wid] || []).slice().sort((a, b) => DATA.mapReq(a) - DATA.mapReq(b) || a - b), fan = wid === "fan";   // 从低到高

@@ -149,6 +149,8 @@ G.module({
         x.result = `渡劫失败：被劫雷劈倒，修为 -${U.fmt(loss)}。`;
         this.log(x.result, "bad");
       }
+      // 全部信息：记下这次天劫的全过程（服务器存最近 100 条）
+      (s.histQ || (s.histQ = [])).push({ at: this.now(), k: "天劫", title: `渡劫 · ${this.realmName(x.L)}：${x.result}`, bad: !win, ev: x.log.slice().reverse().map(t => ({ t, c: "" })).concat([{ t: x.result, c: win ? "gold" : "bad" }]) });
       this.dirty(); if (!this.silent) { this.save(); this.render(); }
     },
 

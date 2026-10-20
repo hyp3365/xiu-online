@@ -558,7 +558,6 @@ G.module({
       this.modal(`<h2>${C[k].name} · ${c.lv} 阶</h2>
         <div class="line"><div>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}${tc ? `<small>炼制时间 -${U.num(tc)}%</small>` : ""}</div></div>
         ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}
-        ${!max && C[k].ITEM_EXP ? `<p class="desc">只有炼成 ${c.lv} 阶及以上的${k === "dan" || k === "xdan" ? "丹药" : "物品"}才加经验，每件 +${U.fmt(this.itemExp(k, c.lv - 1, true))}</p>` : ""}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     openFurnaceInfo(kind) {

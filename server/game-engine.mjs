@@ -161,6 +161,11 @@ export class GameEngine {
     // 战斗画面在客户端播放：服务器只记下来，随操作结果发回
     this.G.playBattle = function (b, title, txt, win, logs, replay, opt) {
       engine.battles = [safeClone({ b, title, txt, win, logs: logs || null, replay: !!replay, opt: opt || {} })];
+      // 全部信息：除实力测试、回放以外的战斗都记一条（服务器存 hist 表，见 server.mjs drainHist）
+      if (!replay && !(opt && opt.test) && b && this.s) {
+        const nm = opt && opt.tname !== undefined ? opt.tname : b.name, t = `${title}${nm ? " · " + nm : ""}`;
+        (this.s.histQ || (this.s.histQ = [])).push(safeClone({ at: engine.clock.now, k: "战斗", title: `${t}${txt ? "：" + txt : ""}`, bad: !win, ev: [{ t: txt || (win ? "胜利" : "失败"), c: win ? "gold" : "bad", b }] }));
+      }
     };
     this.G.closeModal = function () {};
     this.G.setSync = function () {};

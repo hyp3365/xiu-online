@@ -33,6 +33,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS tokens(token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS saves(user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS hist(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, at INTEGER NOT NULL, data TEXT NOT NULL);
+  CREATE INDEX IF NOT EXISTS hist_user ON hist(user_id, id);
   CREATE TABLE IF NOT EXISTS gifts(code TEXT PRIMARY KEY, payload TEXT NOT NULL, max_uses INTEGER NOT NULL DEFAULT 1, used_count INTEGER NOT NULL DEFAULT 0, expires_at INTEGER, created_at INTEGER NOT NULL);
   CREATE TABLE IF NOT EXISTS gift_uses(code TEXT NOT NULL REFERENCES gifts(code) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, used_at INTEGER NOT NULL, PRIMARY KEY(code,user_id));
 `);
@@ -105,7 +107,29 @@ function getState(userId) {
   if (!row) return null;
   try { return JSON.parse(row.data); } catch { throw new Error("服务器存档损坏，请联系管理员"); }
 }
+// 全部信息（探索、出窍、历练、秘境记录 + 除实力测试外的战斗）：游戏模块把新记录放进 state.histQ，
+//   这里取出存到 hist 表，每人只留最近 HIST_KEEP 条；histQ 不进存档、不推给客户端（客户端用 /api/hist 读取）
+const HIST_KEEP = 100, HIST_MAX_BYTES = 512 * 1024;
+const histIns = db.prepare("INSERT INTO hist(user_id,at,data) VALUES(?,?,?)");
+const histTrim = db.prepare("DELETE FROM hist WHERE user_id=? AND id NOT IN (SELECT id FROM hist WHERE user_id=? ORDER BY id DESC LIMIT ?)");
+const histSave = db.transaction((userId, list) => {
+  for (const r of list) {
+    let data = JSON.stringify(r);
+    if (Buffer.byteLength(data) > HIST_MAX_BYTES) data = JSON.stringify({ ...r, ev: (r.ev || []).map(({ b, ...e }) => e) });   // 太大就去掉战斗回放
+    histIns.run(userId, Number(r.at) || Date.now(), data);
+  }
+  histTrim.run(userId, userId, HIST_KEEP);
+});
+function drainHist(userId, state) {
+  if (!state || typeof state !== "object") return;
+  const list = [];
+  if (Array.isArray(state.exHist)) { list.push(...state.exHist.slice().reverse()); delete state.exHist; }   // 旧存档里的最近 10 次探索
+  if (Array.isArray(state.histQ)) { list.push(...state.histQ); delete state.histQ; }
+  if (!list.length || !userId) return;
+  try { histSave(userId, list.filter(r => r && typeof r === "object")); } catch (err) { console.error("hist save failed:", err?.message || err); }
+}
 function persist(userId, state) {
+  drainHist(userId, state);
   const data = JSON.stringify(state);
   if (Buffer.byteLength(data) > 4 * 1024 * 1024) throw new Error("角色数据超出安全大小限制");
   q.saveUpsert.run(userId, data, Date.now());
@@ -218,6 +242,10 @@ const server = http.createServer(async (req, res) => {
       if (data) { data = getEngine(user.id).advance(data, Date.now()).state; persist(user.id, data); }
       return sendJson(res, 200, { data, serverNow: Date.now(), actions: [...ACTIONS], admin: !!user.is_admin });
     }
+    if (req.method === "GET" && route === "/api/hist") {
+      const rows = db.prepare("SELECT id,at,data FROM hist WHERE user_id=? ORDER BY id DESC LIMIT ?").all(user.id, HIST_KEEP);
+      return sendJson(res, 200, { list: rows.map(r => { try { return { ...JSON.parse(r.data), id: r.id, at: r.at }; } catch { return { id: r.id, at: r.at, title: "（记录损坏）", ev: [] }; } }) });
+    }
     if (req.method === "POST" && route === "/api/character") {
       const body = await readBody(req);
       if (q.save.get(user.id)) return error(res, 409, "角色已经创建");
@@ -228,6 +256,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && route === "/api/character/reset") {
       await readBody(req);
       db.prepare("DELETE FROM saves WHERE user_id=?").run(user.id);
+      db.prepare("DELETE FROM hist WHERE user_id=?").run(user.id);
       const online = clients.get(user.id);
       if (online) { clients.delete(user.id); online.socket.close(4004, "角色已重置"); }
       engines.delete(user.id);
@@ -399,6 +428,7 @@ function diffState(a, b) {
 }
 // 生成发给某个连接的状态消息：首次或要求重同步时发完整状态，之后只发补丁，并带上序号供客户端校验。
 function statePayload(client, full = false) {
+  drainHist(client.userId, client.state);
   const json = JSON.stringify(client.state), prevSeq = client.seq || 0;
   client.seq = prevSeq + 1;
   let payload;
