@@ -19,6 +19,10 @@ if [ -z "${XIU_UPDATE_REEXEC:-}" ] && ! cmp -s "$DIR/deploy/xiu-update" /usr/loc
 fi
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+# 快捷命令 x：域名管理（选已有证书绑定域名）。/usr/local/bin/x 已被别的程序占用就不覆盖，用 xiu-online-domain
+install -m 0755 "$DIR/deploy/xiu-domain.sh" /usr/local/bin/xiu-online-domain
+if [ ! -e /usr/local/bin/x ] || grep -q XIU-ONLINE-DOMAIN-TOOL /usr/local/bin/x 2>/dev/null; then install -m 0755 "$DIR/deploy/xiu-domain.sh" /usr/local/bin/x
+else echo ">>> /usr/local/bin/x 已被其它程序占用，域名管理请用：xiu-online-domain"; fi
 # 旧版的 GitHub 备份脚本已改为游戏内「管理员 → 服务器信息」设置：清理掉
 systemctl disable --now xiu-online-backup-github.timer >/dev/null 2>&1 || true
 rm -f /usr/local/bin/xiu-online-backup-github /usr/local/bin/xiu-online-backup-setup /etc/systemd/system/xiu-online-backup-github.service /etc/systemd/system/xiu-online-backup-github.timer

@@ -36,6 +36,10 @@ systemctl daemon-reload
 systemctl enable --now "$SERVICE"
 install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update
 install -m 0755 "$DIR/deploy/uninstall.sh" /usr/local/bin/xiu-online-uninstall
+# 快捷命令 x：域名管理（选已有证书绑定域名）。/usr/local/bin/x 已被别的程序占用就不覆盖，用 xiu-online-domain
+install -m 0755 "$DIR/deploy/xiu-domain.sh" /usr/local/bin/xiu-online-domain
+if [ ! -e /usr/local/bin/x ] || grep -q XIU-ONLINE-DOMAIN-TOOL /usr/local/bin/x 2>/dev/null; then install -m 0755 "$DIR/deploy/xiu-domain.sh" /usr/local/bin/x
+else echo ">>> /usr/local/bin/x 已被其它程序占用，域名管理请用：xiu-online-domain"; fi
 # 网页「设置 → 管理员 → 从 GitHub 更新」：root 的 path 单元监听请求文件并运行本更新器
 install -m 0644 "$DIR/deploy/xiu-web-update.service" /etc/systemd/system/xiu-online-web-update.service
 install -m 0644 "$DIR/deploy/xiu-web-update.path" /etc/systemd/system/xiu-online-web-update.path
@@ -58,5 +62,5 @@ nginx -t
 systemctl is-active --quiet nginx && systemctl reload nginx || systemctl start nginx
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:18301/health >/dev/null && break || sleep 1; done
 curl -fsS http://127.0.0.1:18301/health >/dev/null
-printf '\n安装完成：\n  测试入口（HTTP）：http://%s/\n  Cloudflare Tunnel origin（HTTP）：http://127.0.0.1:18302\n  Node API（仅本机）：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  卸载：sudo xiu-online-uninstall\n' "$PUBLIC_IP" "$SERVICE"
+printf '\n安装完成：\n  测试入口（HTTP）：http://%s/\n  Cloudflare Tunnel origin（HTTP）：http://127.0.0.1:18302\n  Node API（仅本机）：127.0.0.1:18301\n  服务：systemctl status %s\n  手动更新：sudo xiu-online-update\n  绑定域名（HTTPS）：x\n  卸载：sudo xiu-online-uninstall\n' "$PUBLIC_IP" "$SERVICE"
 echo '注意：IP 测试入口使用明文 HTTP，仅限临时测试；请用一次性测试账号和密码，不要输入常用密码。'

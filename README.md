@@ -17,6 +17,10 @@ curl -fsSL https://raw.githubusercontent.com/hyp3699/xiu-online/main/deploy/inst
 sudo xiu-online-update
 ```
 
+## 绑定域名（HTTPS）
+
+SSH 里输入 `x`：从 `/root/cert/<域名>/` 或 `/etc/nginx/cert/<域名>/`（需有 `fullchain.pem`、`privkey.pem`）选证书，自动生成 `/etc/nginx/conf.d/xiu-online-domain-<域名>.conf` 并重载 Nginx，可选加入游戏「游戏线路」。也支持输入子域名自动匹配泛域名或父域名证书。`/usr/local/bin/x` 被别的程序占用时用 `xiu-online-domain`。
+
 更新会从 GitHub 拉取 `main`、重启测试服并刷新 Nginx IP 站点配置。检查服务：
 
 ```bash
