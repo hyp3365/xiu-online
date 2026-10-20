@@ -66,10 +66,18 @@ const API = {
     this._clockPerf = perf;
     if (!this._clockInstalled) {
       const api = this, nativeNow = Date.now.bind(Date);
+      // 显示用时钟平滑：校准不再一下跳过去（倒计时会一秒跳 2~3 秒或倒退），而是让时钟稍快 / 稍慢走，几秒内追上；
+      // 差距超过 3 秒（首次同步、休眠恢复）才直接跳。时钟永不倒退。
+      let shown = 0, shownPerf = 0;
       Date.now = function () {
         if (!api.serverNow) return nativeNow();
-        const elapsed = typeof performance !== "undefined" ? performance.now() - api._clockPerf : 0;
-        return Math.floor(api.serverNow + Math.max(0, elapsed));
+        const p = typeof performance !== "undefined" ? performance.now() : 0;
+        const target = api.serverNow + Math.max(0, p - api._clockPerf), dt = Math.max(0, p - shownPerf);
+        if (!shown || Math.abs(target - shown) > 3000) shown = target;
+        else if (target >= shown) shown = Math.min(target, shown + dt * 1.25);
+        else shown = Math.max(shown, Math.max(target, shown + dt * 0.75));
+        shownPerf = p;
+        return Math.floor(shown);
       };
       this._clockInstalled = true;
     }
