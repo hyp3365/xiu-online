@@ -574,3 +574,7 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 .qty-box{display:flex;justify-content:center;align-items:center;gap:6px;margin:12px 0 4px}
 .qty-box button{min-width:42px;padding:6px 8px}
 .qty-box input{width:90px;text-align:center;font-size:16px}
+/* v249 炼丹房 / 炼器室顶部小卡片（点开看详情） */
+.card.mini{padding:5px 10px;margin-bottom:8px;cursor:pointer}
+.card.mini h3{margin:0;font-size:13px}
+.card.mini h3 small{font-size:11px}
