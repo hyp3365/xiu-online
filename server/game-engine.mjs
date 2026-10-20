@@ -269,6 +269,8 @@ export class GameEngine {
     if (action.startsWith("_") || ["init", "start", "loop", "runTicks", "offline", "tickAll", "migrate", "newSave"].includes(action)) throw new Error("不允许调用该操作");
     this.seedRandom();
     this.G._simNow = this.clock.now;
+    // 客户端显示储物格前会排序，按格子序号点的操作要用同样顺序（否则点「使用」会对到别的物品，没反应）
+    if (typeof this.G.sortBag === "function" && Array.isArray(this.G.s.bag)) this.G.sortBag();
     this.battles = [];
     const result = method.apply(this.G, args);
     if (result && typeof result.then === "function") throw new Error("异步 UI 方法不能作为游戏操作调用");

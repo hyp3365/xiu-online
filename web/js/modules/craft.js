@@ -39,6 +39,7 @@ G.module({
     forgeQueue: [],
     alchJob: null,
     alchQueue: [],
+    alchLog: [], forgeLog: [],   // v250 最近 30 次炼丹 / 炼器记录
     danEaten: {},
     forgeKnown: [], forgeStudy: null, stoneUsed: {},
     craftsman: { dan: { lv: 1, exp: 0 }, qi: { lv: 1, exp: 0 }, ling: { lv: 1, exp: 0 } },   // v42 起还有 xdan 炼丹仙师 / xqi 炼器仙师 / xling 仙植师（用到时自动加）
@@ -115,6 +116,7 @@ G.module({
       let j, guard = 0;
       while ((j = s.forgeJob) && now >= j.end && guard++ < 1000) {
         if (!this.finishForge(j)) break;
+        this.craftRec("forgeLog", { at: j.end, name: this.jobName(j), ok: j.ok ? 1 : 0 });
         s.forgeJob = null;
         const nx = s.forgeQueue.shift();
         if (nx) s.forgeJob = Object.assign({}, nx, { end: j.end + this.forgePer(nx.kind, nx.g) });
@@ -136,7 +138,7 @@ G.module({
           a.done++; a.next += a.per;
         }
         if (a.done < a.n) break;
-        s.alchJob = null;
+        s.alchJob = null; this.craftRec("alchLog", { at: a.next - a.per, name: DATA.danName(a.type, a.g), n: a.n, ok: a.ok || 0, extra: a.extra || 0, fail: a.fail || 0 });
         this.log(`${DATA.danName(a.type, a.g)} ×${a.n} 炼制完毕：成丹 ${a.ok || 0} 枚${a.extra ? `（额外多出 ${a.extra} 枚）` : ""}${a.fail ? `，失败 ${a.fail} 枚` : ""}。`, "gold");
         const nx = s.alchQueue.shift();
         if (nx) { const per = this.danPer(nx.type, nx.g); s.alchJob = { type: nx.type, g: nx.g, n: nx.n, done: 0, per, next: a.next - a.per + per }; }
@@ -151,8 +153,10 @@ G.module({
         if (s.furnaceUse[k] === undefined) s.furnaceUse[k] = -1;
         s.blueprints[k] = s.blueprints[k].filter(g => g >= 0 && g < DATA.DAN_JIE_N);
         s.furnaces[k] = s.furnaces[k].filter(g => g >= 0 && g < DATA.DAN_JIE_N);
+        if (!s.furnaces[k].includes(s.furnaceUse[k])) s.furnaceUse[k] = s.furnaces[k].length ? Math.max(...s.furnaces[k]) : -1;   // v250 洞府有炉子却没在用 → 自动用最高阶
       }
       if (s.alchJob && !DATA.recipes[s.alchJob.type]) s.alchJob = null;
+      if (!Array.isArray(s.alchLog)) s.alchLog = []; if (!Array.isArray(s.forgeLog)) s.forgeLog = [];
       s.alchQueue = s.alchQueue.filter(q => DATA.recipes[q.type]);
       if (s.bag.some(it => it.t === "dan" && !DATA.dans[it.type])) s.bag = s.bag.filter(it => it.t !== "dan" || DATA.dans[it.type]);
     },
@@ -188,7 +192,9 @@ G.module({
     // 背包里点炉子「使用」：装进洞府
     installFurnace(i) {
       const s = this.s, it = s.bag[i]; if (!it || it.t !== "fu") return;
-      if (s.furnaces[it.kind].includes(it.g)) return this.log(`洞府里已有${DATA.furnaceName(it.kind, it.g)}。`, "sys");
+      if (s.furnaces[it.kind].includes(it.g)) {   // v250 洞府已有同阶：直接换用（不扣背包里这个）
+        if (s.furnaceUse[it.kind] === it.g) return this.log(`${DATA.furnaceName(it.kind, it.g)}已在使用中。`, "sys");
+        s.furnaceUse[it.kind] = it.g; this.log(`换用${DATA.furnaceName(it.kind, it.g)}。`, "sys"); this.closeModal(); return this.after(); }
       s.furnaces[it.kind].push(it.g); this.removeAt(i, 1);
       if (it.g > s.furnaceUse[it.kind]) s.furnaceUse[it.kind] = it.g;
       this.log(`${DATA.furnaceName(it.kind, it.g)}已装进洞府${DATA.isDanFu(it.kind) ? "炼丹房" : "炼器室"}。`, "gold"); this.closeModal(); this.after();
@@ -460,7 +466,7 @@ G.module({
       const s = this.s, a = s.alchJob; if (!a) return;
       const left = a.n - a.done;
       DATA.danRecipe(a.type, a.g).forEach(m => this.addMat(m.kind, DATA.matName(m.kind, m.g), m.g, m.n * left));
-      s.alchJob = null;
+      s.alchJob = null; this.craftRec("alchLog", { at: this.now(), name: DATA.danName(a.type, a.g), n: a.done, ok: a.ok || 0, extra: a.extra || 0, fail: a.fail || 0, stop: 1 });
       const nx = s.alchQueue.shift();
       if (nx) { const per = this.danPer(nx.type, nx.g); s.alchJob = { type: nx.type, g: nx.g, n: nx.n, done: 0, per, next: this.now() + per }; }
       this.log(`停炉，退回 ${left} 枚的药材。`, "sys"); this.after();
@@ -499,6 +505,14 @@ G.module({
 
     /* ---------- 页面：炉子卡片（炼丹房、炼器室共用，可更换） ---------- */
     furnaceDesc(kind, g) { const d = DATA.isDanFu(kind); return `${d ? "炼丹" : kind === "xqi" ? "炼制仙炉" : "炼器"}时间 -${DATA.furnaceBonus(kind, g)}%`; },
+    // v250 炼丹 / 炼器记录：最近 30 次
+    craftRec(k, r) { const s = this.s; if (!Array.isArray(s[k])) s[k] = []; s[k].unshift(r); if (s[k].length > 30) s[k].length = 30; },
+    openCraftLog(k) {
+      const L = this.s[k] || [], dan = k === "alchLog", tm = t => { const d = new Date(t), z = n => String(n).padStart(2, "0"); return `${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+      this.modal(`<h2>${dan ? "炼丹" : "炼器"}记录<small> 最近 30 次</small></h2><div class="craft-log">` + (L.length ? L.map(r => `<div class="line"><div>${r.name}${dan ? ` ×${r.n}` : ""}${r.stop ? `<span class="tag">停炉</span>` : ""}
+          <small>${tm(r.at)}${dan ? ` · 成丹 ${r.ok}${r.extra ? `（额外 +${r.extra}）` : ""} · 失败 ${r.fail}` : ""}</small></div>${dan ? "" : `<span class="${r.ok ? "c-green" : "q5"}">${r.ok ? "成功" : "失败"}</span>`}</div>`).join("") : `<p class="desc">还没有记录。</p>`) +
+        `</div><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    },
     // v249 炼丹房 / 炼器室顶部：技艺、炉子缩成小卡片，点开弹窗看经验条、炉子缩短时间、更换炉子
     craftsmanMini(k) { const c = this.craftInfo(k); return `<div class="card mini" onclick="G.openCraftsman('${k}')"><h3>${CFG.craftsman[k].name} · ${c.lv} 阶<small>详情 ›</small></h3></div>`; },
     furnaceMini(kind) { const cur = this.s.furnaceUse[kind];
@@ -531,16 +545,18 @@ G.caveViews.alchemy = function () {
   const s = this.s, a = s.alchJob, tier = this.danTier || 0, cat = this.danCat || 0, catName = (CFG.alchemy.CATS || [])[cat] || "";
   const fk = cat ? "xdan" : "dan", fu = s.furnaceUse[fk];   // 仙冥魔神丹：炼丹仙师 + 炼丹仙炉
   let h = this.danCatBar("danCat") + this.cardRow(this.craftsmanMini(fk), this.furnaceMini(fk));
+  // v250 「正在炼丹」框一直显示、固定大小（队列多了在框里滚动）
+  const logBtn = k => `<div class="craft-logbtn"><button class="sm" onclick="G.openCraftLog('${k}')">${k === "alchLog" ? "炼丹" : "炼器"}记录</button></div>`;
+  h += logBtn("alchLog") + `<div class="card job-card"><h3><span>正在炼丹<span class="tag">队列 ${s.alchQueue.length} / ${CFG.alchemy.QUEUE}</span></span><small>${a ? `${DATA.danName(a.type, a.g)} ${a.done} / ${a.n}` : ""}</small></h3>`;
   if (a) {
     const aLeft = Math.max(0, a.next - Date.now()) + Math.max(0, a.n - a.done - 1) * a.per; let aAcc = aLeft;   // 这一炉剩余 / 排到队列第几炉为止的总时间（毫秒）
-    h += `<div class="card"><h3><span>正在炼丹<span class="tag">队列 ${s.alchQueue.length} / ${CFG.alchemy.QUEUE}</span></span><small>${DATA.danName(a.type, a.g)} ${a.done} / ${a.n}</small></h3>
-      <p class="desc">成丹 ${a.ok || 0}${a.extra ? `（额外 +${a.extra}）` : ""} · 失败 ${a.fail || 0} · 当前成功率 ${this.ratePct(this.craftRate(DATA.danCraft(a.type), a.g))}</p>
+    h += `<p class="desc">成丹 ${a.ok || 0}${a.extra ? `（额外 +${a.extra}）` : ""} · 失败 ${a.fail || 0} · 当前成功率 ${this.ratePct(this.craftRate(DATA.danCraft(a.type), a.g))}</p>
       <div class="line"><div class="pg">${this.pgFill(Math.max(0, a.next - Date.now()), a.per)}<span>下一枚出炉<small>${U.cd(Math.max(0, a.next - Date.now()) / 1000 + 59)} · 每枚 ${U.dur(a.per / 1000)} · 这一炉约 ${U.cd(aLeft / 1000 + 59)} 后炼完</small></span></div>
-      <button class="sm" onclick="G.stopAlch()">停炉</button></div>` +
+      <button class="sm" onclick="G.stopAlch()">正在炼丹</button></div><div class="job-q">` +
       s.alchQueue.map((q, i) => { const ms = this.danPer(q.type, q.g) * q.n; aAcc += ms;
-        return `<div class="line"><div>队列 ${i + 1}：${DATA.danName(q.type, q.g)} ×${q.n}<small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(aAcc / 1000 + 59)} 后完成</small></div><button class="sm" onclick="G.cancelAlchQ(${i})">取消</button></div>`; }).join("") +
-      `</div>`;
-  }
+        return `<div class="line"><div>队列 ${i + 1}：${DATA.danName(q.type, q.g)} ×${q.n}<small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(aAcc / 1000 + 59)} 后完成</small></div><button class="sm" onclick="G.cancelAlchQ(${i})">取消</button></div>`; }).join("") + `</div>`;
+  } else h += `<div class="line"><div class="desc">丹炉空闲</div><button class="sm" disabled>尚未炼丹</button></div>`;
+  h += `</div>`;
   const list = Object.keys(DATA.recipes).filter(t => DATA.danCat(t) === cat && DATA.recipeHas(t, tier) && s.recipes.includes(t + "|" + tier));
   h += `<div class="card"><h3>炼丹<small>已学丹方 ${s.recipes.length}</small></h3>
     <div class="room-grid five">${DATA.JIE.slice(0, DATA.DAN_JIE_N).map((n, g) => `<button class="${tier === g ? "active" : ""}" onclick="G.setDanTier(${g})">${n}</button>`).join("")}</div>` +
@@ -561,12 +577,13 @@ G.caveViews.forge = function () {
   const xian = DATA.FURNACE_KINDS.some(k => (k === "xdan" || k === "xqi") && (s.blueprints[k].length || s.furnaces[k].length));   // 有仙炉图纸 / 仙炉才显示炼器仙师、炼器仙炉
   let h = this.cardRow(this.craftsmanMini("qi"), this.furnaceMini("qi")) + (xian ? this.cardRow(this.craftsmanMini("xqi"), this.furnaceMini("xqi")) : "");
   let fAcc = j ? Math.max(0, j.end - Date.now()) : 0;   // 排到队列第几个为止的总时间（毫秒）
-  if (j) h += `<div class="card"><h3><span>正在炼器<span class="tag">队列 ${s.forgeQueue.length} / ${CFG.furnace.QUEUE}</span></span><small>${this.jobName(j)}</small></h3>
-    <div class="line"><div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div><button class="sm" onclick="G.stopForge()">停止</button></div>` +
+  h += `<div class="craft-logbtn"><button class="sm" onclick="G.openCraftLog('forgeLog')">炼器记录</button></div><div class="card job-card"><h3><span>正在炼器<span class="tag">队列 ${s.forgeQueue.length} / ${CFG.furnace.QUEUE}</span></span><small>${j ? this.jobName(j) : ""}</small></h3>`;
+  if (j) h += `<div class="line"><div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div><button class="sm" onclick="G.stopForge()">正在炼器</button></div><div class="job-q">` +
     s.forgeQueue.map((q, i) => { const ms = this.forgePer(q.kind, q.g); fAcc += ms;
       return `<div class="line"><div>队列 ${i + 1}：${this.jobName(q)}<small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(fAcc / 1000 + 59)} 后完成</small></div>
-      <button class="sm" onclick="G.cancelForgeQ(${i})">取消</button></div>`; }).join("") +
-    `</div>`;
+      <button class="sm" onclick="G.cancelForgeQ(${i})">取消</button></div>`; }).join("") + `</div>`;
+  else h += `<div class="line"><div class="desc">炼器炉空闲</div><button class="sm" disabled>尚未炼器</button></div>`;
+  h += `</div>`;
   const btn = (ok, call) => `<button class="sm" onclick="${call.replace("G.craftFurnace(", "G.openForgeN(")}" ${!has || full || !ok ? "disabled" : ""}>炼制</button>`;
   let rows = "";
   const rate = this.ratePct(this.craftRate("qi", g));
