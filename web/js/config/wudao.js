@@ -4,7 +4,7 @@
  * 第 n 层效果 = base[种类] × STAR_MULT[星级-1] × LV_MULT[n-1]
  *   丹火 / 器火 / 悟道 / 悟法 写满层值（按层数平分）；斗血 / 斗灵 写每层点数；神行和战斗秘法只在满层生效
  * 首次学习：灵石 = LEARN_STONE × STAR_COST[星级-1]，贡献 = LEARN_CONTRIB × STAR_COST[星级-1]
- * 修炼升层：时间、灵气同功法（config/gongfa.js），另每 5 秒扣灵石 STUDY_STONE × STAR_COST[星级-1]
+ * 修炼升层：时间、灵气同功法（config/gongfa.js），另每 5 秒扣灵石 STUDY_STONE × STAR_COST[星级-1]（每 10 秒结算一次，界面显示每 10 秒 = 2 倍）
  * 以下数组凡 10 个数的，都是 1 星 ~ 10 星
  * ===================================================================== */
 window.CFG = window.CFG || {};

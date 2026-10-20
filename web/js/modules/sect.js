@@ -415,7 +415,7 @@ G.module({
     //   返回 [{ g, lock }]，lock = 需要的星级（0 = 可换）
     treasuryMatList(kind) {
       const fanN = kind === "herb" ? DATA.FAN_HERB_N : DATA.FAN_ORE_N, names = kind === "herb" ? DATA.herbs : DATA.ores, O = CFG.matsOther || {}, star = this.sectInfo().star;
-      return names.map((n, g) => g < fanN ? { g, lock: 0 } : (O.SPECIAL || []).includes(n) ? null : { g, lock: star >= (O.STAR || 6) ? 0 : (O.STAR || 6) }).filter(Boolean);
+      return names.map((n, g) => g < fanN ? { g, lock: 0 } : (O.SPECIAL || []).includes(n) ? null : { g, lock: star >= (O.STAR || 6) ? 0 : (O.STAR || 6) }).filter(x => x && !x.lock);   // 本宗门星级兑换不了的不显示
     },
     treasuryMatOK(kind, g) { const x = this.treasuryMatList(kind).find(m => m.g === g); return !!x && !x.lock; },
     // 兑换材料（药材、矿石，凡界全部可换）；n 不填就用输入框里的数量
