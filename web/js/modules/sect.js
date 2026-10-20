@@ -523,11 +523,12 @@ G.module({
     testMobName() { const p = this.testPick(), o = this.testMapOpts().find(x => x[0] === p.a); return `${o ? o[1] : ""}·${DATA.MOB_KIND[p.k]}`; },
     // 怪物学的功法：按来源分组 [[来源名（宗门 / 坊市 / 功德司）, [功法名…], 类别, 学%]]，学 0% 的类别不列
     testMobGf(t) {
-      const R = DATA.mobRow(t), out = [], ms = R.star > 0 ? R.star : DATA.refStar(R.realm);
-      for (const C of R.cats) for (const sc of DATA.mobCatSrcs(C.c)) { if (sc.star > ms) continue; const l = [];
-        for (const ty of DATA.gfTypesOf(sc.src)) { if (sc.src === "shop" && ty.sectOnly) continue;
-          const g = DATA.gongfaInfo(DATA.gongfaId(sc.id, ty.id), C.gf[1]); if (g) l.push(g.name); }
-        if (l.length) out.push([sc.name, l, C.c, C.pct]); }
+      const R = DATA.mobRow(t), out = [];
+      for (const C of R.cats) { const ps = DATA.mobParts(C); if (!ps.length) continue;
+        for (const sc of DATA.mobCatSrcs(C.c)) { const P = ps.find(([lo, hi]) => sc.star >= lo && sc.star <= hi); if (!P) continue; const l = [];
+          for (const ty of DATA.gfTypesOf(sc.src)) { if (sc.src === "shop" && ty.sectOnly) continue;
+            const g = DATA.gongfaInfo(DATA.gongfaId(sc.id, ty.id), P[2].gf[1]); if (g) l.push(g.name); }
+          if (l.length) out.push([sc.name, l, C.c, P[2].pct]); } }
       return out;
     },
     testFight() {
@@ -548,7 +549,7 @@ G.module({
         <div class="line"><div>对手</div><div class="sg-btns">${this.selBox("testA", this.testMapOpts(), p.a, v => this.setTestPick("a", +v))}${this.selBox("testK", kOpts, p.k, v => this.setTestPick("k", v))}</div></div>
         <p class="desc">${this.testMobName()}：${DATA.realms[R.realm] || ""}${R.lay[0] === R.lay[1] ? DATA.layerNames[R.lay[0] - 1] : `${rg(R.lay)}层随机`}（属性为平均值，战斗时攻击 ×${DATA.mobRandOf("atk").join("~")}、生命 ×${DATA.mobRandOf("hp").join("~")}、其他 ×${DATA.mobRandOf("def").join("~")} 随机）<br>${st}</p>
         <p class="desc">法术：每回合 ${M.spell ? M.spell.chance : 0}% 几率，伤害 攻击×${M.spell ? M.spell.pct : 0}%　法宝：每回合 ${M.fabao ? M.fabao.chance : 0}% 几率，伤害 攻击×${M.fabao ? M.fabao.pct : 0}%</p>
-        ${n ? (() => { return `<details class="desc"><summary>功法：${R.star > 1 ? `1~${R.star}` : R.star}星 ${R.cats.map(C => `${DATA.MOB_GF_CAT[C.c]}每种随机学 ${rg(C.pct)}%、每本 ${rg(C.gf)} 层`).join("；")}（共 ${n} 部可选，显示属性为平均值）</summary>${gf.map(([nm, l]) => `<p><b>${nm}</b>：${l.join("、")}</p>`).join("")}</details>`; })() : `<p class="desc">功法：无</p>`}
+        ${n ? (() => { return `<details class="desc"><summary>功法：${R.cats.map(C => DATA.mobParts(C).map(([lo, hi, P]) => `${DATA.MOB_GF_CAT[C.c]} ${lo === hi ? lo : `${lo}~${hi}`}星每种学 ${rg(P.pct)}%、每本 ${rg(P.gf)} 层`).join("，")).filter(x => x).join("；")}（共 ${n} 部可选，显示属性为平均值）</summary>${gf.map(([nm, l]) => `<p><b>${nm}</b>：${l.join("、")}</p>`).join("")}</details>`; })() : `<p class="desc">功法：无</p>`}
         <div class="btns"><button onclick="G.testFight()">开始测试</button></div></div>`;
     },
     challengeTower() {
