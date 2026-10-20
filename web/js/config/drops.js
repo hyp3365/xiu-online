@@ -18,7 +18,7 @@ CFG.drop = {
     mo:   [350, 1000],       // 魔界
     shen: [450, 1200],       // 神界
     mijing: [280, 540],      // 秘境（config/mijing.js 列表顺序，共 10 处）
-    lingdi: {                // 灵地（config/lingdi.js 里同一界的顺序，每界 3 处）
+    lingdi: {                // 灵地（config/lingdi.js 同一界按发现地图排的顺序，每界 12 处）
       xian: [1700, 3600], ming: [1700, 3600], mo: [1700, 3600], shen: [2100, 4200],
     },
   },

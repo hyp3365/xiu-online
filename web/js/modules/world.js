@@ -587,7 +587,7 @@ G.module({
     //   凡界 / 四界：每张图东西南北各算一处（地图 × 4）；秘境：按列表顺序；灵地：同一界里按列表顺序
     zoneStone(a, r, mj, mk) {
       const RS = CFG.drop.RUN_STONE; let R, i, n;
-      if (mj !== undefined && mk === "ld") { const L = this.mjCfg("ld").list, w = L[mj].w, same = L.map((d, k) => d.w === w ? k : -1).filter(k => k >= 0); R = (RS.lingdi || {})[w]; i = same.indexOf(mj); n = same.length; }
+      if (mj !== undefined && mk === "ld") { const L = this.mjCfg("ld").list, w = L[mj].w, same = L.map((d, k) => d.w === w ? k : -1).filter(k => k >= 0).sort((a, b) => this.ldOrd(a) - this.ldOrd(b)); R = (RS.lingdi || {})[w]; i = same.indexOf(mj); n = same.length; }
       else if (mj !== undefined) { R = RS.mijing; i = mj; n = this.mjCfg().list.length; }
       else { const w = DATA.maps[a].w || "fan", idx = DATA.worldMapIdx[w]; R = RS[w]; i = idx.indexOf(a) * DATA.regionCount + Math.max(0, r || 0); n = idx.length * DATA.regionCount; }
       if (!R) return 0;
@@ -820,7 +820,7 @@ G.module({
           const d = C.list[i], at = k === "ld" ? d._map : d.find && d.find.map;
           if (m.found.includes(i) || !d.find || at !== a || Math.random() * 100 >= (d.find.chance || 0)) continue;
           m.found.push(i);
-          this.log(k === "ld" ? `探得灵地消息：发现${(DATA.worlds.find(w => w.id === d.w) || {}).name || ""}灵地「${d.name}」（需${DATA.realmLabel(d.realm)}）！可在 仙冥魔神任一地图 → 灵地 进入。`
+          this.log(k === "ld" ? `探得灵地消息：发现${(DATA.worlds.find(w => w.id === d.w) || {}).name || ""}灵地「${d.name}」！可在 仙冥魔神任一地图 → 灵地 进入。`
             : `探得秘境消息：发现「${d.name}」（需${DATA.realmLabel(d.realm)}）！可在 历练 → 秘境 进入。`, "gold");
           break;
         }
@@ -914,7 +914,7 @@ G.module({
     mjRow(i, k) {
       const s = this.s, m = this.mjState(k), d = this.mjDef(i, k), x = s.explore, ka = k === "ld" ? ",'ld'" : "";
       const lock = !this.realmOK(d.realm), ok = m.trained.includes(i), left = x && x.cq ? 0 : this.mjLeft(i, k), on = x && x.mj === i && (x.mk || "mj") === (k || "mj");   // 出窍中不能进
-      return `<div class="line"><div>${k === "ld" ? DATA.li("img/hall_lingdi.png") : ""}${d.name}<span class="tag">需${DATA.realmLabel(d.realm)}</span><small>首领 ${d.bossName} · ${ok ? "已通过历练" : "未历练"} · 今天${left > 0 ? `还能进 ${left} 次` : "已进过"}</small></div>
+      return `<div class="line"><div>${k === "ld" ? DATA.li("img/hall_lingdi.png") : ""}${d.name}${k === "ld" ? "" : `<span class="tag">需${DATA.realmLabel(d.realm)}</span>`}<small>首领 ${d.bossName} · ${ok ? "已通过历练" : "未历练"} · 今天${left > 0 ? `还能进 ${left} 次` : "已进过"}</small></div>
           ${lock ? `<button class="sm" disabled>境界不足</button>` : `<div><button class="sm ${on && x.once ? "on" : ""}" onclick="G.toggleMj(${i},true${ka})" ${on ? "" : left > 0 ? "" : "disabled"}>${on && x.once ? "停止" : "历练"}</button>
           <button class="sm ${on && !x.once ? "on" : ""}" onclick="G.toggleMj(${i},false${ka})" ${on ? "" : ok && left > 0 ? "" : "disabled"}>${on && !x.once ? "停止" : "探索"}</button></div>`}</div>`;
     },
@@ -927,10 +927,12 @@ G.module({
         ${m.found.length ? `<div class="btns"><button class="primary" onclick="G.mjAll()" ${ready ? "" : "disabled"}>一键探索（${ready} 处）</button></div>` : ""}</div>`;
     },
     // 灵地：在仙冥魔神任一地图的「灵地」里显示四界全部已发现的灵地（按界分组）
+    // 灵地同一界里的顺序：按发现地图，同一张图按列表顺序
+    ldOrd(i) { const d = ((CFG.lingdi || {}).list || [])[i] || {}; return ((d.find || {}).map || 0) * 1000 + i; },
     lingdiView() {
       const m = this.mjState("ld"), L = (CFG.lingdi || {}).list || [], ready = this.mjReady("ld");
       const groups = ["xian", "ming", "mo", "shen"].map(w => {
-        const ids = m.found.filter(i => L[i] && L[i].w === w).sort((a, b) => a - b); if (!ids.length) return "";
+        const ids = m.found.filter(i => L[i] && L[i].w === w).sort((a, b) => this.ldOrd(a) - this.ldOrd(b)); if (!ids.length) return "";
         const all = L.filter(d => d.w === w).length, wn = (DATA.worlds.find(o => o.id === w) || {}).name || w;
         return `<p class="desc"><b>${wn}</b> · 已发现 ${ids.length} / ${all}</p>` + ids.map(i => this.mjRow(i, "ld")).join("");
       }).join("");
