@@ -571,9 +571,10 @@ G.module({
     /* ---------- 讲道室（config/sect.js 的 jiangdao） ---------- */
     jdCfg() { return CFG.sect.jiangdao; },
     jdCost() { return (this.jdCfg().COST || 0) * this.sectInfo().star; },
-    jdStatOf(k) { const t = DATA.gongfaTypes.find(x => x.id === k); return t ? t.stat : ""; },
+    jdStatOf(k) { if (k.startsWith("res_")) return k; const t = DATA.gongfaTypes.find(x => x.id === k); return t ? t.stat : ""; },
+    jdLabel(st) { return st.startsWith("res_") ? ((DATA.elById[st.slice(4)] || {}).name || "") + "抗" : DATA.QL_LABEL[st] || st; },
     // 功法讲道加的属性：[最少, 最多]（修为 + 肉身突破该属性 × STAT_PCT%）；roll = 随机一个
-    jdVal(k) { const st = this.jdStatOf(k), b = DATA.ownStat(st).br || 0, P = this.jdCfg().STAT_PCT || [1, 3]; return [Math.floor(b * P[0] / 100), Math.floor(b * P[1] / 100)]; },
+    jdVal(k) { const st = this.jdStatOf(k), b = DATA.ownStat(st.startsWith("res_") ? "res" : st).br || 0, P = this.jdCfg().STAT_PCT || [1, 3]; return [Math.floor(b * P[0] / 100), Math.floor(b * P[1] / 100)]; },
     jdNeed(k) { const C = CFG.craftsman, c = this.craftInfo(k), E = C[k].EXP || C.EXP; return c.lv >= this.craftMax(k) ? 0 : E[c.lv - 1] ?? (64 + 32 * (c.lv - 1)) * 13 * c.lv; },
     jdExp(k) { const n = this.jdNeed(k), P = this.jdCfg().EXP_PCT || [5, 10]; return [Math.floor(n * P[0] / 100), Math.floor(n * P[1] / 100)]; },
     jdRoll(r) { return Math.floor(r[0] + Math.random() * (r[1] - r[0] + 1)); },
@@ -583,8 +584,9 @@ G.module({
       const single = [...X.replace(new RegExp(fu.join("|"), "g"), "")];
       return (Math.random() < 0.1 ? U.pick(fu) : U.pick(single)) + "长老";
     },
-    jdBook(k) {   // 讲的功法名：本门星级随机门派的这一类功法
-      const t = DATA.gongfaTypes.find(x => x.id === k), list = DATA.sects.filter(x => x.star === this.sectInfo().star);
+    jdBook(k) {   // 讲的功法名：本门星级随机门派的这一类功法（抗性 = 该属性门派的真经）
+      const el = k.startsWith("res_") ? k.slice(4) : "", t = DATA.gongfaTypes.find(x => x.id === (el ? "zhenjue" : k)), all = DATA.sects.filter(x => x.star === this.sectInfo().star);
+      const list = el && all.some(x => x.el === el) ? all.filter(x => x.el === el) : all;
       return t && list.length ? DATA.gongfaName(U.pick(list), t) : t ? t.name : "";
     },
     jdState() {
@@ -598,11 +600,13 @@ G.module({
       }
       return d;
     },
+    jdLeft() { const d = this.jdState(); return Math.max(0, (this.jdCfg().DAILY || 3) - d.list.filter(x => x.done).length); },
     listenJiang(i) {
       const s = this.s; if (!s.sect) return;
       this.jdSettle();
       const d = this.jdState(), L = d.list[i], day = this.bjDay();
       if (!L || L.done || d.cur) return;
+      if (!this.jdLeft()) return this.log("今日听讲次数已用完。", "sys");
       const free = d.free !== day, c = free ? 0 : this.jdCost();
       if (s.contrib < c) return this.log("贡献不足。", "sys");
       s.contrib -= c; if (free) d.free = day;
@@ -619,7 +623,7 @@ G.module({
       } else {
         const st = this.jdStatOf(c.k), v = this.jdRoll(this.jdVal(c.k));
         d.got = d.got || {}; d.got[st] = (d.got[st] || 0) + v;
-        gain = `自身${DATA.QL_LABEL[st] || st}提高了：${U.fmt(v)}点`;
+        gain = `自身${this.jdLabel(st)}提高了：${U.fmt(v)}点`;
       }
       const txt = `你在讲道室中听取${c.nm}分享的${c.k === "dan" || c.k === "qi" ? c.book : `修炼《${c.book}》的感悟心得`}，心有所感，大有收获，${gain}。`;
       d.log = [{ at: c.end, t: txt }, ...(d.log || [])].slice(0, this.jdCfg().LOG || 20);
@@ -784,15 +788,15 @@ G.module({
       h += this.testView();
     } else if (tab === "jiangdao") {
       this.jdSettle();
-      const d = this.jdState(), day = this.bjDay(), free = d.free !== day, c = this.jdCost(), cur = d.cur;
-      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "jiangdao", "讲道室")}<small>${free ? "今日可免费听讲一次" : `每次 ${U.fmt(c)} 贡献`}</small></h3>
-        <p class="desc">每天都有长老在讲道室分享修炼心得，每次听讲 ${this.jdCfg().MIN || 10} 分钟。炼丹、炼器长老每天必到，其余长老讲授功法感悟。</p>
+      const d = this.jdState(), day = this.bjDay(), free = d.free !== day, c = this.jdCost(), cur = d.cur, left = this.jdLeft();
+      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "jiangdao", "讲道室")}<small>今日还可听 ${left} 次 · ${free ? "本次免费" : `每次 ${U.fmt(c)} 贡献`}</small></h3>
+        <p class="desc">每天都有长老在讲道室分享修炼心得，每天可听 ${this.jdCfg().DAILY || 3} 位不同长老，第一次免费，每次听讲 ${this.jdCfg().MIN || 10} 分钟。炼丹、炼器长老每天必到，其余长老讲授功法感悟。</p>
         ${cur ? `<p class="desc">正在听取${cur.nm}讲道 · 约 ${U.cd(Math.max(0, cur.end - this.now()) / 1000)} 后结束</p>` : ""}` +
         d.list.map((L, i) => {
           const craft = L.k === "dan" || L.k === "qi", st = craft ? "" : this.jdStatOf(L.k);
-          const gain = craft ? `${L.k === "dan" ? "炼丹" : "炼器"}经验 +${this.jdRange(this.jdExp(L.k))}` : `${DATA.QL_LABEL[st] || st} +${this.jdRange(this.jdVal(L.k))}`;
+          const gain = craft ? `${L.k === "dan" ? "炼丹" : "炼器"}经验 +${this.jdRange(this.jdExp(L.k))}` : `${this.jdLabel(st)} +${this.jdRange(this.jdVal(L.k))}`;
           const btn = L.done ? `<button class="sm" disabled>${cur && cur.i === i ? "听讲中" : "已听讲"}</button>` :
-            `<button class="sm" onclick="G.listenJiang(${i})" ${cur || (!free && s.contrib < c) ? "disabled" : ""}>${free ? "免费听讲" : "听讲"}</button>`;
+            `<button class="sm" onclick="G.listenJiang(${i})" ${cur || !left || (!free && s.contrib < c) ? "disabled" : ""}>${free ? "免费听讲" : "听讲"}</button>`;
           return `<div class="line"><div>${L.nm}<span class="tag">${craft ? (L.k === "dan" ? "炼丹" : "炼器") : "功法"}</span>
             <small>${L.nm}将会分享${craft ? `自身${L.book}` : `自身修炼《${L.book}》的心得感悟`} · ${gain}</small></div>${btn}</div>`;
         }).join("") + `</div>`;
