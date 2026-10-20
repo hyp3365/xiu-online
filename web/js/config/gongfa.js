@@ -62,9 +62,9 @@ CFG.gongfa = {
  * 类别：xinfa 心法 gongjue 功诀 zhenjing 真诀（生命） mijue 秘诀 shenfa 身法 dunshu 遁术 fajue 法诀 zhenjue 真经（抗性） tijue 肉身秘诀 spell 法术
  *   sufa 身法·速度（倍率 / 价格同 shenfa） */
 CFG.gongfa.sect = {
-  TYPE_MULT: { xinfa: 0.76, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1 },   // 类别效果倍率
+  TYPE_MULT: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1 },   // 类别效果倍率
   // 1~10 星宗门功法全学满后每项属性合计（不算灵根）；res 按所有真经合计
-  TOTAL: { def: 913600, atk: 1057950, hp: 3496000, mana: 2700000, speed: 339300, dodge: 340000, res: 338700, hit: 339300,
+  TOTAL: { def: 1913600, atk: 2057950, hp: 5496000, mana: 3589000, speed: 639300, dodge: 640000, res: 668700, hit: 669300,
     cultivate: 3000000,   // 秘诀 → 修炼速度
     body: 3000000 },      // 肉身秘诀 → 肉身修炼速度
   RAND: 0.05,        // 每本效果随机幅度（±5%，按书固定）
