@@ -32,7 +32,8 @@ DATA.recipeItem = type => (_AL.recipes[type] || {}).item;           // 炼出来
 DATA.recipeHas = (type, g) => !!(_AL.recipes[type] && _AL.recipes[type].herbs[g]);   // 这一阶有没有（养神丹只有一阶）
 // v41：丹方分类（0 凡丹 1 仙丹 2 冥丹 3 魔丹 4 神丹）、学习需要的门派星级、加成的属性
 DATA.danCat = type => (_AL.recipes[type] && _AL.recipes[type].cat) || 0;
-DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || ((_AL.CAT_STAR || [])[DATA.danCat(type)] || 1) + Math.floor(g / (_AL.STAR_TIERS || 1));
+// 凡丹：N 星宗门有一阶~N 阶（用户定，2026-10-20）；仙冥魔神丹在四界功德司学，这里的星级只作旧配置兼容
+DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || (DATA.danCat(type) ? ((_AL.CAT_STAR || [])[DATA.danCat(type)] || 1) + Math.floor(g / (_AL.STAR_TIERS || 1)) : g + 1);
 DATA.danStat = type => (_AL.recipes[type] && _AL.recipes[type].stat) || type;
 // v42：仙冥魔神丹（cat ≥ 1）用炼丹仙炉、炼丹仙师；修炼丹的品质 = 阶 + REALM0
 DATA.danFu = type => DATA.danCat(type) ? "xdan" : "dan";
@@ -51,6 +52,7 @@ DATA.danRecipe = (type, g) => DATA.parseMats(_AL.recipes[type].herbs[g]);
 DATA.danTime = (type, g) => _AL.recipes[type].time[g] * 60000;     // 毫秒（未算炉子加成）
 DATA.danLearnTime = (type, g) => _AL.recipes[type].learnTime[g] * 60000;
 DATA.danLearnCost = (type, g) => _AL.recipes[type].learnCost[g];
+DATA.danGdCost = g => { const R = _AL.GD_RECIPE || {}; return (R.MERIT === undefined ? 5000 : R.MERIT) + (R.STEP === undefined ? 1000 : R.STEP) * g; };   // 四界功德司学丹方的功德
 DATA.danPrice = (type, g) => (_AL.recipes[type].price || [])[g] || 0;
 
 /* ---------- 炼丹炉 / 炼器炉 ---------- */
@@ -64,7 +66,7 @@ for (const k in DATA.furnaceKinds) if (_FU[k] && _FU[k].name) DATA.furnaceKinds[
 DATA.FURNACE_KINDS = Object.keys(DATA.furnaceKinds).filter(k => _FU[k]);
 DATA.isDanFu = k => k === "dan" || k === "xdan";                                // 炼丹用的炉子
 // v42：宗门宝库兑换第 g 阶图纸需要的门派星级
-DATA.blueprintStar = (kind, g) => (_FU[kind].STAR || 1) + Math.floor(g / (_FU.STAR_TIERS || 1));
+DATA.blueprintStar = (kind, g) => (_FU[kind].STAR || 1) + Math.floor(g / (kind === "dan" || kind === "qi" ? 1 : _FU[kind].STAR_TIERS || _FU.STAR_TIERS || 1));   // 炼丹炉 / 炼器炉：N 星宗门有一阶~N 阶图纸
 DATA.blueprintCost = (kind, g) => _FU[kind].blueprint[g];
 
 /* ---------- 灵田 ---------- */

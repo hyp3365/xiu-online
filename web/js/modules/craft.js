@@ -190,7 +190,7 @@ G.module({
     setDanLibTier(g) { this.danLibTier = g; this.render(); },
     learnRecipe(type, g) {
       const s = this.s, key = type + "|" + g, c = DATA.danLearnCost(type, g);
-      if (s.recipes.includes(key)) return;
+      if (s.recipes.includes(key) || !DATA.recipes[type] || DATA.danCat(type)) return;   // 仙冥魔神丹方去四界功德司学
       if (!this.lqCan("dan", key)) return;   // v173 学习队列
       if (DATA.danStar(type, g) > this.sectInfo().star) return this.log(`需要 ${DATA.danStar(type, g)} 星及以上门派才能学习。`, "sys");
       if (s.contrib < c) return this.log("贡献不足。", "sys");
@@ -618,7 +618,7 @@ G.caveViews.alchemy = function () {
       return `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, tier), "li")}${DATA.danName(t, tier)}<span class="tag">${DATA.recipeEffect(t, tier)}</span>
         <small>${this.matsText(rec)} · 每枚 ${U.dur(this.danPer(t, tier) / 1000)} · 成功率 ${this.ratePct(this.danRate(t, tier))}${eaten}</small></div>
         <button class="sm" onclick="G.openAlchN('${t}',${tier})" ${ok ? "" : "disabled"}>炼制</button></div>`;
-    }).join("") : `<p class="desc">尚未学会${DATA.JIE[tier]}${cat ? catName : ""}丹方，可在门派 → 炼丹房学习。</p>`) +
+    }).join("") : `<p class="desc">尚未学会${DATA.JIE[tier]}${cat ? catName : ""}丹方，可在${cat ? "四界功德司" : "门派 → 炼丹房"}学习。</p>`) +
     `</div>`;
   return h;
 };
@@ -689,20 +689,24 @@ G.caveViews.forge = function () {
 
 /* 门派 · 炼器室：学习装备图谱、空间石（sect.js 调用） */
 G.sectForgeView = function () {
-  const s = this.s, star = this.sectInfo().star, g = this.forgeLibTier || 0, st = s.forgeStudy, lock = g >= star;
+  const s = this.s, star = this.sectInfo().star;
   let h = "";
   h += this.lqCard("forge");   // v173 学习队列
+  const cards = [];
+  // N 星宗门显示一阶~N 阶图谱（不再分阶按钮）
+  for (let g = 0; g < Math.min(star, DATA.DAN_JIE_N); g++) {
+  const lock = false;
   const line = (kind, sl, name, tag, desc) => {
     const key = this.forgeKey(kind, g, sl), has = s.forgeKnown.includes(key), C = kind === "eq" ? CFG.forge.equip : CFG.forge.stone, c = C.learnCost[g];
     const img = kind === "ss" ? DATA.iconImg("ss") : DATA.iconImg(sl === "fabao" ? "fbs0_0" : "eq_" + sl);
     return [has, `<div class="line"><div>${kind === "eq" ? DATA.eqTierIco(img, g) : DATA.li(img)}${name}<span class="tag">${tag}</span><small>${desc}<br>${U.fmt(c)} 贡献 · 学习 ${U.dur(C.learnTime[g] * 60)}</small></div>
       ${has || lock ? `<button class="sm" disabled>${has ? "已学会" : `${g + 1}星宗门可学习`}</button>` : this.lqBtn("forge", key, `G.learnForge('${kind}',${g}${sl ? `,'${sl}'` : ""})`, s.contrib < c)}</div>`];
   };
-  h += `<div class="room-grid five">${DATA.JIE.slice(0, DATA.DAN_JIE_N).map((n, i) => `<button class="${g === i ? "active" : ""}" onclick="G.setForgeLibTier(${i})">${n}</button>`).join("")}</div>`;
-  const cards = [{ head: `<h3>${DATA.nmPick(CFG.names.sectHall, "forge", "炼器室")} · 图谱</h3>`, rows:
+  cards.push({ head: `<h3>${DATA.nmPick(CFG.names.sectHall, "forge", "炼器室")} · ${DATA.JIE[g]}图谱</h3>`, rows:
     DATA.forgeSlots.map(sl => line("eq", sl, DATA.forgeEqName(sl, g), DATA.slots[sl],
       (sl === "fabao" ? (g ? `升阶图谱：把${DATA.JIE[g - 1]}法宝升为${DATA.JIE[g]}（${DATA.fabaoTypes.length} 种通用，颜色不变）` : `炼制图谱：用耀石炼成一阶法宝（${DATA.fabaoTypes.map(t => t.name).join(" ")}，属性自选）`) : `主属性 ${CFG.forge.attr.main[sl].map(k => DATA.attrNames[k]).join("、")} + 1~5 条附加属性`) + (g ? ` · 需上一阶${DATA.slots[sl]}` : ""))).concat([
-    line("ss", null, DATA.stoneName(g), DATA.SS, `使用一个储物格 +1，每阶最多 ${CFG.forge.stone.MAX_USE} 个；炼制要空间晶核（秘境掉落）`)]) }];
+    line("ss", null, DATA.stoneName(g), DATA.SS, `使用一个储物格 +1，每阶最多 ${CFG.forge.stone.MAX_USE} 个；炼制要空间晶核（秘境掉落）`)]) });
+  }
   // 灵珠图纸：不分阶，每个星级都能学
   const LZ = CFG.lingzhu, lzc = LZ.LEARN_COST;
   cards.push({ head: `<h3>灵珠图纸</h3>`, rows: LZ.NAMES.map((n, ft) => { const has = s.forgeKnown.includes(this.forgeKey("lz", 0, ft));
@@ -712,20 +716,20 @@ G.sectForgeView = function () {
   return h;
 };
 
-/* 门派 · 炼丹房：学习丹方（sect.js 调用） */
+/* 门派 · 炼丹房：学习凡丹丹方（sect.js 调用）。N 星宗门显示一阶~N 阶（按丹方需要的星级），仙冥魔神丹方在四界功德司 */
 G.sectAlchemyView = function () {
-  const s = this.s, star = this.sectInfo().star, tier = this.danLibTier || 0, st = s.danStudy;
-  let h = "";
-  h += this.lqCard("dan");   // v173 学习队列
-  h += this.danCatBar("danLibCat");
-  const cat = this.danLibCat || 0, catName = (CFG.alchemy.CATS || [])[cat] || "", types = Object.keys(DATA.recipes).filter(t => DATA.danCat(t) === cat && DATA.recipeHas(t, tier));
-  h += `<div class="room-grid five">${DATA.JIE.slice(0, DATA.DAN_JIE_N).map((n, g) => `<button class="${tier === g ? "active" : ""}" onclick="G.setDanLibTier(${g})">${n}</button>`).join("")}</div>
-    <div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "alchemy", "炼丹房")} · ${catName}丹方</h3>` +
-    U.doneLast(types.map(t => {
-      const key = t + "|" + tier, has = s.recipes.includes(key), c = DATA.danLearnCost(t, tier), need = DATA.danStar(t, tier), lock = need > star;
-      return [has, `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, tier), "li")}《${DATA.danName(t, tier)}》<span class="tag">${DATA.recipeEffect(t, tier)}</span>
-        <small>${this.matsText(DATA.danRecipe(t, tier))}<br>${U.fmt(c)} 贡献 · 学习 ${U.dur(DATA.danLearnTime(t, tier) / 1000)}</small></div>
-        ${has || lock ? `<button class="sm" disabled>${has ? "已学会" : `${need}星宗门可学习`}</button>` : this.lqBtn("dan", key, `G.learnRecipe('${t}',${tier})`, s.contrib < c)}</div>`];
-    })) + `</div>`;
-  return h;
+  const s = this.s, star = this.sectInfo().star;
+  let h = this.lqCard("dan");   // v173 学习队列
+  const hall = DATA.nmPick(CFG.names.sectHall, "alchemy", "炼丹房"), types = Object.keys(DATA.recipes).filter(t => !DATA.danCat(t));
+  const cards = [];
+  for (let g = 0; g < DATA.DAN_JIE_N; g++) {
+    const rows = types.filter(t => DATA.recipeHas(t, g) && DATA.danStar(t, g) <= star).map(t => {
+      const key = t + "|" + g, has = s.recipes.includes(key), c = DATA.danLearnCost(t, g);
+      return [has, `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, g), "li")}《${DATA.danName(t, g)}》<span class="tag">${DATA.recipeEffect(t, g)}</span>
+        <small>${this.matsText(DATA.danRecipe(t, g))}<br>${U.fmt(c)} 贡献 · 学习 ${U.dur(DATA.danLearnTime(t, g) / 1000)}</small></div>
+        ${has ? `<button class="sm" disabled>已学会</button>` : this.lqBtn("dan", key, `G.learnRecipe('${t}',${g})`, s.contrib < c)}</div>`];
+    });
+    if (rows.length) cards.push({ head: `<h3>${hall} · ${DATA.JIE[g]}丹方</h3>`, rows });
+  }
+  return h + U.doneCards(cards) + `<p class="desc">仙丹、冥丹、魔丹、神丹的丹方在四界各地图的功德司用功德学习。</p>`;
 };
