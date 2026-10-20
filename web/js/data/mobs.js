@@ -13,7 +13,9 @@ DATA.MOB_KIND = { normal: "普通", elite: "精英", boss: "首领" };
 DATA.MOB_KEYS = ["hp", "atk", "def", "speed", "hit", "dodge", "mana", "res"];
 // 遇到时的随机倍率
 // v180 RAND 每种属性单独：{ atk: [a, b], hp: [a, b], 其他: [a, b] }
-DATA.mobRandOf = k => { const R = CFG.mobs.RAND; return R[k] || R["其他"]; };
+DATA.MOB_RAND_ZH = { hp: "气血", atk: "攻击", def: "防御", speed: "速度", hit: "命中", dodge: "闪避", mana: "法力",
+  res_jin: "金抗性", res_mu: "木抗性", res_shui: "水抗性", res_huo: "火抗性", res_tu: "土抗性", res_lei: "雷抗性" };
+DATA.mobRandOf = k => { const R = CFG.mobs.RAND || {}; return R[DATA.MOB_RAND_ZH[k]] || R[k] || R["其他"] || (k.startsWith("res") && (R["金抗性"] || R.res)) || [1, 1]; };   // k = hp / atk … / res_jin（每系抗性）
 DATA.mobRnd = k => { const R = DATA.mobRandOf(k); return R[0] + Math.random() * (R[1] - R[0]); };
 // 肉身突破 n 次的合计加成（同 modules/body.js bodyBonus）
 DATA.mobBody = n => { const o = {}; for (const k of DATA.MOB_KEYS) o[k] = DATA.bodyStat(n, k); return o; };
@@ -127,7 +129,7 @@ DATA.towerPart = (star, floor, max) => {   // 返回 { own: 本星这一层的�
   const r0 = CFG.sect.REQ_REALM[star - 1];
   const j = step(LN), realm = Math.min(DATA.realms.length - 1, r0 + Math.floor((j - 1) / DATA.LAYERS)), lay = (j - 1) % DATA.LAYERS + 1;
   const gf = step(T.GF_MAX), sg = step(T.STAGES);
-  const pct = T.PCT_START + (sg - 1) * T.PCT_ADD;   // 学习比例：第 1 段 PCT_START %，每段 + PCT_ADD %
+  const pct = T.PCT_END !== undefined ? T.PCT_START + (T.STAGES > 1 ? (sg - 1) * (T.PCT_END - T.PCT_START) / (T.STAGES - 1) : 0) : T.PCT_START + (sg - 1) * T.PCT_ADD;   // 学习比例：第 1 段 PCT_START % 平均递增到最后一段 PCT_END %
   const mul = (T.MUL + (sg - 1) * T.MUL_ADD) / 100;   // 第 1 段 MUL %，每段 + MUL_ADD %
   const Lof = (r, l) => r * DATA.LAYERS + l;
   const cur = DATA.refStats(realm, lay, 0, star, 1), bd = DATA.mobBody(Lof(realm, lay));
