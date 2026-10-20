@@ -230,6 +230,7 @@ const API = {
     this.syncClock(j.serverNow);
     this.installActions(j.actions || []);
     this.installResume();
+    this.checkLines();
     this.serverState = j.data || null;
     if (j.data) await this.connectSocket();
     return j.data;
@@ -488,5 +489,35 @@ const API = {
     el.classList.toggle("show", !!on);
   },
 
+  /* ---------- 游戏线路（服务器地址） ----------
+   * 管理员在「服务器信息」里设置线路列表和默认线路。安卓客户端（window.XiuApp）每次进游戏缓存一份列表，
+   * 连不上时原生弹窗让玩家选别的线路；管理员改了默认线路，客户端下次进游戏自动切过去。换线路时带上登录，不用重新登录。 */
+  lineKey(u) { return String(u || "").split("#")[0].split("?")[0].replace(/index\.html$/, "").replace(/\/+$/, "") + "/"; },
+  curLine() { return typeof location === "undefined" ? "" : this.lineKey(location.href); },
+  async checkLines() {
+    try {
+      const app = typeof window !== "undefined" && window.XiuApp;
+      if (!app || !app.setLines) return;
+      const j = await this.req("lines"); this.lines = j;
+      app.setLines(JSON.stringify(j.lines || []));
+      const def = j.def ? this.lineKey(j.def) : "", seen = localStorage.getItem("xiu_line_def") || "";
+      if (def && def !== seen) { localStorage.setItem("xiu_line_def", def); if (def !== this.curLine()) this.goLine(def); }
+    } catch (e) {}
+  },
+  goLine(url) {
+    const base = this.lineKey(url), full = base + (this.token ? `#xt=${encodeURIComponent(this.token)}&xu=${encodeURIComponent(this.user)}` : "");
+    const app = typeof window !== "undefined" && window.XiuApp;
+    if (app && app.switchTo) app.switchTo(base, full); else location.href = full;
+  },
+
   setSync(text) { const el = document.getElementById("sync"); if (el) el.textContent = text; },
 };
+
+// 换线路时网址里带着登录（#xt=令牌&xu=账号）：存下来后从地址栏去掉
+if (typeof location !== "undefined" && typeof location.hash === "string" && /[#&]xt=/.test(location.hash)) {
+  try {
+    const h = new URLSearchParams(location.hash.slice(1)), t = h.get("xt"), u = h.get("xu");
+    if (t && u) API.setLogin(u, t);
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch (e) {}
+}

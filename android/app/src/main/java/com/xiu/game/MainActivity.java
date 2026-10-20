@@ -1,12 +1,16 @@
 package com.xiu.game;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.WebResourceError;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -17,11 +21,15 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-// 打开游戏网页。服务器地址来自仓库根目录 server-url.txt（打包时复制到 assets/server.txt）
+// 打开游戏网页。服务器地址来自仓库根目录 server-url.txt（打包时复制到 assets/server.txt）；
+// 管理员在游戏里设置的「游戏线路」切换后存在 SharedPreferences（xiu/url），以后都用它，不用重新打包
 // 图片：打包时把 web/img 放进安装包（assets/img）。启动时读服务器的图片清单 img_ver.txt（sudo xiu-update 生成），
 //   逐张比对：和包里一样的直接用包里的，服务器换过的那几张才去服务器下载（不会因为换了一张图就全部重新下载）
 public class MainActivity extends Activity {
@@ -31,6 +39,40 @@ public class MainActivity extends Activity {
     private final HashMap<String, String> imgHash = new HashMap<>();
     private volatile HashMap<String, String> srvHash = null;          // 服务器图片清单
     private final CountDownLatch srvReady = new CountDownLatch(1);
+    private boolean lineDialog = false;
+
+    private SharedPreferences prefs() { return getSharedPreferences("xiu", MODE_PRIVATE); }
+
+    // 网页调用：window.XiuApp.setLines(列表 JSON) 缓存线路；switchTo(地址, 带登录的完整网址) 换线路
+    private class Bridge {
+        @JavascriptInterface public void setLines(String json) { if (json != null && json.length() < 20000) prefs().edit().putString("lines", json).apply(); }
+        @JavascriptInterface public String getUrl() { return serverUrl(); }
+        @JavascriptInterface public void switchTo(String base, String full) {
+            if (base == null || !(base.startsWith("http://") || base.startsWith("https://"))) return;
+            prefs().edit().putString("url", base).apply();
+            runOnUiThread(() -> { if (web != null) web.loadUrl(full != null && full.startsWith(base) ? full : base); });
+        }
+    }
+
+    // 打不开游戏网页（地址失效 / 太慢超时）：弹出缓存的线路让玩家选，或重试
+    private void showLines() {
+        if (lineDialog || isFinishing()) return;
+        final ArrayList<String> names = new ArrayList<>(), urls = new ArrayList<>();
+        try {
+            JSONArray a = new JSONArray(prefs().getString("lines", "[]"));
+            for (int i = 0; i < a.length(); i++) { JSONObject o = a.getJSONObject(i); names.add(o.optString("name", "线路" + (i + 1))); urls.add(o.optString("url", "")); }
+        } catch (Exception e) { }
+        String def = assetUrl();
+        if (!urls.contains(def)) { names.add("安装包默认地址"); urls.add(def); }
+        String cur = serverUrl();
+        for (int i = 0; i < names.size(); i++) if (urls.get(i).equals(cur)) names.set(i, names.get(i) + "（当前）");
+        lineDialog = true;
+        new AlertDialog.Builder(this).setTitle("连接不上游戏服务器，换一条线路？")
+            .setItems(names.toArray(new String[0]), (d, i) -> { lineDialog = false; prefs().edit().putString("url", urls.get(i)).apply(); web.loadUrl(urls.get(i)); })
+            .setPositiveButton("重试", (d, i) -> { lineDialog = false; web.loadUrl(serverUrl()); })
+            .setOnCancelListener(d -> lineDialog = false)
+            .show();
+    }
 
     @Override
     protected void onCreate(Bundle b) {
@@ -63,6 +105,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        web.addJavascriptInterface(new Bridge(), "XiuApp");
         web.setWebViewClient(new WebViewClient() {
             // 安装版标记：网页 html 加 class="apk"，样式里底部导航往上抬一点，避开手机底部手势条
             @Override
@@ -81,6 +124,15 @@ public class MainActivity extends Activity {
                     web.loadUrl(serverUrl());
                 } else v.destroy();
                 return true;
+            }
+            @Override
+            @android.annotation.TargetApi(23)
+            public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
+                if (req.isForMainFrame()) showLines();
+            }
+            @Override
+            public void onReceivedError(WebView v, int code, String desc, String url) {   // 安卓 5.x
+                if (android.os.Build.VERSION.SDK_INT < 23) showLines();
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest req) {
@@ -181,6 +233,11 @@ public class MainActivity extends Activity {
     }
 
     private String serverUrl() {
+        String u = prefs().getString("url", null);
+        if (u != null && (u.startsWith("http://") || u.startsWith("https://"))) return u;
+        return assetUrl();
+    }
+    private String assetUrl() {
         try (BufferedReader r = new BufferedReader(new InputStreamReader(getAssets().open("server.txt"), "UTF-8"))) {
             String line;
             while ((line = r.readLine()) != null) {

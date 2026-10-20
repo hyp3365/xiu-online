@@ -17,6 +17,7 @@ G.module({
       try { this.srvInfo = await API.req("admin/server"); }
       catch (e) { this.log("读取服务器信息失败：" + e.message, "bad"); }
       if (this.srvInfo && !this.srvF) { const g = this.srvInfo.gh; this.srvF = { repo: g.repo || "", token: "", interval: g.interval || 0 }; }
+      try { const L = await API.req("lines"); this.lnInfo = L; if (this.lnText == null) this.lnText = L.lines.map(x => `${x.name} ${x.url}`).join("\n"); } catch (e) {}
       this.render();
     },
     srvSetIv(v) { if (this.srvF) { this.srvF.interval = v; this.render(); } },
@@ -55,6 +56,30 @@ G.module({
         this.modal(`<h2>恢复失败</h2><p>${String(e.message).replace(/</g, "&lt;")}</p><div class="btns"><button onclick="${this.s ? "G.closeModal()" : "G.intro()"}">返回</button></div>`);
         if (fromSrv) this.render();
       }
+    },
+    // 游戏线路：每行「名称 地址」
+    lnParse(text) { return String(text || "").split(/\n+/).map(s => s.trim()).filter(Boolean).map(s => { const m = s.match(/^(.*?)\s*(https?:\/\/\S+)$/i); return m ? { name: m[1].trim(), url: m[2] } : { name: "", url: s }; }); },
+    async lnSave(def) {
+      if (this.srvBusy) return;
+      this.srvBusy = true; this.render();
+      try {
+        const cur = this.lnInfo || { def: "" };
+        const j = await API.req("admin/lines", { lines: this.lnParse(this.lnText), def: def === undefined ? cur.def : def });
+        this.lnInfo = j; this.lnText = j.lines.map(x => `${x.name} ${x.url}`).join("\n");
+        this.log(def ? "默认线路已设置，安卓客户端下次进游戏会自动切换过去。" : "线路已保存。", "gold");
+      } catch (e) { this.log("保存失败：" + e.message, "bad"); }
+      this.srvBusy = false; this.render();
+    },
+    lnGo(url) { if (confirm(`本机切换到这条线路？\n${url}`)) API.goLine(url); },
+    lnCard(esc) {
+      const L = this.lnInfo || { lines: [], def: "" }, cur = API.curLine(), app = typeof window !== "undefined" && window.XiuApp && window.XiuApp.switchTo;
+      const rows = L.lines.map(x => { const k = API.lineKey(x.url), isDef = k === API.lineKey(L.def), here = k === cur;
+        return `<div class="line"><div>${esc(x.name)}${isDef ? `<span class="tag">默认</span>` : ""}${here ? `<span class="tag c-green">当前</span>` : ""}<small>${esc(x.url)}</small></div>
+          <div><button class="sm" onclick="G.lnSave(${isDef ? "''" : `'${esc(x.url)}'`})" ${this.srvBusy ? "disabled" : ""}>${isDef ? "取消默认" : "设为默认"}</button> <button class="sm" onclick="G.lnGo('${esc(x.url)}')" ${here ? "disabled" : ""}>切换</button></div></div>`; }).join("");
+      return `<div class="card"><h3>游戏线路<small>当前 ${esc(cur)}</small></h3>
+        <p class="desc">每行一条：名称 空格 地址（比如「线路二 https://b.example.com/xiuxian-test/」），每个地址都要能打开游戏、连到这台服务器。设为默认后，安卓客户端下次进游戏自动切过去，切换会带上登录；客户端连不上时也会弹出线路让玩家选。${app ? "" : "（当前不是新版安卓客户端，「切换」只是浏览器跳转。）"}</p>
+        <textarea rows="4" style="width:100%;box-sizing:border-box" oninput="G.lnText=this.value">${esc(this.lnText || "")}</textarea>
+        <div class="btns"><button class="primary" onclick="G.lnSave()" ${this.srvBusy ? "disabled" : ""}>保存线路</button></div>${rows}</div>`;
     },
     srvSize(b) { b = +b || 0; return b >= 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(0, Math.round(b / 1024)) + " KB"; },
     srvDur(sec) { sec = Math.max(0, Math.floor(sec)); const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
@@ -99,7 +124,7 @@ G.module({
       const restoreCard = `<div class="card"><h3>从 GitHub 恢复<small>替换全部账号和存档</small></h3>
         <p class="desc">服务器存档损坏时用：下载仓库里的最新备份替换当前数据库，服务器自动重启。当前数据库会先备份到上面的备份目录。仓库和令牌用上面填的（未保存的也会用）。</p>
         <div class="btns"><button onclick="G.ghRestoreRun(G.srvF && G.srvF.repo, G.srvF && G.srvF.token, true)" ${this.srvBusy || !(F.repo && (F.token || g.tokenSet)) ? "disabled" : ""}>下载并恢复</button></div></div>`;
-      return head + prog + host + backup + ghCard + restoreCard;
+      return head + prog + host + this.lnCard(esc) + backup + ghCard + restoreCard;
     },
   },
 });

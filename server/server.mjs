@@ -190,6 +190,8 @@ const server = http.createServer(async (req, res) => {
   try {
     if (restoring) return error(res, 503, "服务器正在恢复存档并重启，请稍候刷新");
     if (req.method === "GET" && route === "/health") return sendJson(res, 200, { ok: true, service: "xiu-online", uptime: Math.floor((Date.now() - startedAt) / 1000) });
+    // 游戏线路（不用登录）：管理员在「服务器信息」里设置；安卓客户端缓存下来，换地址不用重新打包
+    if (req.method === "GET" && route === "/api/lines") return sendJson(res, 200, linesInfo());
     if (req.method === "POST" && route === "/api/register") {
       const body = await readBody(req);
       if (!registrationOpen()) return error(res, 403, "暂未开放注册");
@@ -295,6 +297,23 @@ const server = http.createServer(async (req, res) => {
         setSetting("gh_token", token);
       }
       return sendJson(res, 200, { ok: true, info: await serverInfo() });
+    }
+    if (user.is_admin && req.method === "POST" && route === "/api/admin/lines") {
+      const body = await readBody(req), list = Array.isArray(body.lines) ? body.lines : [];
+      if (list.length > 20) return error(res, 400, "线路最多 20 条");
+      const lines = [];
+      for (const x of list) {
+        const name = String(x && x.name || "").trim().slice(0, 20);
+        let u = String(x && x.url || "").trim();
+        if (!/^https?:\/\/[^\s"'<>`#]+$/i.test(u) || u.length > 300) return error(res, 400, `地址格式不对：${u.slice(0, 60)}`);
+        if (!u.endsWith("/")) u += "/";
+        if (!lines.some(l => l.url === u)) lines.push({ name: name || `线路${lines.length + 1}`, url: u });
+      }
+      let def = String(body.def || "").trim(); if (def && !def.endsWith("/")) def += "/";
+      if (def && !lines.some(l => l.url === def)) def = "";
+      setSetting("lines", lines.length ? JSON.stringify(lines) : null);
+      setSetting("lines_def", def || null);
+      return sendJson(res, 200, linesInfo());
     }
     if (user.is_admin && req.method === "POST" && route === "/api/admin/gh/restore") {
       const body = await readBody(req);
@@ -548,6 +567,8 @@ async function backupDb() {
 // 用 GitHub Git Data API 建一个没有父提交的新提交并强制指向 main：仓库里永远只有最新一份，不堆历史。
 // 设置存在 settings 表：gh_repo、gh_token、gh_interval（小时，0 = 关闭）、gh_last（上次结果 JSON）
 const getSetting = k => db.prepare("SELECT value FROM settings WHERE key=?").get(k)?.value;
+// 游戏线路：lines = [{ name, url }]，lines_def = 默认线路地址（安卓客户端自动切过去）
+function linesInfo() { let lines = []; try { lines = JSON.parse(getSetting("lines") || "[]"); } catch {} return { lines: Array.isArray(lines) ? lines : [], def: getSetting("lines_def") || "" }; }
 const setSetting = (k, v) => v === null ? db.prepare("DELETE FROM settings WHERE key=?").run(k) : db.prepare("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(k, String(v));
 const GH_INTERVALS = [0, 1, 2, 3, 6, 12, 24];
 function ghConfig() {
