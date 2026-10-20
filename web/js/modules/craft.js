@@ -107,7 +107,7 @@ G.module({
       const C = CFG.craftsman, c = this.craftInfo(k), max = c.lv >= this.craftMax(k), need = (C[k].EXP || C.EXP)[c.lv - 1] || 1, pg = k === "xling" ? DATA.FAN_HERB_N : 0;
       const eff = k === "ling" || k === "xling" ? `<p class="desc">${k === "xling" ? "仙界药材" : ""}生长时间 -${U.num(this.plantCut(pg))}% · 收获 +${U.num(this.plantYieldPct(pg))}%</p>` : "";   // 炼丹、炼器的成功率显示在每样物品上
       return `<div class="card"><h3>${this.craftTitle(k)}<small>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}</small></h3>
-        ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}${eff}${!max && C[k].ITEM_EXP ? `<p class="desc">炼成 ${c.lv} 阶及以上才加经验</p>` : ""}</div>`;
+        ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}${eff}${!max && C[k].ITEM_EXP && k !== "ling" ? `<p class="desc">炼成 ${c.lv} 阶及以上才加经验</p>` : ""}</div>`;
     },
 
     /* ---------- 材料 ---------- */
@@ -677,7 +677,7 @@ G.caveViews.forge = function () {
   h += `<div class="card"><h3>炼器</h3>
     <div class="room-grid five">${DATA.JIE.map((n, i) => `<button class="${g === i ? "active" : ""}" onclick="G.setForgeTier(${i})">${n}</button>`).join("")}</div>` +
     (rows || `<p class="desc">${DATA.JIE[g]}还没有可炼制的东西：炉子图纸在门派宝库兑换，装备图谱、空间石在门派炼器室学习。</p>`) +
-    `<p class="desc">二阶起的装备、法宝、戒指要用一件上一阶同部位（同种）的 + 三种矿石，升阶后属性颜色不变、数值变大。炼制失败只扣矿石，上一阶装备退回。</p></div>`;
+    `</div>`;
   // 灵珠（门派炼器室学会图纸）
   const LZ = CFG.lingzhu, lzMats = this.lzMats();
   const lzRows = LZ.NAMES.map((n, ft) => !s.forgeKnown.includes(this.forgeKey("lz", 0, ft)) ? "" : `<div class="line"><div>${DATA.li(DATA.smIcon("lz", ft), "lz-glow")}${DATA.smName("lz", ft)}<span class="tag">聚灵+${U.fmt(LZ.BASE)}</span>
