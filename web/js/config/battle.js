@@ -48,8 +48,8 @@ CFG.battle.TALENT = {
   NAME: { lianji: "连击", baoji: "暴击", bizhong: "必中", shenyou: "神佑", xishou: "吸收", xingyun: "幸运", minjie: "敏捷", qiangzhuang: "强壮", fangyu: "防御", qiangli: "强力", lingxing: "灵性" },
   CHANCE: {
     凡界精英: [8], 凡界首领: [15],
-    四界精英: [20], 天将: [20],
-    四界首领: [35, 20], 星君: [35, 20],
+    四界精英: [25, 15], 天将: [25, 15],
+    四界首领: [35, 25], 星君: [35, 25],
     界主: [100, 50, 25],
   },
 };
