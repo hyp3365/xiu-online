@@ -288,14 +288,15 @@ G.module({
       };
       const me = (lx) => {
         freeShield();
-        const pj = ch(pMe.pj), def0 = m.def; if (pj) m.def = def0 * (1 - pMe.pjI / 100);   // 破军：这一下无视部分防御
+        const pj = ch(pMe.pj), def0 = m.def; if (mShield) m.def = mShield.def;   // 有护盾：按盾防御算（代替怪物本身防御）
+        if (pj) m.def = m.def * (1 - pMe.pjI / 100);   // 破军：这一下无视部分防御
         let d = myHit(); m.def = def0;
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.k < 3 && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMe, php, st.hp, meJc, mobJc);
         if (act.k < 3 && act.f !== 1 && !(act.x & 128) && !mobSeal && cnt.me.zh < pMe.zhT && ch(pMe.zh)) { mobSeal = pMe.zhR; sealR.mob = rounds; cnt.me.zh++; act.x = (act.x || 0) | 64; }
         if (mShield && act.k < 3 && act.f !== 1 && d > 0) {   // v165 怪物护盾
-          d = Math.max(MIN(st), Math.max(0, d - mShield.def * BT.DEF_RATE) * (1 - mShield.red / 100));   // v172 减盾防御后仍有保底伤害
+          if (mShield.red) d = Math.max(MIN(st), d * (1 - mShield.red / 100));   // 盾防御已在出手时代替本身防御，这里只算额外减伤%
           const ab = Math.min(mShield.hp, d); mShield.hp -= ab; d -= ab; act.ab = ab;
           if (mShield.hp <= 0) { mShield = null; act.x = (act.x || 0) | 4; }
         }
@@ -312,8 +313,8 @@ G.module({
         if (pj && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMob, mhp, m.hp, mobJc, meJc);
         if (act.f !== 1 && !(act.x & 128) && !meSeal && cnt.mob.zh < pMob.zhT && ch(pMob.zh)) { meSeal = pMob.zhR; sealR.me = rounds; cnt.mob.zh++; act.x = (act.x || 0) | 64; }
-        if (shield && act.f !== 1 && d > 0) {   // 护盾：先减盾防御，再减「受到伤害减少%」，剩下先扣护盾值
-          d = Math.max(MIN(m), Math.max(0, d - shield.def * BT.DEF_RATE) * (1 - shield.red / 100));   // v172 减盾防御后仍有保底伤害
+        if (shield && act.f !== 1 && d > 0) {   // 人物护盾：先减盾防御，再减「受到伤害减少%」，剩下先扣护盾值
+          d = Math.max(MIN(m), Math.max(0, d - shield.def * BT.DEF_RATE) * (1 - shield.red / 100));   // 人物法宝盾：本身防御之外再减盾防御（v172 仍有保底伤害）
           const ab = Math.min(shield.hp, d); shield.hp -= ab; d -= ab; act.ab = ab;
           if (shield.hp <= 0) { shield = null; act.x = (act.x || 0) | 4; }
         }
