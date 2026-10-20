@@ -727,7 +727,7 @@ G.sectAlchemyView = function () {
     const rows = types.filter(t => DATA.recipeHas(t, g) && DATA.danStar(t, g) <= star).map(t => {
       const key = t + "|" + g, has = s.recipes.includes(key), c = DATA.danLearnCost(t, g);
       return [has, `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, g), "li")}《${DATA.danName(t, g)}》<span class="tag">${DATA.recipeEffect(t, g)}</span>
-        <small>${this.matsText(DATA.danRecipe(t, g))}<br>${U.fmt(c)} 贡献 · 学习 ${U.dur(DATA.danLearnTime(t, g) / 1000)}</small></div>
+        <small>${U.fmt(c)} 贡献 · 学习 ${U.dur(DATA.danLearnTime(t, g) / 1000)}</small></div>
         ${has ? `<button class="sm" disabled>已学会</button>` : this.lqBtn("dan", key, `G.learnRecipe('${t}',${g})`, s.contrib < c)}</div>`];
     });
     if (rows.length) cards.push({ head: `<h3>${hall} · ${DATA.JIE[g]}丹方</h3>`, rows });
