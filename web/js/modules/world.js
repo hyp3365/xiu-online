@@ -307,14 +307,15 @@ G.module({
       const him = (lx) => {
         if (m.stun > 0) { m.stun--; act = { k: 4, f: 0 }; rec(1, 0); return; }   // 被眩晕：这次不能出手
         mobShield();
-        const pj = ch(pMob.pj), def0 = st.def; if (pj) st.def = def0 * (1 - pMob.pjI / 100);
+        const pj = ch(pMob.pj), def0 = st.def; if (shield) st.def = shield.def;   // 有护盾：按盾防御算（代替人物本身防御）
+        if (pj) st.def = st.def * (1 - pMob.pjI / 100);
         let d = mobSeal ? hit(mE(), st) : mobHit(); st.def = def0;   // 被镇魂：只能普通攻击
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMob, mhp, m.hp, mobJc, meJc);
         if (act.f !== 1 && !(act.x & 128) && !meSeal && cnt.mob.zh < pMob.zhT && ch(pMob.zh)) { meSeal = pMob.zhR; sealR.me = rounds; cnt.mob.zh++; act.x = (act.x || 0) | 64; }
-        if (shield && act.f !== 1 && d > 0) {   // 人物护盾：先减盾防御，再减「受到伤害减少%」，剩下先扣护盾值
-          d = Math.max(MIN(m), Math.max(0, d - shield.def * BT.DEF_RATE) * (1 - shield.red / 100));   // 人物法宝盾：本身防御之外再减盾防御（v172 仍有保底伤害）
+        if (shield && act.f !== 1 && d > 0) {   // 人物护盾：伤害按盾防御算（代替本身防御），再减「受到伤害减少%」，剩下先扣护盾值
+          if (shield.red) d = Math.max(MIN(m), d * (1 - shield.red / 100));   // 盾防御已在出手时代替本身防御，这里只算额外减伤%
           const ab = Math.min(shield.hp, d); shield.hp -= ab; d -= ab; act.ab = ab;
           if (shield.hp <= 0) { shield = null; act.x = (act.x || 0) | 4; }
         }
