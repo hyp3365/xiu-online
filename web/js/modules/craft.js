@@ -91,10 +91,10 @@ G.module({
     /* 炼丹统一：丹药共 20 阶（凡丹 1~10 阶，仙冥魔神丹 1~10 阶 = 总 11~20 阶），只有一个炼丹师（1~20 阶）；
      * 炉子也连起来：炼丹炉 1~10 阶，炼丹仙炉 1~10 阶 = 11~20 阶。成功率 = 80 + (炼丹师阶 − 丹药总阶) × 5 + (炉子总阶 − 丹药总阶) × 5 */
     danCk() { return "dan"; },
-    danTier(type, g) { return g + (DATA.danCat(type) ? 10 : 0); },   // 丹药总阶序号（0 = 一阶凡丹）
+    danTotal(type, g) { return g + (DATA.danCat(type) ? 10 : 0); },   // 丹药总阶序号（0 = 一阶凡丹）
     danFurnTier(type) { const fu = this.s.furnaceUse || {}; return DATA.danCat(type) && fu.xdan >= 0 ? fu.xdan + 10 : fu.dan >= 0 ? fu.dan : -1; },
     danRate(type, g) {
-      const C = CFG.craftsman, T = this.danTier(type, g), f = this.danFurnTier(type);
+      const C = CFG.craftsman, T = this.danTotal(type, g), f = this.danFurnTier(type);
       const pct = C.RATE_BASE + (this.craftLv("dan") - (T + 1)) * C.RATE_STEP + (f >= 0 ? (f - T) * (C.FURN_STEP || 0) : 0) + (this.mifaBonus().danRate || 0);
       return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
     },
@@ -159,7 +159,7 @@ G.module({
             a.ok = (a.ok || 0) + 1;
             if (Math.random() * 100 < (this.mifaBonus().danExtra || 0) && this.addDan(a.type, a.g, 1)) a.extra = (a.extra || 0) + 1;
           } else a.fail = (a.fail || 0) + 1;
-          this.addCraftExp("dan", this.itemExp("dan", this.danTier(a.type, a.g), ok));   // 经验按丹药总阶
+          this.addCraftExp("dan", this.itemExp("dan", this.danTotal(a.type, a.g), ok));   // 经验按丹药总阶
           a.done++; a.next += a.per;
         }
         if (a.done < a.n) break;
@@ -251,9 +251,9 @@ G.module({
     // 炼好：放进背包，背包满返回 false（等有空位再出炉）
     forgeCraft() { return "qi"; },   // 炼器统一按炼器师 1~20 阶
     // 炼器：仙炉（炼丹仙炉 / 炼器仙炉）算 11~20 阶；炉子：仙炉装了炼器仙炉算 11~20 阶，否则用炼器炉 1~10 阶。可跨阶，成功率每差一阶 ±5%
-    forgeTier(kind, g) { return g + (kind === "xdan" || kind === "xqi" ? 10 : 0); },
+    forgeTotal(kind, g) { return g + (kind === "xdan" || kind === "xqi" ? 10 : 0); },
     forgeRate(kind, g) {
-      const C = CFG.craftsman, fu = this.s.furnaceUse || {}, T = this.forgeTier(kind, g), xian = T >= 10 && fu.xqi >= 0, f = xian ? fu.xqi + 10 : fu.qi >= 0 ? fu.qi : -1;
+      const C = CFG.craftsman, fu = this.s.furnaceUse || {}, T = this.forgeTotal(kind, g), xian = T >= 10 && fu.xqi >= 0, f = xian ? fu.xqi + 10 : fu.qi >= 0 ? fu.qi : -1;
       const pct = C.RATE_BASE + (this.craftLv("qi") - (T + 1)) * C.RATE_STEP + (f >= 0 ? (f - T) * (C.FURN_STEP || 0) : 0) + (this.mifaBonus().qiRate || 0);
       return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
     },
@@ -261,7 +261,7 @@ G.module({
       // 成功率判定（只判一次，背包满等待时不重复判定、不重复加经验）
       if (j.ok === undefined) {
         j.ok = Math.random() < this.forgeRate(j.kind, j.g);
-        this.addCraftExp("qi", this.itemExp("qi", this.forgeTier(j.kind, j.g), j.ok));
+        this.addCraftExp("qi", this.itemExp("qi", this.forgeTotal(j.kind, j.g), j.ok));
       }
       if (!j.ok) {
         if (j.prev) { if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; } this.addEquip(j.prev); }
