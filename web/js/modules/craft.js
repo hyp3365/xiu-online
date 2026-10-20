@@ -511,7 +511,15 @@ G.module({
       return `<div class="card job-card"><div class="job-info">${info || `<b>${dan ? "丹炉" : "炼器炉"}空闲</b><small>点物品后面的「炼制」开始</small>`}</div>
         <div class="job-btns"><button class="sm" onclick="G.openCraftLog('${dan ? "alchLog" : "forgeLog"}')">${w}记录</button>
           <button class="sm" onclick="G.openCraftQueue('${k}')">${w}队列 ${q.length}/${Q}</button>
-          ${busy ? `<button class="sm" onclick="G.${dan ? "stopAlch" : "stopForge"}()">正在${w}</button>` : `<button class="sm" disabled>尚未${w}</button>`}</div></div>`;
+          ${busy ? `<button class="sm on" onclick="G.askStopJob('${k}')">正在${w}</button>` : `<button class="sm" disabled>尚未${w}</button>`}</div></div>`;
+    },
+    // v252 停炉确认：游戏风格弹窗（不用浏览器 confirm）
+    askStopJob(k) {
+      const s = this.s, dan = k === "alch", j = dan ? s.alchJob : s.forgeJob; if (!j) return;
+      const name = dan ? `${DATA.danName(j.type, j.g)} ×${j.n}（已炼 ${j.done}）` : this.jobName(j);
+      this.modal(`<h2>${dan ? "停炉" : "停止炼器"}</h2><p class="desc" style="text-align:center">${name}</p>
+        <p style="text-align:center">${dan ? "停炉后没炼的药材会退回，已出炉的丹药保留。" : "停止后材料会退回。"}</p>
+        <div class="btns"><button class="primary" onclick="G.closeModal();G.${dan ? "stopAlch" : "stopForge"}()">确定</button><button onclick="G.closeModal()">取消</button></div>`);
     },
     // 炼丹 / 炼器队列弹窗：可以取消（退回材料）
     openCraftQueue(k) {

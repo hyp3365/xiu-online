@@ -193,8 +193,6 @@ const API = {
     leaveSect: () => G.s.sect && G.s.contrib >= G.leaveCost() ? `叛出门派将扣除贡献 ${U.fmt(G.leaveCost())}、清空职务（已学功法保留），确定？` : "",
     stopStudy: () => G.s.gfStudy ? "中断修炼，已消耗的灵气不退还，确定？" : "",
     svFire: () => "遣散这个道童？",
-    stopAlch: () => G.s.alchJob ? "停炉？没炼的药材会退回。" : "",
-    stopForge: () => G.s.forgeJob ? "停止炼器？材料会退回。" : "",
     forgetGongfa: id => {
       const g = G.s.gongfa[id] && DATA.skillInfo(id, G.s.gongfa[id]);
       return g && G.ssForgettable(id) ? `遗忘《${g.name}》？\n第 ${g.lv} 层和加的${g.label}全部删除，归还灵识点 ${G.ssCost(id)}。` : "";
