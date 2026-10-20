@@ -58,4 +58,3 @@ DATA.rooms = _SC.rooms;                 // 修炼室（原练功房）
 DATA.gfRooms = _SC.gfRooms || [];       // v27 练功房：加快功法修炼
 DATA.towerMax = star => _SC.trial.FLOORS[star - 1];   // N 星试炼塔层数
 DATA.towerReward = (floor, star) => _SC.trial.floor.contrib[star - 1] * floor;   // 首次通关奖励贡献
-DATA.secretCost = star => _SC.SECRET_COST * star;

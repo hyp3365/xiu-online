@@ -12,7 +12,7 @@
  *   炼丹房    学习丹方（贡献 + 时间），学会后在洞府炼丹房炼制（见 craft.js）
  *   炼器室    学习炼器（暂未开放）
  *   试炼塔    100 层，逐层挑战，首次通关得贡献
- *   宗门秘境  消耗贡献进入探索，随机奖励
+ *   讲道室    每天随机长老讲道（炼丹、炼器必出 + 随机功法），听 10 分钟加技艺经验或属性；每天一次免费，其余要贡献
  * 数值都在 js/config/ 下的数值文件 的 sect。
  * ===================================================================== */
 G.module({
@@ -43,11 +43,12 @@ G.module({
     qlEaten: {},      // 各门派清灵丹已服用颗数 { 门派id: 颗数 }
     ccDay: "",        // v213 宗门传承：上次领悟日期
     ccGot: {},        // 各门派已领悟的传承功法 { 门派id: [功法id…] }（门派之间互不通用）
+    jd: null,         // 讲道室 { day, list:[{nm, k:"dan"/"qi"/功法类别, book, done}], free: 免费用掉的日期, cur: {i, end}, got: {属性: 值}, log: [] }
   }),
 
   // 每 10 秒：事务堂任务到时间就结算一次，并自动开始下一次（离线也会补算）
   tick(offline) {
-    this.freeRoomDaily(); this.poolTick();
+    this.freeRoomDaily(); this.poolTick(); this.jdSettle();
     if (this.s.sect) this.affairGen();
     this.autoTaskCheck();   // v229 每天北京时间 0:05 自动执行任务（修炼设置）；v230 离线补算到 0:05 也执行
     const s = this.s, a = s.affair;
@@ -567,25 +568,64 @@ G.module({
       this.playBattle(res.detail, `试炼塔 · 第 ${f} 层`, txt, res.win, null, false, { tname: "" });   // v228 标题不再显示守关者名字   // 见 world.js
     },
 
-    /* ---------- 宗门秘境 ---------- */
-    exploreSecret() {
-      const x = this.sectInfo(), c = DATA.secretCost(x.star);
-      if (this.s.contrib < c) return;
-      this.s.contrib -= c;
-      const roll = Math.random(), g = this.r(), SC = CFG.sect.secret;
-      if (roll < SC.stone.chance) {
-        const n = Math.floor(SC.stone.mult * this.starMul() * (1 + Math.random()));
-        this.s.stone += n; this.log(`秘境中寻得一处灵石矿脉，灵石 +${U.fmt(n)}。`, "gold");
-      } else if (roll < SC.stone.chance + SC.pill.chance) {
-        const t = U.pick(Object.keys(DATA.pills).filter(k => !DATA.pills[k].xian)), n = U.rand(SC.pill.n[0], SC.pill.n[1]);
-        this.addPill(t, g, n); this.log(`秘境中发现前人遗留的${DATA.pills[t].name} ×${n}。`, "gold");
-      } else if (roll < SC.stone.chance + SC.pill.chance + SC.equip.chance) {
-        const sl = U.pick(Object.keys(DATA.slots));   // 任意部位：本门星级对应阶的炼器装备 / 戒指 / 法宝
-        const e = DATA.rollForged(sl, Math.min(9, this.sectInfo().star - 1));
-        if (this.addEquip(e)) this.log(`秘境深处得到<span class="q${e.q}">${this.itemName({ t: "eq", e })}</span>！`, "gold");
-      } else this.log("秘境中迷雾重重，一无所获。", "sys");
-      this.after();
+    /* ---------- 讲道室（config/sect.js 的 jiangdao） ---------- */
+    jdCfg() { return CFG.sect.jiangdao; },
+    jdCost() { return (this.jdCfg().COST || 0) * this.sectInfo().star; },
+    jdStatOf(k) { const t = DATA.gongfaTypes.find(x => x.id === k); return t ? t.stat : ""; },
+    // 功法讲道加的属性：[最少, 最多]（修为 + 肉身突破该属性 × STAT_PCT%）；roll = 随机一个
+    jdVal(k) { const st = this.jdStatOf(k), b = DATA.ownStat(st).br || 0, P = this.jdCfg().STAT_PCT || [1, 3]; return [Math.floor(b * P[0] / 100), Math.floor(b * P[1] / 100)]; },
+    jdNeed(k) { const C = CFG.craftsman, c = this.craftInfo(k), E = C[k].EXP || C.EXP; return c.lv >= this.craftMax(k) ? 0 : E[c.lv - 1] ?? (64 + 32 * (c.lv - 1)) * 13 * c.lv; },
+    jdExp(k) { const n = this.jdNeed(k), P = this.jdCfg().EXP_PCT || [5, 10]; return [Math.floor(n * P[0] / 100), Math.floor(n * P[1] / 100)]; },
+    jdRoll(r) { return Math.floor(r[0] + Math.random() * (r[1] - r[0] + 1)); },
+    jdRange(r) { return r[0] === r[1] ? U.fmt(r[0]) : `${U.fmt(r[0])}~${U.fmt(r[1])}`; },
+    jdName() {
+      const X = this.jdCfg().XING, fu = ["司马","上官","欧阳","夏侯","诸葛","闻人","东方","赫连","皇甫","尉迟","公羊","澹台","公冶","宗政","濮阳","淳于","单于","太叔","申屠","公孙","仲孙","轩辕","令狐","钟离","宇文","长孙","慕容","司徒","司空","端木","万俟"];
+      const single = [...X.replace(new RegExp(fu.join("|"), "g"), "")];
+      return (Math.random() < 0.1 ? U.pick(fu) : U.pick(single)) + "长老";
     },
+    jdBook(k) {   // 讲的功法名：本门星级随机门派的这一类功法
+      const t = DATA.gongfaTypes.find(x => x.id === k), list = DATA.sects.filter(x => x.star === this.sectInfo().star);
+      return t && list.length ? DATA.gongfaName(U.pick(list), t) : t ? t.name : "";
+    },
+    jdState() {
+      const s = this.s, day = this.bjDay(), J = this.jdCfg();
+      if (!s.jd) s.jd = { log: [], got: {} };
+      const d = s.jd;
+      if (d.day !== day && !d.cur) {
+        const types = [...J.TYPES].sort(() => Math.random() - 0.5).slice(0, J.LECTURES || 4);
+        d.day = day;
+        d.list = [{ k: "dan" }, { k: "qi" }, ...types.map(k => ({ k }))].map(x => Object.assign(x, { nm: this.jdName(), book: x.k === "dan" ? "炼丹心得" : x.k === "qi" ? "炼器心得" : this.jdBook(x.k) }));
+      }
+      return d;
+    },
+    listenJiang(i) {
+      const s = this.s; if (!s.sect) return;
+      this.jdSettle();
+      const d = this.jdState(), L = d.list[i], day = this.bjDay();
+      if (!L || L.done || d.cur) return;
+      const free = d.free !== day, c = free ? 0 : this.jdCost();
+      if (s.contrib < c) return this.log("贡献不足。", "sys");
+      s.contrib -= c; if (free) d.free = day;
+      L.done = 1; d.cur = { i, end: this.now() + (this.jdCfg().MIN || 10) * 60000, k: L.k, nm: L.nm, book: L.book };
+      this.log(`前往讲道室听取${L.nm}讲道${free ? "（今日免费）" : `，消耗贡献 ${U.fmt(c)}`}。`, "sys"); this.after();
+    },
+    jdSettle() {
+      const d = this.s.jd; if (!d || !d.cur || this.now() < d.cur.end || !this.s.sect) return;
+      const c = d.cur; d.cur = null;
+      let gain;
+      if (c.k === "dan" || c.k === "qi") {
+        const n = this.jdRoll(this.jdExp(c.k)); this.addCraftExp(c.k, n);
+        gain = `${c.k === "dan" ? "炼丹" : "炼器"}经验提高了：${U.fmt(n)}点`;
+      } else {
+        const st = this.jdStatOf(c.k), v = this.jdRoll(this.jdVal(c.k));
+        d.got = d.got || {}; d.got[st] = (d.got[st] || 0) + v;
+        gain = `自身${DATA.QL_LABEL[st] || st}提高了：${U.fmt(v)}点`;
+      }
+      const txt = `你在讲道室中听取${c.nm}分享的${c.k === "dan" || c.k === "qi" ? c.book : `修炼《${c.book}》的感悟心得`}，心有所感，大有收获，${gain}。`;
+      d.log = [{ at: c.end, t: txt }, ...(d.log || [])].slice(0, this.jdCfg().LOG || 20);
+      if (!this.silent) this.log(txt, "gold");
+    },
+    jdBonus() { return (this.s.jd && this.s.jd.got) || {}; },
   },
 
   view() {
@@ -605,7 +645,7 @@ G.module({
     // ---------- 已入门 ----------
     const x = this.sectInfo(), tab = this.sectTab || "hall";
     const TABS = [["hall", "宗门大殿"], ["lib", "功法殿"], ["affair", "事务堂"], ["room", "修炼室"], ["gfroom", "练功房"], ["pool", "练体池"], ["treasury", "宗门宝库"],
-                  ["alchemy", "炼丹房"], ["forge", "炼器室"], ["wudao", "秘法殿"], ["tower", "试炼塔"], ["secret", "宗门秘境"]]
+                  ["alchemy", "炼丹房"], ["forge", "炼器室"], ["wudao", "秘法殿"], ["tower", "试炼塔"], ["jiangdao", "讲道室"]]
       .map(([k, n]) => [k, DATA.nmPick(CFG.names.sectHall, k, n)]);   // 名字在 config/names.js 的 sectHall
     let h = `<div class="card"><h3>${x.name} <span class="tag">${x.star}星</span><span class="tag">${DATA.elById[x.el].name}</span><small>${DATA.ranks[s.rank].name} · 贡献 ${U.fmt(s.contrib)}</small></h3></div>
       <div class="room-grid">${TABS.map(([k, n]) => `<button class="${tab === k ? "active" : ""}" onclick="G.setSectTab('${k}')">${n}</button>`).join("")}</div>`;
@@ -742,11 +782,22 @@ G.module({
         ${bonus ? `<p class="desc">第 ${nb} 层额外奖励：${this.towerBonusText(bonus)}</p>` : ""}
         <p class="desc">进度按门派星级记录，换门派不会重置。${this.towerDesc(star)}</p></div>`;
       h += this.testView();
-    } else if (tab === "secret") {
-      const c = DATA.secretCost(x.star);
-      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "secret", "宗门秘境")}<small>每次消耗 ${U.fmt(c)} 贡献</small></h3>
-        <p class="desc">秘境中或有灵石矿脉、前人遗丹、上品法器，也可能一无所获。</p>
-        <div class="btns"><button class="primary" onclick="G.exploreSecret()" ${s.contrib < c ? "disabled" : ""}>进入探索</button></div></div>`;
+    } else if (tab === "jiangdao") {
+      this.jdSettle();
+      const d = this.jdState(), day = this.bjDay(), free = d.free !== day, c = this.jdCost(), cur = d.cur;
+      h += `<div class="card"><h3>${DATA.nmPick(CFG.names.sectHall, "jiangdao", "讲道室")}<small>${free ? "今日可免费听讲一次" : `每次 ${U.fmt(c)} 贡献`}</small></h3>
+        <p class="desc">每天都有长老在讲道室分享修炼心得，每次听讲 ${this.jdCfg().MIN || 10} 分钟。炼丹、炼器长老每天必到，其余长老讲授功法感悟。</p>
+        ${cur ? `<p class="desc">正在听取${cur.nm}讲道 · 约 ${U.cd(Math.max(0, cur.end - this.now()) / 1000)} 后结束</p>` : ""}` +
+        d.list.map((L, i) => {
+          const craft = L.k === "dan" || L.k === "qi", st = craft ? "" : this.jdStatOf(L.k);
+          const gain = craft ? `${L.k === "dan" ? "炼丹" : "炼器"}经验 +${this.jdRange(this.jdExp(L.k))}` : `${DATA.QL_LABEL[st] || st} +${this.jdRange(this.jdVal(L.k))}`;
+          const btn = L.done ? `<button class="sm" disabled>${cur && cur.i === i ? "听讲中" : "已听讲"}</button>` :
+            `<button class="sm" onclick="G.listenJiang(${i})" ${cur || (!free && s.contrib < c) ? "disabled" : ""}>${free ? "免费听讲" : "听讲"}</button>`;
+          return `<div class="line"><div>${L.nm}<span class="tag">${craft ? (L.k === "dan" ? "炼丹" : "炼器") : "功法"}</span>
+            <small>${L.nm}将会分享${craft ? `自身${L.book}` : `自身修炼《${L.book}》的心得感悟`} · ${gain}</small></div>${btn}</div>`;
+        }).join("") + `</div>`;
+      const log = d.log || [];
+      h += `<div class="card"><h3>闻道日志</h3>${log.length ? log.map(x => `<p class="desc">${x.t}</p>`).join("") : `<p class="desc">还没有听过讲道。</p>`}</div>`;
     }
     return h;
   },

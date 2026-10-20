@@ -48,6 +48,7 @@
       if (s.gfLearn) ev.push(s.gfLearn.end);
       // 门派：练体池、事务堂、免费练功房到时
       if (s.pool && s.pool.end) ev.push(s.pool.end);
+      if (s.jd && s.jd.cur) ev.push(s.jd.cur.end);   // 讲道室听完
       const a = s.affair;
       if (s.sect && a && a.task !== undefined && a.task >= 0) { const t = DATA.affairs[a.task]; if (!t) return -Infinity; ev.push(a.start + t.time * 60000); }
       if (s.freeGf && s.sect && last < s.freeGf.end) ev.push(s.freeGf.end);
