@@ -810,14 +810,14 @@ G.module({
       return m;
     },
     mjLeft(i, k) { return Math.max(0, (this.mjCfg(k).DAILY || 1) - (this.mjState(k).used[i] || 0)); },
-    // 地图走完一次：凡界地图 → 秘境（find.map = 凡界地图序号）；四界地图 → 灵地（这一界第 find.map 张）
+    // 地图走完一次：凡界地图 → 秘境（find.map = 凡界地图序号）；四界地图 → 灵地（仙冥魔神任一界第 find.map 张）
     //   每处在这张地图能发现、还没发现的按 find.chance% 判定，一次最多发现一处（秘境、灵地各算）
     mjDiscover(a) {
       for (const k of ["mj", "ld"]) {
         const C = this.mjCfg(k); if (!C || !C.list) continue;
         const m = this.mjState(k);
         for (let i = 0; i < C.list.length; i++) {
-          const d = C.list[i], at = k === "ld" ? d._map : d.find && d.find.map;
+          const d = C.list[i], M = DATA.maps[a] || {}, at = k === "ld" ? (M.w && M.w !== "fan" && d.find && M.wi === d.find.map ? a : -1) : d.find && d.find.map;
           if (m.found.includes(i) || !d.find || at !== a || Math.random() * 100 >= (d.find.chance || 0)) continue;
           m.found.push(i);
           this.log(k === "ld" ? `探得灵地消息：发现${(DATA.worlds.find(w => w.id === d.w) || {}).name || ""}灵地「${d.name}」！可在 仙冥魔神任一地图 → 灵地 进入。`
