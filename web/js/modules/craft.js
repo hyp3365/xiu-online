@@ -55,6 +55,13 @@ G.module({
       return s.craftsman[k];
     },
     craftLv(k) { return this.craftInfo(k).lv; },
+    // 炼丹 / 炼器一件给的经验：物品阶 ≥ 技艺阶才给，g = 物品阶序号（0 = 一阶）
+    itemExp(k, g, ok) {
+      const C = CFG.craftsman, K = C[k] || {};
+      if (g + 1 < this.craftLv(k)) return 0;
+      const e = K.ITEM_EXP ? (K.ITEM_EXP[g] ?? K.ITEM_EXP[K.ITEM_EXP.length - 1] ?? 0) : (g + 1) * (K.EXP_RATE || 0);
+      return e * (ok ? 1 : (C.FAIL_EXP || 0));
+    },
     // 加经验，满了升阶
     addCraftExp(k, n) {
       const C = CFG.craftsman, c = this.craftInfo(k), E = C[k].EXP || C.EXP;
@@ -82,7 +89,7 @@ G.module({
       const C = CFG.craftsman, c = this.craftInfo(k), max = c.lv >= C.MAX, need = (C[k].EXP || C.EXP)[c.lv - 1] || 1, pg = k === "xling" ? DATA.FAN_HERB_N : 0;
       const eff = k === "ling" || k === "xling" ? `<p class="desc">${k === "xling" ? "仙界药材" : ""}生长时间 -${U.num(this.plantCut(pg))}% · 收获 +${U.num(this.plantYieldPct(pg))}%</p>` : "";   // 炼丹、炼器的成功率显示在每样物品上
       return `<div class="card"><h3>${C[k].name} · ${c.lv} 阶<small>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}</small></h3>
-        ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}${eff}</div>`;
+        ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}${eff}${!max && C[k].ITEM_EXP ? `<p class="desc">炼成 ${c.lv} 阶及以上才加经验</p>` : ""}</div>`;
     },
 
     /* ---------- 材料 ---------- */
@@ -135,7 +142,7 @@ G.module({
             if (Math.random() * 100 < (this.mifaBonus().danExtra || 0) && this.addDan(a.type, a.g, 1)) a.extra = (a.extra || 0) + 1;
           } else a.fail = (a.fail || 0) + 1;
           const ck = DATA.danCraft(a.type);
-          this.addCraftExp(ck, (a.g + 1) * CFG.craftsman[ck].EXP_RATE * (ok ? 1 : CFG.craftsman.FAIL_EXP));
+          this.addCraftExp(ck, this.itemExp(ck, a.g, ok));
           a.done++; a.next += a.per;
         }
         if (a.done < a.n) break;
@@ -231,7 +238,7 @@ G.module({
       if (j.ok === undefined) {
         const ck = this.forgeCraft(j.kind);
         j.ok = Math.random() < this.craftRate(ck, j.g);
-        this.addCraftExp(ck, (j.g + 1) * CFG.craftsman[ck].EXP_RATE * (j.ok ? 1 : CFG.craftsman.FAIL_EXP));
+        this.addCraftExp(ck, this.itemExp(ck, j.g, j.ok));
       }
       if (!j.ok) {
         if (j.prev) { if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; } this.addEquip(j.prev); }
@@ -549,6 +556,7 @@ G.module({
       this.modal(`<h2>${C[k].name} · ${c.lv} 阶</h2>
         <div class="line"><div>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}${tc ? `<small>炼制时间 -${U.num(tc)}%</small>` : ""}</div></div>
         ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}
+        ${!max && C[k].ITEM_EXP ? `<p class="desc">只有炼成 ${c.lv} 阶及以上的${k === "dan" || k === "xdan" ? "丹药" : "物品"}才加经验，每件 +${U.fmt(this.itemExp(k, c.lv - 1, true))}</p>` : ""}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     openFurnaceInfo(kind) {
