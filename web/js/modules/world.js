@@ -428,9 +428,14 @@ G.module({
         你造成：${line(0)}<br>${b.name}造成：${line(1)}</p>`;
     },
     // 看详情：src = "cur" 本次探索 / "last" 上一次结果，i = 事件序号；用战斗过程画面重放，随时可跳过
-    showBattle(src, i) {
+    async showBattle(src, i) {
       const s = this.s, hi = /^h\d+$/.test(src) ? +src.slice(1) : -1, list = hi >= 0 ? ((this._hist || [])[hi] || {}).ev : src === "cur" ? (s.explore && s.explore.ev) : (s.lastRun && s.lastRun.ev), e = list && list[i];   // v205 "h序号" = 全部探索里的第几次
       if (!e || !e.b) return;
+      if (typeof e.b !== "object") {   // 全部信息列表不带战斗回放，点详情时单独读这一场
+        const h = (this._hist || [])[hi] || {};
+        try { e.b = (await API.req(`hist-battle?id=${h.id}&i=${i}`)).b; } catch (err) { return this.log("读取战斗记录失败：" + err.message, "bad"); }
+        if (!e.b || !e.b.log) return;
+      }
       this._backHist = hi >= 0;   // 从全部探索点进来：关闭回放后回到全部探索窗口
       const b = e.b, last = b.log[b.log.length - 1], win = last ? last[8] <= 0 && last[6] > 0 : false;
       this.playBattle(b, "战斗过程", win ? "胜利" : "失败", win, [], true);

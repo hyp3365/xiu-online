@@ -246,7 +246,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "GET" && route === "/api/hist") {
       const rows = db.prepare("SELECT id,at,data FROM hist WHERE user_id=? ORDER BY id DESC LIMIT ?").all(user.id, HIST_KEEP);
-      return sendJson(res, 200, { list: rows.map(r => { try { return { ...JSON.parse(r.data), id: r.id, at: r.at }; } catch { return { id: r.id, at: r.at, title: "（记录损坏）", ev: [] }; } }) });
+      // 列表只带文字，战斗回放（ev[].b）换成 1，点「详情」再用 /api/hist-battle 单独读，列表读取快很多
+      return sendJson(res, 200, { list: rows.map(r => { try { const d = JSON.parse(r.data); return { ...d, ev: (d.ev || []).map(e => e && e.b ? { ...e, b: 1 } : e), id: r.id, at: r.at }; } catch { return { id: r.id, at: r.at, title: "（记录损坏）", ev: [] }; } }) });
+    }
+    if (req.method === "GET" && route === "/api/hist-battle") {
+      const row = db.prepare("SELECT data FROM hist WHERE user_id=? AND id=?").get(user.id, Number(url.searchParams.get("id")) || 0);
+      let b = null; try { b = row && (JSON.parse(row.data).ev || [])[Number(url.searchParams.get("i")) || 0]?.b || null; } catch {}
+      return b ? sendJson(res, 200, { b }) : error(res, 404, "这条战斗记录已经没有了");
     }
     if (req.method === "POST" && route === "/api/character") {
       const body = await readBody(req);
