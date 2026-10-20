@@ -1042,7 +1042,7 @@ G.module({
     sgDanList(a) {
       const S = CFG.alchemy.SHANGGU || {}, w = DATA.maps[a].w, cat = (S.WORLD_CAT || {})[w], g = (DATA.worldMapIdx[w] || []).indexOf(a);
       if (!cat || g < 0) return [];
-      return Object.keys(DATA.dans).filter(t => DATA.danCat(t) === cat && CFG.alchemy.recipes[t].val[g] !== undefined).map(type => ({ type, g, cost: (S.MERIT || [])[g] || 0 }));
+      return Object.keys(DATA.dans).filter(t => DATA.danCat(t) === cat && !String(DATA.danStat(t)).startsWith("res_") && CFG.alchemy.recipes[t].val[g] !== undefined).map(type => ({ type, g, cost: (S.MERIT || [])[g] || 0 }));
     },
     buySgDan(a, type, n) {
       const s = this.s, o = DATA.jieGfOf("gd", a), d = this.sgDanList(a).find(x => x.type === type); if (!o || !d) return;

@@ -172,6 +172,8 @@ button.sm.active{background:#5a4220;border-color:#c9a45c;color:#f3d48b}   /* v24
 .eqt0 img,img.eqt0{filter:grayscale(.7) brightness(.8) contrast(.9)}
 .eqt1 img,img.eqt1{filter:grayscale(.4) brightness(.9)}
 .eqt2 img,img.eqt2{filter:saturate(1.05)}
+/* 丹药图本身已按品质画好颜色光华：低阶（eqt0~2）不再压暗 */
+.eqt0 img.dan,img.dan.eqt0,.eqt1 img.dan,img.dan.eqt1,.eqt2 img.dan,img.dan.eqt2{filter:none}
 .eqt3 img,img.eqt3{filter:saturate(1.2) drop-shadow(0 0 2px #7fc0a8)}
 .eqt4 img,img.eqt4{filter:saturate(1.3) brightness(1.05) drop-shadow(0 0 3px #6f9cff)}
 .eqt5 img,img.eqt5{filter:saturate(1.4) brightness(1.08) drop-shadow(0 0 4px #6f9cff) drop-shadow(0 0 1px #fff)}

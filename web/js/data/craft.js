@@ -97,6 +97,6 @@ DATA.qlCls = sectId => { const Q = CFG.sect.qingling, o = DATA.sectById[sectId],
 //   kind：mi 背包格子 / li 列表小图 / big 详情大图；cls = danCls / qlCls 的结果
 DATA.danImg = (src, cls, kind) => {
   const m = /eqt(\d+)/.exec(cls || ""), tr = m ? +m[1] : 0;
-  const img = kind === "li" ? `<img class="li${cls}" src="${src}" alt="" loading="lazy">` : `<img class="${kind === "big" ? "item-img" : "mi"}${cls}" src="${src}" alt="">`;
+  const img = kind === "li" ? `<img class="li dan${cls}" src="${src}" alt="" loading="lazy">` : `<img class="${kind === "big" ? "item-img" : "mi"} dan${cls}" src="${src}" alt="">`;   // .dan：丹药低阶不压暗
   return tr >= 4 ? `<span class="dsh dsh-${kind} dsh${tr}">${img}</span>` : img;
 };

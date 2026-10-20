@@ -90,7 +90,7 @@ G.module({
         hit:     R("hit") + eq.hit + gf.hit + dn.hit,
         dodge:   R("dodge") + eq.dodge + gf.dodge + dn.dodge,
         crit:    Math.min(DATA.CRIT_CAP, F.crit + eq.crit + dn.crit),
-        res:     Object.fromEntries(DATA.elements.map(e => [e.id, R("res") + (gf.res[e.id] || 0) + (bd.res || 0) + (dn0.res || 0)])),
+        res:     Object.fromEntries(DATA.elements.map(e => [e.id, R("res") + (gf.res[e.id] || 0) + (bd.res || 0) + (dn0.res || 0) + ((dn0.resEl || {})[e.id] || 0)])),
       };
     },
   },
