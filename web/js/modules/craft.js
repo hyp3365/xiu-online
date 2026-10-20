@@ -52,10 +52,15 @@ G.module({
     craftInfo(k) {
       const s = this.s; if (!s.craftsman) s.craftsman = {};
       if (!s.craftsman[k]) s.craftsman[k] = { lv: 1, exp: 0 };
+      // 技艺统一 1~20 阶后：旧存档的炼丹仙师 / 炼器仙师 / 仙植师并进来（仙师 N 阶 = 10 + N 阶，1 阶的不算）
+      const x = (k === "dan" || k === "qi" || k === "ling") && s.craftsman["x" + k];
+      if (x) { const c = s.craftsman[k]; if (x.lv > 1 && 10 + x.lv > c.lv) { c.lv = 10 + x.lv; c.exp = x.exp || 0; } delete s.craftsman["x" + k]; }
       return s.craftsman[k];
     },
     craftLv(k) { return this.craftInfo(k).lv; },
-    craftMax(k) { const C = CFG.craftsman; return (C[k] && C[k].MAX) || C.MAX; },   // 炼丹师 20 阶（凡丹 1~10 + 仙冥魔神丹 11~20），其余 10 阶
+    craftMax(k) { const C = CFG.craftsman; return (C[k] && C[k].MAX) || (C["x" + k] ? 20 : C.MAX); },   // 炼丹师 / 炼器师 / 灵植夫 1~20 阶
+    // 显示：1~10 阶叫炼丹师 / 炼器师 / 灵植夫 N 阶，11~20 阶叫炼丹仙师 / 炼器仙师 / 仙植师 (N−10) 阶
+    craftTitle(k, lv) { const C = CFG.craftsman; lv = lv || this.craftLv(k); return lv > 10 && C["x" + k] ? `${C["x" + k].name} · ${lv - 10} 阶` : `${C[k].name} · ${lv} 阶`; },
     // 炼丹 / 炼器一件给的经验：物品阶 ≥ 技艺阶才给，g = 物品阶序号（0 = 一阶）
     itemExp(k, g, ok) {
       const C = CFG.craftsman, K = C[k] || {};
@@ -70,7 +75,7 @@ G.module({
       c.exp += n;
       while (c.lv < M && c.exp >= (E[c.lv - 1] ?? (64 + 32 * (c.lv - 1)) * 13 * c.lv)) {
         c.exp -= E[c.lv - 1] ?? (64 + 32 * (c.lv - 1)) * 13 * c.lv; c.lv++;
-        if (!this.silent) this.log(`${C[k].name}晋升 ${c.lv} 阶！`, "gold");
+        if (!this.silent) this.log(`晋升${this.craftTitle(k, c.lv).replace(" · ", " ")}！`, "gold");
       }
       if (c.lv >= M) c.exp = 0;
     },
@@ -101,7 +106,7 @@ G.module({
     craftsmanCard(k) {
       const C = CFG.craftsman, c = this.craftInfo(k), max = c.lv >= this.craftMax(k), need = (C[k].EXP || C.EXP)[c.lv - 1] || 1, pg = k === "xling" ? DATA.FAN_HERB_N : 0;
       const eff = k === "ling" || k === "xling" ? `<p class="desc">${k === "xling" ? "仙界药材" : ""}生长时间 -${U.num(this.plantCut(pg))}% · 收获 +${U.num(this.plantYieldPct(pg))}%</p>` : "";   // 炼丹、炼器的成功率显示在每样物品上
-      return `<div class="card"><h3>${C[k].name} · ${c.lv} 阶<small>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}</small></h3>
+      return `<div class="card"><h3>${this.craftTitle(k)}<small>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}</small></h3>
         ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}${eff}${!max && C[k].ITEM_EXP ? `<p class="desc">炼成 ${c.lv} 阶及以上才加经验</p>` : ""}</div>`;
     },
 
@@ -244,13 +249,19 @@ G.module({
     jobMats(q) { return q.kind === "eq" ? DATA.forgeEqMats(q.g) : q.kind === "ss" ? DATA.stoneMats(q.g) : q.kind === "ring" ? DATA.ringMats(q.g) : DATA.furnaceMats(q.kind, q.g); },
     jobName(q) { return q.kind === "eq" ? (q.slot === "fabao" && q.ft !== undefined ? DATA.JIE[q.g] + "·" + (DATA.elById[q.el] ? DATA.elById[q.el].name + "·" : "") + DATA.fabaoName(q.ft, q.g) : DATA.forgeEqName(q.slot, q.g)) : q.kind === "ss" ? DATA.stoneName(q.g) : q.kind === "ring" ? DATA.ringName(q.r, q.g) : DATA.furnaceName(q.kind, q.g); },
     // 炼好：放进背包，背包满返回 false（等有空位再出炉）
-    forgeCraft(kind) { return kind === "xdan" || kind === "xqi" ? "xqi" : "qi"; },   // 仙炉按炼器仙师算
+    forgeCraft() { return "qi"; },   // 炼器统一按炼器师 1~20 阶
+    // 炼器：仙炉（炼丹仙炉 / 炼器仙炉）算 11~20 阶；炉子：仙炉装了炼器仙炉算 11~20 阶，否则用炼器炉 1~10 阶。可跨阶，成功率每差一阶 ±5%
+    forgeTier(kind, g) { return g + (kind === "xdan" || kind === "xqi" ? 10 : 0); },
+    forgeRate(kind, g) {
+      const C = CFG.craftsman, fu = this.s.furnaceUse || {}, T = this.forgeTier(kind, g), xian = T >= 10 && fu.xqi >= 0, f = xian ? fu.xqi + 10 : fu.qi >= 0 ? fu.qi : -1;
+      const pct = C.RATE_BASE + (this.craftLv("qi") - (T + 1)) * C.RATE_STEP + (f >= 0 ? (f - T) * (C.FURN_STEP || 0) : 0) + (this.mifaBonus().qiRate || 0);
+      return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
+    },
     finishForge(j) {
       // 成功率判定（只判一次，背包满等待时不重复判定、不重复加经验）
       if (j.ok === undefined) {
-        const ck = this.forgeCraft(j.kind);
-        j.ok = Math.random() < this.craftRate(ck, j.g);
-        this.addCraftExp(ck, this.itemExp(ck, j.g, j.ok));
+        j.ok = Math.random() < this.forgeRate(j.kind, j.g);
+        this.addCraftExp("qi", this.itemExp("qi", this.forgeTier(j.kind, j.g), j.ok));
       }
       if (!j.ok) {
         if (j.prev) { if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; } this.addEquip(j.prev); }
@@ -560,12 +571,12 @@ G.module({
         `</div><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     // v249 炼丹房 / 炼器室顶部：技艺、炉子缩成小卡片，点开弹窗看经验条、炉子缩短时间、更换炉子
-    craftsmanMini(k) { const c = this.craftInfo(k); return `<div class="card mini" onclick="G.openCraftsman('${k}')"><h3>${CFG.craftsman[k].name} · ${c.lv} 阶<small>详情 ›</small></h3></div>`; },
+    craftsmanMini(k) { const c = this.craftInfo(k); return `<div class="card mini" onclick="G.openCraftsman('${k}')"><h3>${this.craftTitle(k)}<small>详情 ›</small></h3></div>`; },
     furnaceMini(kind) { const cur = this.s.furnaceUse[kind];
       return `<div class="card mini" onclick="G.openFurnaceInfo('${kind}')"><h3>${cur >= 0 ? DATA.furnaceName(kind, cur) : `未装${DATA.furnaceKinds[kind]}`}<small>详情 ›</small></h3></div>`; },
     openCraftsman(k) {
       const C = CFG.craftsman, c = this.craftInfo(k), max = c.lv >= this.craftMax(k), need = (C[k].EXP || C.EXP)[c.lv - 1] || 1, tc = (C[k].TIME_CUT || [])[c.lv - 1] || 0;
-      this.modal(`<h2>${C[k].name} · ${c.lv} 阶</h2>
+      this.modal(`<h2>${this.craftTitle(k)}</h2>
         <div class="line"><div>${max ? "已满阶" : `经验 ${U.fmt(c.exp)} / ${U.fmt(need)}`}${tc ? `<small>炼制时间 -${U.num(tc)}%</small>` : ""}</div></div>
         ${max ? "" : `<div class="bar"><div style="width:${Math.min(100, c.exp / need * 100)}%"></div></div>`}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
@@ -613,10 +624,10 @@ G.caveViews.alchemy = function () {
 G.caveViews.forge = function () {
   const s = this.s, j = s.forgeJob, qi = s.furnaceUse.qi, has = qi >= 0, full = j && s.forgeQueue.length >= CFG.furnace.QUEUE, g = this.forgeTier || 0;
   const xian = DATA.FURNACE_KINDS.some(k => (k === "xdan" || k === "xqi") && (s.blueprints[k].length || s.furnaces[k].length));   // 有仙炉图纸 / 仙炉才显示炼器仙师、炼器仙炉
-  let h = this.cardRow(this.craftsmanMini("qi"), this.furnaceMini("qi")) + (xian ? this.cardRow(this.craftsmanMini("xqi"), this.furnaceMini("xqi")) : "");
+  let h = this.cardRow(this.craftsmanMini("qi"), this.furnaceMini("qi")) + (xian ? this.cardRow(this.furnaceMini("xqi"), "") : "");
   h += this.jobCard("forge", j ? `<b>${this.jobName(j)}</b>
       <div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div>
-      <small>成功率 ${this.ratePct(this.craftRate(this.forgeCraft(j.kind), j.g))}</small>` : "");
+      <small>成功率 ${this.ratePct(this.forgeRate(j.kind, j.g))}</small>` : "");
   const btn = (ok, call) => `<button class="sm" onclick="${call.replace("G.craftFurnace(", "G.openForgeN(")}" ${!has || full || !ok ? "disabled" : ""}>炼制</button>`;
   let rows = "";
   const rate = this.ratePct(this.craftRate("qi", g));
@@ -624,7 +635,7 @@ G.caveViews.forge = function () {
   for (const k of DATA.FURNACE_KINDS) if (s.blueprints[k].includes(g)) {
     const mats = DATA.furnaceMats(k, g);
     rows += `<div class="line"><div>${DATA.li(DATA.furnaceIcon(k))}${DATA.furnaceName(k, g)}<span class="tag">-${DATA.furnaceBonus(k, g)}%</span>
-      <small>${this.matsText(mats)} · ${U.dur(this.forgePer(k, g) / 1000)} · 成功率 ${this.ratePct(this.craftRate(this.forgeCraft(k), g))}</small></div>${btn(this.hasMats(mats), `G.craftFurnace('${k}',${g})`)}</div>`;
+      <small>${this.matsText(mats)} · ${U.dur(this.forgePer(k, g) / 1000)} · 成功率 ${this.ratePct(this.forgeRate(k, g))}</small></div>${btn(this.hasMats(mats), `G.craftFurnace('${k}',${g})`)}</div>`;
   }
   // 装备（门派炼器室学会）
   const tierOK = has;   // v249 低阶炼器炉也能炼高阶

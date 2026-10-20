@@ -29,7 +29,7 @@ G.module({
         const end = f.start + this.fieldTime(f.g), Y = DATA.herbGrow(f.g).yield;
         const n = Math.floor(U.rand(Y[0], Y[1]) * (1 + this.plantYieldPct(f.g) / 100)), ck = this.plantCraft(f.g);
         this.addMat("herb", DATA.herbs[f.g], f.g, n);
-        this.addCraftExp(ck, n * (ck === "xling" ? f.g - DATA.FAN_HERB_N + 1 : f.g + 1) * CFG.craftsman[ck].EXP_RATE);
+        this.addCraftExp(ck, n * (f.g + 1) * CFG.craftsman[ck].EXP_RATE);   // 品级按药材总序号（仙界药材接在凡界后面）
         if (f.next != null) { f.g = f.next; f.next = null; } // 当季结束才换种
         if (this.payField(f, end)) nNew++;                   // 下一季：扣灵气
       }
@@ -41,7 +41,7 @@ G.module({
   api: {
     // 生长时间缩短 %（灵植夫 + 秘法，有上限）、收获增加 %
     //   g = 药材序号：凡界药材按灵植夫，仙界药材（序号 ≥ 凡界种数）按仙植师（v42）
-    plantCraft(g) { return g >= DATA.FAN_HERB_N ? "xling" : "ling"; },
+    plantCraft() { return "ling"; },   // 灵植夫统一 1~20 阶（11~20 阶显示为仙植师）
     plantCut(g = 0) { const k = this.plantCraft(g), L = CFG.craftsman[k]; return Math.min(CFG.wudao.TIME_CUT_MAX.plantTime || 80, (L.GROW_CUT[this.craftLv(k) - 1] || 0) + (this.mifaBonus().plantTime || 0) + this.servantPct("ling")); },
     plantYieldPct(g = 0) { const k = this.plantCraft(g); return (CFG.craftsman[k].YIELD_ADD[this.craftLv(k) - 1] || 0) + (this.mifaBonus().plantYield || 0); },
     fieldTime(g) { return Math.ceil(DATA.growTime(g) * (1 - this.plantCut(g) / 100)); },
@@ -103,7 +103,7 @@ G.caveViews.garden = function () {
     return `<div class="slot-eq field-cell q${Math.min(5, Math.floor(f.g / 2))}" onclick="G.openFieldMenu(${i})"><img class="si" src="${DATA.matImg("herb", f.g)}" alt=""><span>${DATA.herbs[f.g]}</span></div>`;
   }).join("");
   const full = n >= DATA.GARDEN_MAX, c = DATA.fieldCost(n);
-  return this.craftsmanCard("ling") + (s.seeds.some(g => g >= DATA.FAN_HERB_N) ? this.craftsmanCard("xling") : "") + `<div class="card"><h3>${DATA.caveName("garden")}<small>灵田 ${n} / ${DATA.GARDEN_MAX} · 种子 ${s.seeds.length} 种 · 灵气 ${U.fmt(s.ling)}</small></h3>
+  return this.craftsmanCard("ling") + `<div class="card"><h3>${DATA.caveName("garden")}<small>灵田 ${n} / ${DATA.GARDEN_MAX} · 种子 ${s.seeds.length} 种 · 灵气 ${U.fmt(s.ling)}</small></h3>
     ${n ? `<div class="equip four">${cells}</div>` : `<p class="desc">还没有灵田。</p>`}
     <div class="btns"><button class="primary" onclick="G.openField()" ${full || s.stone < c ? "disabled" : ""}>${full ? "灵田已满" : `开辟灵田（${U.fmt(c)} 灵石）`}</button></div>
     <p class="desc">每季消耗灵气，成熟自动收获进背包并自动续种。点灵田可种植、换种、铲除。种子在门派宗门宝库兑换，每种只需一次。</p></div>`;
