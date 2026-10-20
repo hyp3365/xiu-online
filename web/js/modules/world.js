@@ -1135,7 +1135,7 @@ G.module({
       const bars = `<div class="row small"><span>生命 ${U.fmt(s.hp)} / ${U.fmt(st.hp)}</span><span>斩妖 ${s.kills}</span></div>
         <div class="bar hp"><div style="width:${s.hp / st.hp * 100}%"></div></div>
         <div class="row small"><span>法力 ${U.fmt(s.mana)} / ${U.fmt(st.mana)}</span><span>灵石 ${U.fmt(s.stone)}</span></div>`;
-      const status = (() => (s.explore ? (() => { const x = s.explore, T = this.exCfg(x).TIME, L = x.loot;
+      const status = (() => s.explore ? (() => { const x = s.explore, T = this.exCfg(x).TIME, L = x.loot;
           const mats = Object.values(L.mats).map(m => `${m.name}×${U.fmt(m.n)}`);
           if (L.hx) mats.push(`${DATA.HX}×${U.fmt(L.hx)}`);
           for (const k in L.sm || {}) { const p = DATA.smParse(k); mats.push(`${DATA.smName(p.k, p.ft, p.tier)}×${U.fmt(L.sm[k])}`); }
@@ -1148,10 +1148,10 @@ G.module({
             <button class="sm" onclick="G.stopNow()">停止</button></span></div>
           <p class="desc">本次收获（结束后放入背包）：灵石 ${U.fmt(L.stone)}${mats.length ? "、" + mats.join("、") : ""}</p>
           ${this.exploreOpen ? `<div class="btns" style="margin-top:6px"><button class="sm on">本次探索信息</button><button class="sm" onclick="G.openExHist()">全部信息</button></div><div class="explore-log">${x.ev.map((e, i) => this.evLine(e, "cur", i)).join("") || "<p>出发……</p>"}</div>` : ""}</div>`; })()
-        : "") + (s.lastRun ? `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.setLastOpen(${!this.lastOpen})">${this.lastOpen ? "收起" : "详细"}</button></small></h3>
+        : s.lastRun ? `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.setLastOpen(${!this.lastOpen})">${this.lastOpen ? "收起" : "详细"}</button></small></h3>
           <p class="desc ${s.lastRun.bad ? "q5" : ""}">${s.lastRun.title}</p>
           ${this.lastOpen ? `<div class="btns" style="margin-top:6px"><button class="sm on">本次探索信息</button><button class="sm" onclick="G.openExHist()">全部信息</button></div><div class="explore-log">${s.lastRun.ev.map((e, i) => this.evLine(e, "last", i)).join("")}</div>` : ""}</div>`
-          : `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.openExHist()">全部信息</button></small></h3><p class="desc">还没有探索结果。</p></div>`))();
+          : `<div class="card"><h3>本次结果<small><button class="sm" onclick="G.openExHist()">全部信息</button></small></h3><p class="desc">还没有探索结果。</p></div>`)();
       // 地图选择（9 张）+ 选中地图的 东西南北 四个区域
       // v45：只列当前这一界的 9 张地图；秘境只在凡界
       const idx = (DATA.worldMapIdx[wid] || []).slice().sort((a, b) => DATA.mapReq(a) - DATA.mapReq(b) || a - b), fan = wid === "fan";   // 从低到高
