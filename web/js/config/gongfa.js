@@ -23,7 +23,7 @@ CFG.gongfa = {
   STUDY_LV: [1, 1, 1, 1, 2, 2, 2, 2, 2],   // 每层修炼灵气倍率（单独设置）：1→2 层 …… 9→10 层（现在修炼到第 6~10 层消耗翻倍）
   STUDY_STAR: [3, 50, 400, 1200, 4000, 8000, 15000, 24000, 35000, 50000, 70000, 95000],   // 修炼消耗星级倍率：1 星 ~ 12 星
 
-  BOOKS: { xinfa: 1, gongjue: 1, zhenjing: 1, fajue: 1, tijue: 2, mijue: 2 },   // 每个宗门每类功法几本（没写 = 1；其他来源都是 1 本）
+  BOOKS: { xinfa: 1, gongjue: 1, zhenjing: 1, fajue: 1, tijue: 3, mijue: 3 },   // 每个宗门每类功法几本（没写 = 1；其他来源都是 1 本）
 
   LV_MULT: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],   // 层数倍率：第 1 层 ~ 第 12 层（只用前 MAX 个）
 
@@ -65,14 +65,14 @@ CFG.gongfa.sect = {
   TYPE_MULT: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1 },   // 类别效果倍率
   // 1~10 星宗门功法全学满后每项属性合计（不算灵根）；res 按所有真经合计
   TOTAL: { def: 1913600, atk: 2057950, hp: 7496000, mana: 3989000, speed: 639300, dodge: 640000, res: 1208700, hit: 669300,
-    cultivate: 3000000,   // 秘诀 → 修炼速度
-    body: 3000000 },      // 肉身秘诀 → 肉身修炼速度
+    cultivate: 4500000,   // 秘诀 → 修炼速度
+    body: 4500000 },      // 肉身秘诀 → 肉身修炼速度
   RAND: 0.05,        // 每本效果随机幅度（±5%，按书固定）
   STAT_STAR: [1, 1.48, 2.2, 3.27, 4.86, 7.21, 10.7, 15.88, 23.58, 35, 51.96, 77.12],   // 功法效果星级倍率：1 星 ~ 12 星（法术不用）
   EFFECT_PCT: 1,     // 法术伤害总倍率
 
   learn: 100,        // 学习贡献基础值
-  LEARN_TYPE: { xinfa: 2, gongjue: 2, zhenjing: 2, mijue: 2, shenfa: 2, dunshu: 2, fajue: 2, zhenjue: 2, spell: 2, tijue: 2 },   // 学习贡献类别倍率
+  LEARN_TYPE: { xinfa: 2, gongjue: 2, zhenjing: 2, mijue: 3, shenfa: 2, dunshu: 2, fajue: 2, zhenjue: 2, spell: 2, tijue: 3 },   // 学习贡献类别倍率
   LEARN_STAR: [0.5, 5, 10, 20, 40, 60, 80, 110, 150, 200, 260, 330],   // 学习贡献星级倍率：1 星 ~ 12 星
   EFFECT_LEARN: 1,   // 学习贡献总倍率
 };
@@ -82,7 +82,7 @@ CFG.gongfa.sect = {
 CFG.gongfa.shop = {
   PCT: 90,           // 效果 = 宗门同星级 × %
   price: 2000,       // 售价基础值（灵石）
-  PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1 },   // 售价类别倍率
+  PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 2, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1 },   // 售价类别倍率
   PRICE_STAR: [1, 5, 20, 50, 150],   // 售价星级倍率：1 星 ~ 5 星
   EFFECT_PRICE: 1,   // 售价总倍率
 };
