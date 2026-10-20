@@ -43,6 +43,9 @@ public class MainActivity extends Activity {
         loadImgVer();
         loadSrvHash();
         setContentView(makeWeb());
+        // 安卓 13+ 要允许通知，后台运行的常驻通知才显示（不允许也能用，只是看不到通知）
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, 1);
         if (b != null) web.restoreState(b);
         else web.loadUrl(serverUrl());
     }
@@ -89,14 +92,22 @@ public class MainActivity extends Activity {
         return web;
     }
 
-    // 切后台 / 切回来：通知 WebView（切回来时马上恢复绘制，减少黑屏）；不暂停 JS 定时器，切后台时网页还要上传存档
+    // 切后台 / 切回来：切后台开 KeepAliveService 保持连接；切回来马上恢复绘制，减少黑屏
     // 切回来时告诉网页离开了多久（window.__appResume），网页显示「加载游戏中…」直到服务器结算完
     private long pausedAt = 0;
     @Override
-    protected void onPause() { super.onPause(); pausedAt = android.os.SystemClock.elapsedRealtime(); if (web != null) web.onPause(); }
+    protected void onPause() {
+        super.onPause();
+        pausedAt = android.os.SystemClock.elapsedRealtime();
+        // 不调用 web.onPause()：切后台时网页照常运行；开前台服务防止系统冻结 App，连接保持不断
+        if (!isFinishing()) KeepAliveService.start(this);
+    }
+    @Override
+    protected void onDestroy() { KeepAliveService.stop(this); super.onDestroy(); }
     @Override
     protected void onResume() {
         super.onResume();
+        KeepAliveService.stop(this);
         if (web != null) {
             web.onResume(); web.resumeTimers(); web.invalidate();
             if (pausedAt > 0) {

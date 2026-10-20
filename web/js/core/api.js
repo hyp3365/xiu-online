@@ -425,7 +425,7 @@ const API = {
   async setRegOpen(open) { return this.req("admin/reg", { open }); },
   async userDelete(id) { return this.req("admin/user/del", { id }); },
   // ---- 从后台切回游戏：显示「加载游戏中…」，等服务器把离开这段时间结算完、推回完整状态再关闭 ----
-  _hiddenAt: 0, _resumeWait: false, _resumeTimer: 0, _resumeKick: 0, _resumeRetry: 0,
+  _hiddenAt: 0, _resumeWait: false, _resumeShow: 0, _resumeTimer: 0, _resumeKick: 0, _resumeRetry: 0,
   RESUME_MIN_MS: 1500,   // 离开不到 1.5 秒（如下拉通知栏）不显示
   installResume() {
     if (this._resumeInstalled || typeof document === "undefined") return;
@@ -445,17 +445,19 @@ const API = {
     if (!this.token || !this.serverState || this._resumeWait) return;
     if (!(awayMs >= this.RESUME_MIN_MS)) return;
     this._resumeWait = true;
-    this.showResume(true);
+    // 安卓版后台保持连接时，切回来服务器几百毫秒就推回状态：0.8 秒内完成就不显示「加载游戏中…」
+    clearTimeout(this._resumeShow);
+    this._resumeShow = setTimeout(() => { if (this._resumeWait) this.showResume(true); }, 800);
     const s = this._socket;
     if (s && s.readyState === WebSocket.OPEN) {
       try { s.send(JSON.stringify({ type: "resync" })); } catch {}
-      // 连接可能在后台已经断了但还没发现：2.5 秒没收到结算结果就换一条新连接
+      // 连接可能在后台已经断了但还没发现：1.5 秒没收到结算结果就换一条新连接
       clearTimeout(this._resumeKick);
       this._resumeKick = setTimeout(() => {
         if (!this._resumeWait) return;
         if (this._socket === s) { this._socket = null; s.onmessage = null; try { s.close(4000, "resume"); } catch {} }
         this.connectSocket().catch(() => {});
-      }, 2500);
+      }, 1500);
     } else this.connectSocket().catch(() => {});
     // 连不上就每 3 秒再试一次；最多等 20 秒，之后关掉提示（后台继续自动重连）
     clearInterval(this._resumeRetry);
@@ -472,7 +474,7 @@ const API = {
   },
   resumeDone() {
     this._resumeWait = false;
-    clearTimeout(this._resumeTimer); clearTimeout(this._resumeKick); clearInterval(this._resumeRetry);
+    clearTimeout(this._resumeShow); clearTimeout(this._resumeTimer); clearTimeout(this._resumeKick); clearInterval(this._resumeRetry);
     this.showResume(false);
   },
   showResume(on) {
