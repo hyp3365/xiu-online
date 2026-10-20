@@ -826,7 +826,7 @@ G.module({
           this.log(x.mj !== undefined ? this.exName(x) + x.last : x.last, lost ? "bad" : "gold");
           // 保存这一次的全部事件，结束后也能查看（含失败那一步）
           s.lastRun = { title: `${this.exName(x)} · ${x.last}`, ev: x.ev.slice(), bad: lost };
-          this.exHistAdd(s.lastRun, x);   // 全部信息：服务器保存最近 100 条
+          this.exHistAdd(s.lastRun, x);   // 全部信息：服务器保存最近 20 条
           if (x.mj !== undefined) { if (!this.mjFinish(x, lost)) break; x = s.explore; continue; }   // 秘境：每处只走一次，一键探索接着走下一处
           if (!lost && !x.kuang) this.mjDiscover(x.map);   // 地图走完一次：有几率发现秘境（凡界）/ 灵地（四界）
           if (x.once) { // 历练只走一次；走完且未战败 = 通过，解锁该区域自动探索
@@ -999,13 +999,13 @@ G.module({
     evLine(e, src, i) { return `<p class="${e.c}">${e.n ? `<b>第${e.n}步</b> ` : ""}${e.t}${e.b ? ` <button class="sm" onclick="G.showBattle('${src}',${i})">详情</button>` : ""}</p>`; },
     setLastOpen(v) { this.lastOpen = v; this.render(); },
     // 全部信息：探索、出窍、历练、秘境每次结束记一条，战斗（实力测试除外）在服务器 playBattle 里记，天劫在 trib.js endTrib 记；
-    //   放进 s.histQ，服务器取走存 hist 表（最近 100 条），客户端打开时用 /api/hist 读
+    //   放进 s.histQ，服务器取走存 hist 表（最近 20 条），客户端打开时用 /api/hist 读
     exHistAdd(r, x) {
       const s = this.s, k = !x ? "探索" : x.mj !== undefined ? this.mjLabel(x.mk) : x.once ? "历练" : x.cq ? "出窍" : x.kuang ? "挖矿" : "探索";
       (s.histQ || (s.histQ = [])).push({ at: this.now(), k, title: r.title, bad: !!r.bad, ev: r.ev.slice() });
     },
     async openExHist(k) {
-      if (k === undefined) {   // 打开时从服务器读最近 100 条
+      if (k === undefined) {   // 打开时从服务器读最近 20 条
         this.exHistSel = -1;
         this.modal(`<h2>全部信息</h2><p class="desc">读取中…</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
         try { this._hist = (await API.req("hist")).list || []; } catch (e) { this._hist = []; this.log("读取全部信息失败：" + e.message, "bad"); }

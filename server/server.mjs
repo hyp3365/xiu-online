@@ -109,7 +109,7 @@ function getState(userId) {
 }
 // 全部信息（探索、出窍、历练、秘境记录 + 除实力测试外的战斗）：游戏模块把新记录放进 state.histQ，
 //   这里取出存到 hist 表，每人只留最近 HIST_KEEP 条；histQ 不进存档、不推给客户端（客户端用 /api/hist 读取）
-const HIST_KEEP = 100, HIST_MAX_BYTES = 512 * 1024;
+const HIST_KEEP = 20, HIST_MAX_BYTES = 512 * 1024;
 const histIns = db.prepare("INSERT INTO hist(user_id,at,data) VALUES(?,?,?)");
 const histTrim = db.prepare("DELETE FROM hist WHERE user_id=? AND id NOT IN (SELECT id FROM hist WHERE user_id=? ORDER BY id DESC LIMIT ?)");
 const histSave = db.transaction((userId, list) => {
