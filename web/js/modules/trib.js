@@ -45,10 +45,10 @@ G.module({
     },
     // 劫云劈一次的伤害 [伤害, 是否暴击]
     tribHit(x) {
-      const BT = CFG.battle, sh = x.shield, def = sh && sh.hp > 0 ? (sh.def || 0) : this.stats().def;   // 有护盾：按盾防御算（代替本身防御）
-      let d = Math.max(DATA.minDmg(this.s.mortal ? 0 : this.s.L), x.atk - def * BT.DEF_RATE) * (BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN));
-      const c = Math.random() * 100 < Math.min(DATA.CRIT_CAP || 100, x.crit);
-      return [c ? d * BT.CRIT_MULT : d, c];
+      const BT = CFG.battle, sh = x.shield, body = this.stats().def, def = sh && sh.hp > 0 ? (sh.def || 0) : body;   // 有护盾：按盾防御算（代替本身防御）
+      const mn = DATA.minDmg(this.s.mortal ? 0 : this.s.L), r = (BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN));
+      const c = Math.random() * 100 < Math.min(DATA.CRIT_CAP || 100, x.crit), k = r * (c ? BT.CRIT_MULT : 1);
+      return [Math.max(mn, x.atk - def * BT.DEF_RATE) * k, c, Math.max(mn, x.atk - body * BT.DEF_RATE) * k];   // 第三项：按本身防御算的伤害（盾碎溢出用）
     },
 
     /* ---------- 准备页的格子 ---------- */
@@ -119,12 +119,12 @@ G.module({
         if (nextHit > x.time) { if (this.now() >= x.start + x.time * 1000) { x.sec = x.time; this.endTrib(true); } break; }
         if (this.now() < x.start + nextHit * 1000) break;
         x.sec = nextHit;
-        let [d, c] = this.tribHit(x), ab = 0, brk = false;
+        let [d, c, dBody] = this.tribHit(x), ab = 0, brk = false;
         const sh = x.shield;
         if (sh && sh.hp > 0) {   // 护盾：伤害已按盾防御算（tribHit），再减「受到伤害减少%」，剩下先扣护盾值
-          d = d * (1 - (sh.red || 0) / 100);
-          ab = Math.min(sh.hp, d); sh.hp -= ab; d -= ab;
-          if (sh.hp <= 0) { x.shield = null; brk = true; }
+          const dS = d * (1 - (sh.red || 0) / 100);
+          ab = Math.min(sh.hp, dS); sh.hp -= ab; d = dS - ab;
+          if (sh.hp <= 0) { x.shield = null; brk = true; if (d > 0) d = d / dS * dBody; }   // 盾碎：溢出部分按人物本身防御算
         }
         s.hp -= d; x.taken += d; x.hits++;
         hit = { d, c, ab };

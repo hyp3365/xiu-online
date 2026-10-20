@@ -142,14 +142,17 @@ G.module({
       const BT = CFG.battle, myL = s.mortal ? 0 : s.L, MIN = A => DATA.minDmg(A === st ? myL : (A.L === undefined ? myL : A.L)), rnd = () => BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN);
       // 某系抗性 = 防御 × RES_RATE + 该系抗性（config/battle.js）
       const RR = BT.RES_RATE === undefined ? BT.DEF_RATE : BT.RES_RATE, ER = BT.RES_EL_RATE === undefined ? 1 : BT.RES_EL_RATE, resOf = (D, el) => D.def * RR + ((D.res || {})[el] || 0) * ER;   // v235 法术 / 法宝减免 = 防御 × RES_RATE(0.9) + 该系抗性（抗性不再 × DEF_RATE）
-      const roll = (A, D, raw, k, sp) => {
+      // 护盾破碎时溢出的伤害要按本身防御算：rawFn 是「按某个防御方算的基础伤害」，altD = 不带盾的防御方，act.altR = 不带盾 / 带盾 的伤害比
+      let altD = null;
+      const roll = (A, D, rawFn, k, sp) => {
         act = { k, sp, f: 0 };
+        const raw = rawFn(D); if (altD && raw > 0) act.altR = rawFn(altD) / raw;
         if (Math.random() * 100 < DATA.dodgeChance(A.hit, D.dodge, k)) { act.f = 1; return 0; } // 闪避（看命中与闪避之比；v220 法术 / 法宝另加命中率）
         let d = raw * rnd();
         if (Math.random() * 100 < Math.min(DATA.CRIT_CAP, A.crit)) { d *= BT.CRIT_MULT; act.f = 2; } // 暴击
         return d;
       };
-      const hit = (A, D) => roll(A, D, Math.max(MIN(A), A.atk - D.def * BT.DEF_RATE), 0);
+      const hit = (A, D) => roll(A, D, X => Math.max(MIN(A), A.atk - X.def * BT.DEF_RATE), 0);
       // v57：鼎 → 对方速度 / 命中 / 闪避降低（m.deb，剩 left 回合）；印 → 对方眩晕（m.stun 回合）；盾 → 护盾（shield，打光为止）
       const mE = () => m.deb ? Object.assign({}, m, { speed: m.speed * (1 - m.deb.speed / 100), hit: m.hit * (1 - m.deb.hit / 100), dodge: m.dodge * (1 - m.deb.dodge / 100) }) : m;
       let shield = null;
@@ -160,8 +163,8 @@ G.module({
       const acts = [...spells.map((sp, i) => ({ k: 1, sp, key: "sp:" + sp.id })), ...fabaos.map((fb, i) => ({ k: 2, fb, key: "fb:" + fbSlots[i] }))];
       const spNames = [...spells.map(sp => sp.name), ...fabaos.map(fb => fb.name)];
       // 法宝伤害：攻击 × 伤害%，按「防御×RES_RATE + 该系抗性 − 无视抗性」减免；再加附加伤害 = 主伤害 × %
-      const fabaoDmg = fb => {
-        let d = Math.max(MIN(st), fb.atk * fb.pct / 100 - Math.max(0, resOf(m, fb.el) - fb.ign));
+      const fabaoDmg = (fb, D = m) => {
+        let d = Math.max(MIN(st), fb.atk * fb.pct / 100 - Math.max(0, resOf(D, fb.el) - fb.ign));
         let ex = 0; for (const x of fb.extra) ex += d * x.pct / 100;   // 附加伤害：主伤害 × %
         return d + ex + (fb.addDmg || 0);   // v152 强化附加伤害（固定数字）
       };
@@ -179,12 +182,12 @@ G.module({
         if ((usedN[j] || 0) >= ((a.k === 1 ? a.sp.uses : a.fb.uses) || 1)) return null;   // v152 每场战斗使用次数用完
         usedN[j] = (usedN[j] || 0) + 1;
         s.mana -= cost;
-        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), Math.max(MIN(st), sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0) - resOf(m, sp.el.id)), 1, j);
+        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0) - resOf(X, sp.el.id)), 1, j);
           if (!opt.test) { const xd = CFG.gongfa.XD_GAIN === undefined ? 1 : CFG.gongfa.XD_GAIN; if (xd > 0) { const X = this.s.spXd = this.s.spXd || {}; X[sp.el.id] = (X[sp.el.id] || 0) + xd; act.x = (act.x || 0) | 256; } }   // v239 法术心得
           return d; }
         const fb = a.fb;
         if (fb.shield) { shield = Object.assign({ el: fb.el }, fb.shield); act = { k: 3, sp: j, f: 0 }; return 0; }
-        let d = roll(fb.hit || fb.critAdd ? Object.assign({}, st, { hit: st.hit + (fb.hit || 0), crit: st.crit + (fb.critAdd || 0) }) : st, mE(), fabaoDmg(fb), 2, j);   // 刀 / 锤专属：本次攻击额外命中、暴击
+        let d = roll(fb.hit || fb.critAdd ? Object.assign({}, st, { hit: st.hit + (fb.hit || 0), crit: st.crit + (fb.critAdd || 0) }) : st, mE(), X => fabaoDmg(fb, X), 2, j);   // 刀 / 锤专属：本次攻击额外命中、暴击
         if (act.f === 2 && fb.crit) d *= fb.crit / 100;   // 锤：暴击伤害 %
         if (act.f !== 1) {
           if (fb.ding) { m.deb = { speed: fb.ding.speed, hit: fb.ding.hit, dodge: fb.ding.dodge, left: fb.ding.rounds }; act.x = 2; }
@@ -260,7 +263,7 @@ G.module({
         const c = m[k], P = c && c.mana || [0, 1], cost = c ? (m.manaBr || 0) * P[0] * (P[1] === undefined ? 1 : P[1]) : 0;   // 耗法力 = 修为突破法力 × 比例 × 倍率
         if (!c || m.mana < cost || Math.random() * 100 >= c.chance) return -1;
         m.mana -= cost; k === "spell" ? mSp++ : mFb++;
-        return roll(mE(), st, Math.max(MIN(m), m.atk * c.pct / 100 - (el ? resOf(st, el) : st.def * BT.DEF_RATE)), k === "spell" ? 1 : 2);
+        return roll(mE(), st, X => Math.max(MIN(m), m.atk * c.pct / 100 - (el ? resOf(X, el) : X.def * BT.DEF_RATE)), k === "spell" ? 1 : 2);
       };
       const mobHit = () => { let d = mCast("spell", m.el); if (d < 0) d = mCast("fabao", m.el); return d < 0 ? hit(mE(), st) : d; };   // v25：怪物法宝也是属性伤害
       // 每一下记一条：[回合, 谁(0 你 / 1 对方), 方式, 法术名序号, 结果, 伤害, 你的生命, 你的法力, 对方生命, 对方法力]
@@ -290,15 +293,17 @@ G.module({
         freeShield();
         const pj = ch(pMe.pj), def0 = m.def; if (mShield) m.def = mShield.def;   // 有护盾：按盾防御算（代替怪物本身防御）
         if (pj) m.def = m.def * (1 - pMe.pjI / 100);   // 破军：这一下无视部分防御
-        let d = myHit(); m.def = def0;
+        altD = mShield ? Object.assign({}, mE(), { def: def0 * (pj ? 1 - pMe.pjI / 100 : 1) }) : null;
+        let d = myHit(); m.def = def0; altD = null;
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.k < 3 && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMe, php, st.hp, meJc, mobJc);
         if (act.k < 3 && act.f !== 1 && !(act.x & 128) && !mobSeal && cnt.me.zh < pMe.zhT && ch(pMe.zh)) { mobSeal = pMe.zhR; sealR.mob = rounds; cnt.me.zh++; act.x = (act.x || 0) | 64; }
         if (mShield && act.k < 3 && act.f !== 1 && d > 0) {   // v165 怪物护盾
+          const dSo = d;   // 减伤%之前（盾碎后溢出部分不再吃盾的减伤%）
           if (mShield.red) d = Math.max(MIN(st), d * (1 - mShield.red / 100));   // 盾防御已在出手时代替本身防御，这里只算额外减伤%
-          const ab = Math.min(mShield.hp, d); mShield.hp -= ab; d -= ab; act.ab = ab;
-          if (mShield.hp <= 0) { mShield = null; act.x = (act.x || 0) | 4; }
+          const ab = Math.min(mShield.hp, d), dS = d; mShield.hp -= ab; d -= ab; act.ab = ab;
+          if (mShield.hp <= 0) { mShield = null; act.x = (act.x || 0) | 4; if (d > 0 && act.altR) d = d / dS * dSo * act.altR; }   // 盾碎：溢出部分按怪物本身防御算
         }
         mhp -= d; dealt += d;
         if (mhp <= 0 && php > 0 && cnt.mob.yt < pMob.ytT && ch(pMob.yt)) { dealt -= 1 - mhp; mhp = 1; cnt.mob.yt++; act.x = (act.x || 0) | 16; }   // 对方御天保命
@@ -309,15 +314,17 @@ G.module({
         mobShield();
         const pj = ch(pMob.pj), def0 = st.def; if (shield) st.def = shield.def;   // 有护盾：按盾防御算（代替人物本身防御）
         if (pj) st.def = st.def * (1 - pMob.pjI / 100);
-        let d = mobSeal ? hit(mE(), st) : mobHit(); st.def = def0;   // 被镇魂：只能普通攻击
+        altD = shield ? Object.assign({}, st, { def: def0 * (pj ? 1 - pMob.pjI / 100 : 1) }) : null;
+        let d = mobSeal ? hit(mE(), st) : mobHit(); st.def = def0; altD = null;   // 被镇魂：只能普通攻击
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMob, mhp, m.hp, mobJc, meJc);
         if (act.f !== 1 && !(act.x & 128) && !meSeal && cnt.mob.zh < pMob.zhT && ch(pMob.zh)) { meSeal = pMob.zhR; sealR.me = rounds; cnt.mob.zh++; act.x = (act.x || 0) | 64; }
         if (shield && act.f !== 1 && d > 0) {   // 人物护盾：伤害按盾防御算（代替本身防御），再减「受到伤害减少%」，剩下先扣护盾值
+          const dSo = d;   // 减伤%之前（盾碎后溢出部分不再吃盾的减伤%）
           if (shield.red) d = Math.max(MIN(m), d * (1 - shield.red / 100));   // 盾防御已在出手时代替本身防御，这里只算额外减伤%
-          const ab = Math.min(shield.hp, d); shield.hp -= ab; d -= ab; act.ab = ab;
-          if (shield.hp <= 0) { shield = null; act.x = (act.x || 0) | 4; }
+          const ab = Math.min(shield.hp, d), dS = d; shield.hp -= ab; d -= ab; act.ab = ab;
+          if (shield.hp <= 0) { shield = null; act.x = (act.x || 0) | 4; if (d > 0 && act.altR) d = d / dS * dSo * act.altR; }   // 盾碎：溢出部分按人物本身防御算
         }
         php -= d; taken += d;
         if (php <= 0 && mhp > 0 && cnt.me.yt < pMe.ytT && ch(pMe.yt)) { taken -= 1 - php; php = 1; cnt.me.yt++; act.x = (act.x || 0) | 16; }   // 御天保命
