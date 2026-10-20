@@ -433,7 +433,7 @@ const API = {
     this._resumeInstalled = true;
     const mono = () => (typeof performance !== "undefined" ? performance.now() : 0);
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) { this._hiddenAt = mono(); return; }
+      if (document.hidden) { this._hiddenAt = mono(); if (typeof G !== "undefined" && G.awaySnap) G.awaySnap(); return; }
       const away = this._hiddenAt ? mono() - this._hiddenAt : 0;
       this._hiddenAt = 0;
       this.onResume(away);
@@ -477,6 +477,7 @@ const API = {
     this._resumeWait = false;
     clearTimeout(this._resumeShow); clearTimeout(this._resumeTimer); clearTimeout(this._resumeKick); clearInterval(this._resumeRetry);
     this.showResume(false);
+    if (typeof G !== "undefined" && G.awayCheck) G.awayCheck();   // 离开收益弹窗
   },
   showResume(on) {
     let el = document.getElementById("resume-load");

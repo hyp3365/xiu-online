@@ -129,6 +129,34 @@ const G = {
     try { this.modal(`<h2>离线 ${U.dur(sec)}</h2><div class="explore-log">${rows.map(r => `<p>${r}</p>`).join("")}</div><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`); } catch (e) {}
   },
 
+  // 离开收益（服务器一直在结算，离线不再单独补算）：客户端在前台时每 30 秒记一次快照，
+  // 打开游戏 / 切回前台时和快照比，离开超过 AWAY_MIN_SEC 秒且有变化就弹窗。
+  AWAY_MIN_SEC: 60,
+  awayKey() { return "xiuAway_" + ((this.s && (this.s.name || this.s.id)) || ""); },
+  awaySnap() {
+    const s = this.s; if (!s || typeof localStorage === "undefined") return;
+    try { localStorage.setItem(this.awayKey(), JSON.stringify({ t: Date.now(), exp: s.exp || 0, stone: s.stone || 0, ling: s.ling || 0, contrib: s.contrib || 0, kills: s.kills || 0, bag: this.bagCount() })); } catch (e) {}
+  },
+  awayCheck() {
+    const s = this.s; if (!s || typeof localStorage === "undefined") return;
+    let b = null; try { b = JSON.parse(localStorage.getItem(this.awayKey()) || "null"); } catch (e) {}
+    this.awaySnap();
+    if (!b || !b.t) return;
+    const sec = Math.floor((Date.now() - b.t) / 1000); if (sec < this.AWAY_MIN_SEC) return;
+    const f = U.fmt, sign = v => (v >= 0 ? "+" : "-") + f(Math.abs(v)), rows = [];
+    const dExp = (s.exp || 0) - b.exp, dStone = (s.stone || 0) - b.stone, dLing = (s.ling || 0) - b.ling, dContrib = (s.contrib || 0) - b.contrib, kills = (s.kills || 0) - b.kills;
+    const now = this.bagCount(), gain = [];
+    for (const k in now) { const d = now[k] - ((b.bag || {})[k] || 0); if (d > 0) gain.push(`${k}×${f(d)}`); }
+    if (!dExp && !dStone && !dLing && !dContrib && !kills && !gain.length) return;
+    rows.push(`<b>总计</b>`, `修为 ${sign(dExp)}　灵石 ${sign(dStone)}　灵气 ${sign(dLing)}${s.sect || dContrib ? `　贡献 ${sign(dContrib)}` : ""}`);
+    if (kills > 0) rows.push(`<b>探索</b>`, `击败 ${f(kills)} 只${s.explore ? "，自动探索仍在继续" : ""}`);
+    if (s.explore && s.explore.step) rows.push(`当前这次已走 ${s.explore.step} 步，收获在走完后结算`);
+    if (gain.length) rows.push(`<b>新增物品</b>`, gain.join("、"));
+    this.log(`你离开了 ${U.dur(sec)}，期间收益：修为 ${sign(dExp)}，灵石 ${sign(dStone)}${kills > 0 ? `，击败 ${f(kills)} 只` : ""}。`, "gold");
+    this.lastOffline = rows;
+    try { this.modal(`<h2>离开 ${U.dur(sec)}</h2><div class="explore-log">${rows.map(r => `<p>${r}</p>`).join("")}</div><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`); } catch (e) {}
+  },
+
   /* ---------- 主循环（每 0.2 秒检查一次） ---------- */
   loop() { if (!this._stopped) { this.render(); this.bars(); } },
 
@@ -202,6 +230,8 @@ const G = {
     this.dirty();
     this._lastTick = this.s.last && this.s.last <= Date.now() ? this.s.last : Date.now();   // v208 接着离线补算后的结算时间
     this.render(); this.renderLog(); this.bars();
+    this.awayCheck(); clearInterval(this._awayTimer);
+    this._awayTimer = setInterval(() => { if (typeof document === "undefined" || (!document.hidden && document.hasFocus())) this.awaySnap(); }, 30000);
     if (this._remoteRenderTimer) clearInterval(this._remoteRenderTimer);
     if (this._barFrame) cancelAnimationFrame(this._barFrame);
     const animateBars = () => {
