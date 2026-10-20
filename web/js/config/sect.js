@@ -50,14 +50,14 @@ CFG.sect.REQ_REALM = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18];
 // 讲道室：每天（北京时间 0 点）随机来 2 + LECTURES 位长老；炼丹、炼器长老必出，其余讲功法（从 TYPES 里随机不重复）
 //   每天最多听 DAILY 位不同长老，每次 MIN 分钟，听完结算；每天第一次免费，之后每次 COST × 门派星数 贡献
 //   炼丹/炼器：经验 = 当前阶升级所需经验 × 随机 EXP_PCT[0]~[1]%（满阶不加）
-//   功法：永久加属性 = 人物当前境界修为 + 肉身突破加的该属性合计 × 随机 STAT_PCT[0]~[1]%
+//   功法：永久加属性 = 门派星数 × 随机 STAT[0]~[1] 点（1 星 25~45，2 星 50~90，3 星 75~135 …）
 CFG.sect.jiangdao = {
   MIN: 10,
   COST: 100,
   LECTURES: 4,
   DAILY: 3,      // 每天最多听几位（不同长老）
   EXP_PCT: [5, 10],
-  STAT_PCT: [1, 3],
+  STAT: [25, 45],
   // 防御、攻击、生命、法力、命中、速度、闪避、金木水火土雷六种抗性（每种单独）
   TYPES: ["xinfa", "gongjue", "zhenjing", "fajue", "shenfa", "sufa", "dunshu", "res_jin", "res_mu", "res_shui", "res_huo", "res_tu", "res_lei"],
   LOG: 20,   // 闻道日志保留条数

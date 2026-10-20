@@ -573,30 +573,35 @@ G.module({
     jdCost() { return (this.jdCfg().COST || 0) * this.sectInfo().star; },
     jdStatOf(k) { if (k.startsWith("res_")) return k; const t = DATA.gongfaTypes.find(x => x.id === k); return t ? t.stat : ""; },
     jdLabel(st) { return st.startsWith("res_") ? ((DATA.elById[st.slice(4)] || {}).name || "") + "抗" : DATA.QL_LABEL[st] || st; },
-    // 功法讲道加的属性：[最少, 最多]（修为 + 肉身突破该属性 × STAT_PCT%）；roll = 随机一个
-    jdVal(k) { const st = this.jdStatOf(k), b = DATA.ownStat(st.startsWith("res_") ? "res" : st).br || 0, P = this.jdCfg().STAT_PCT || [1, 3]; return [Math.floor(b * P[0] / 100), Math.floor(b * P[1] / 100)]; },
+    jdVal(k) { const P = this.jdCfg().STAT || [25, 45], n = this.sectInfo().star; return [P[0] * n, P[1] * n]; },   // 加的属性 = 门派星数 × STAT 随机
     jdNeed(k) { const C = CFG.craftsman, c = this.craftInfo(k), E = C[k].EXP || C.EXP; return c.lv >= this.craftMax(k) ? 0 : E[c.lv - 1] ?? (64 + 32 * (c.lv - 1)) * 13 * c.lv; },
     jdExp(k) { const n = this.jdNeed(k), P = this.jdCfg().EXP_PCT || [5, 10]; return [Math.floor(n * P[0] / 100), Math.floor(n * P[1] / 100)]; },
     jdRoll(r) { return Math.floor(r[0] + Math.random() * (r[1] - r[0] + 1)); },
     jdRange(r) { return r[0] === r[1] ? U.fmt(r[0]) : `${U.fmt(r[0])}~${U.fmt(r[1])}`; },
-    jdName() {
+    // 当天的长老按「日期 + 角色名 + 门派」固定随机：客户端、服务器算出来一样，刷新页面也不变
+    jdRng(day) {
+      let h = 2166136261; for (const c of `${day}|${this.s.name}|${this.s.sect}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+      return () => { h = (h + 0x6D2B79F5) >>> 0; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    },
+    jdName(R) {
       const X = this.jdCfg().XING, fu = ["司马","上官","欧阳","夏侯","诸葛","闻人","东方","赫连","皇甫","尉迟","公羊","澹台","公冶","宗政","濮阳","淳于","单于","太叔","申屠","公孙","仲孙","轩辕","令狐","钟离","宇文","长孙","慕容","司徒","司空","端木","万俟"];
       const single = [...X.replace(new RegExp(fu.join("|"), "g"), "")];
-      return (Math.random() < 0.1 ? U.pick(fu) : U.pick(single)) + "长老";
+      const pk = a => a[Math.floor(R() * a.length)];
+      return (R() < 0.1 ? pk(fu) : pk(single)) + "长老";
     },
-    jdBook(k) {   // 讲的功法名：本门星级随机门派的这一类功法（抗性 = 该属性门派的真经）
+    jdBook(k, R) {   // 讲的功法名：本门星级随机门派的这一类功法（抗性 = 该属性门派的真经）
       const el = k.startsWith("res_") ? k.slice(4) : "", t = DATA.gongfaTypes.find(x => x.id === (el ? "zhenjue" : k)), all = DATA.sects.filter(x => x.star === this.sectInfo().star);
       const list = el && all.some(x => x.el === el) ? all.filter(x => x.el === el) : all;
-      return t && list.length ? DATA.gongfaName(U.pick(list), t) : t ? t.name : "";
+      return t && list.length ? DATA.gongfaName(list[Math.floor(R() * list.length)], t) : t ? t.name : "";
     },
     jdState() {
       const s = this.s, day = this.bjDay(), J = this.jdCfg();
       if (!s.jd) s.jd = { log: [], got: {} };
       const d = s.jd;
       if (d.day !== day && !d.cur) {
-        const types = [...J.TYPES].sort(() => Math.random() - 0.5).slice(0, J.LECTURES || 4);
+        const R = this.jdRng(day), types = [...J.TYPES].map(k => [R(), k]).sort((a, b) => a[0] - b[0]).map(x => x[1]).slice(0, J.LECTURES || 4);
         d.day = day;
-        d.list = [{ k: "dan" }, { k: "qi" }, ...types.map(k => ({ k }))].map(x => Object.assign(x, { nm: this.jdName(), book: x.k === "dan" ? "炼丹心得" : x.k === "qi" ? "炼器心得" : this.jdBook(x.k) }));
+        d.list = [{ k: "dan" }, { k: "qi" }, ...types.map(k => ({ k }))].map(x => Object.assign(x, { nm: this.jdName(R), book: x.k === "dan" ? "炼丹心得" : x.k === "qi" ? "炼器心得" : this.jdBook(x.k, R) }));
       }
       return d;
     },
@@ -793,12 +798,11 @@ G.module({
         <p class="desc">每天都有长老在讲道室分享修炼心得，每天可听 ${this.jdCfg().DAILY || 3} 位不同长老，第一次免费，每次听讲 ${this.jdCfg().MIN || 10} 分钟。炼丹、炼器长老每天必到，其余长老讲授功法感悟。</p>
         ${cur ? `<p class="desc">正在听取${cur.nm}讲道 · 约 ${U.cd(Math.max(0, cur.end - this.now()) / 1000)} 后结束</p>` : ""}` +
         d.list.map((L, i) => {
-          const craft = L.k === "dan" || L.k === "qi", st = craft ? "" : this.jdStatOf(L.k);
-          const gain = craft ? `${L.k === "dan" ? "炼丹" : "炼器"}经验 +${this.jdRange(this.jdExp(L.k))}` : `${this.jdLabel(st)} +${this.jdRange(this.jdVal(L.k))}`;
+          const craft = L.k === "dan" || L.k === "qi";
           const btn = L.done ? `<button class="sm" disabled>${cur && cur.i === i ? "听讲中" : "已听讲"}</button>` :
             `<button class="sm" onclick="G.listenJiang(${i})" ${cur || !left || (!free && s.contrib < c) ? "disabled" : ""}>${free ? "免费听讲" : "听讲"}</button>`;
           return `<div class="line"><div>${L.nm}<span class="tag">${craft ? (L.k === "dan" ? "炼丹" : "炼器") : "功法"}</span>
-            <small>${L.nm}将会分享${craft ? `自身${L.book}` : `自身修炼《${L.book}》的心得感悟`} · ${gain}</small></div>${btn}</div>`;
+            <small>${L.nm}将会分享${craft ? `自身${L.book}` : `自身修炼《${L.book}》的心得感悟`}，有意者可前往听取。</small></div>${btn}</div>`;
         }).join("") + `</div>`;
       const log = d.log || [];
       h += `<div class="card"><h3>闻道日志</h3>${log.length ? log.map(x => `<p class="desc">${x.t}</p>`).join("") : `<p class="desc">还没有听过讲道。</p>`}</div>`;
