@@ -130,12 +130,33 @@ G.module({
       return m;
     },
 
+    // 怪物天赋（config/battle.js 的 TALENT）：第一次战斗时随机，m.tf = ["lianji", "xishou_huo", …]；属性类天赋这时直接加到怪物属性上
+    mobTalents(m) {
+      const T = CFG.battle.TALENT || {}, w = m.a >= 0 && DATA.maps[m.a] ? DATA.maps[m.a].w : "";
+      const cls = m.tfCls || ((m.elite || m.boss) && w ? (w === "fan" ? "凡界" : "四界") + (m.boss ? "首领" : "精英") : "");
+      const C = (T.CHANCE || {})[cls] || [], r = Math.random() * 100;
+      let n = 0; C.forEach((c, i) => { if (r < c) n = i + 1; });
+      const pool = Object.keys(T.NAME || {}); m.tf = [];
+      while (n-- > 0 && pool.length) {
+        const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+        m.tf.push(k === "xishou" ? "xishou_" + U.pick(DATA.elements).id : k);
+      }
+      const up = 1 + (T.STAT || 0) / 100, has = k => m.tf.includes(k);
+      if (has("minjie")) { m.speed *= up; m.hit *= up; }
+      if (has("qiangzhuang")) m.hp *= up;
+      if (has("fangyu")) m.def *= up;
+      if (has("qiangli")) m.atk *= up;
+    },
+    tfName(k) { const N = (CFG.battle.TALENT || {}).NAME || {}, [a, el] = k.split("_"); return el ? `${(DATA.elById[el] || {}).name || ""}系${N[a] || a}` : N[a] || a; },
+
     // 通用战斗：速度高者先手，判闪避、暴击。返回 { win, lose, rounds, why, log }，并更新玩家生命、法力
     //   log：完整战斗过程（点「详情」查看），格式见 battleDetail
     //   opt.test（v158 实力测试）：v244 起双方照常扣生命、法力（只在测试画面里），一方倒下或打满 TEST_ROUNDS 回合结束；结束后人物生命 / 法力还原成测试前
     //   v245 进入测试时生命、法力按满的算（不管测试前多少），退出后还原成测试前的数，测试不影响原本的生命、法力
     battle(m, opt = {}) {
       const st = this.stats(), s = this.s, TEST = !!opt.test;
+      if (!m.tf) this.mobTalents(m);
+      const TL = CFG.battle.TALENT || {}, tf = k => m.tf.includes(k), tfOf = (X, k) => !!(X && X.tf && X.tf.includes(k));
       const tHp = s.hp, tMp = s.mana; if (TEST) { s.hp = st.hp; s.mana = st.mana; }   // v245 实力测试：进入时生命、法力回满，结束后还原成测试前的数
       const spells = s.spellSlots.slice(0, this.slotCount()).map(id => DATA.spellInfo(id, s.gongfa[id])).filter(Boolean);
       let si = 0, act = null;   // act：这一下出手的方式 { k: 0 普通攻击 / 1 法术 / 2 法宝, sp 法术名序号, f: 0 命中 / 1 被闪避 / 2 暴击 }
@@ -147,9 +168,9 @@ G.module({
       const roll = (A, D, rawFn, k, sp) => {
         act = { k, sp, f: 0 };
         const raw = rawFn(D); if (altD && raw > 0) act.altR = rawFn(altD) / raw;
-        if (Math.random() * 100 < DATA.dodgeChance(A.hit, D.dodge, k)) { act.f = 1; return 0; } // 闪避（看命中与闪避之比；v220 法术 / 法宝另加命中率）
+        if (!tfOf(A, "bizhong") && Math.random() * 100 < DATA.dodgeChance(A.hit, D.dodge, k)) { act.f = 1; return 0; } // 闪避（看命中与闪避之比；v220 法术 / 法宝另加命中率）
         let d = raw * rnd();
-        if (Math.random() * 100 < Math.min(DATA.CRIT_CAP, A.crit)) { d *= BT.CRIT_MULT; act.f = 2; } // 暴击
+        if (!tfOf(D, "xingyun") && Math.random() * 100 < Math.min(DATA.CRIT_CAP, A.crit + (k === 0 && tfOf(A, "baoji") ? TL.BAOJI || 0 : 0))) { d *= BT.CRIT_MULT; act.f = 2; } // 暴击（天赋：幸运不被暴击、暴击加普攻暴击率）
         return d;
       };
       const hit = (A, D) => roll(A, D, X => Math.max(MIN(A), A.atk - X.def * BT.DEF_RATE), 0);
@@ -263,7 +284,8 @@ G.module({
         const c = m[k], P = c && c.mana || [0, 1], cost = c ? (m.manaBr || 0) * P[0] * (P[1] === undefined ? 1 : P[1]) : 0;   // 耗法力 = 修为突破法力 × 比例 × 倍率
         if (!c || m.mana < cost || Math.random() * 100 >= c.chance) return -1;
         m.mana -= cost; k === "spell" ? mSp++ : mFb++;
-        return roll(mE(), st, X => Math.max(MIN(m), m.atk * c.pct / 100 - (el ? resOf(X, el) : X.def * BT.DEF_RATE)), k === "spell" ? 1 : 2);
+        const d = roll(mE(), st, X => Math.max(MIN(m), m.atk * c.pct / 100 - (el ? resOf(X, el) : X.def * BT.DEF_RATE)), k === "spell" ? 1 : 2);
+        return el && d > 0 && tf("lingxing") ? d * (1 + (TL.LINGXING || 0) / 100) : d;   // 天赋灵性：金木水火土雷属性伤害都增加
       };
       const mobHit = () => { let d = mCast("spell", m.el); if (d < 0) d = mCast("fabao", m.el); return d < 0 ? hit(mE(), st) : d; };   // v25：怪物法宝也是属性伤害
       // 每一下记一条：[回合, 谁(0 你 / 1 对方), 方式, 法术名序号, 结果, 伤害, 你的生命, 你的法力, 对方生命, 对方法力]
@@ -295,6 +317,10 @@ G.module({
         if (pj) m.def = m.def * (1 - pMe.pjI / 100);   // 破军：这一下无视部分防御
         altD = mShield ? Object.assign({}, mE(), { def: def0 * (pj ? 1 - pMe.pjI / 100 : 1) }) : null;
         let d = myHit(); m.def = def0; altD = null;
+        if ((act.k === 1 || act.k === 2) && act.f !== 1 && d > 0) {   // 天赋 X系吸收：免疫该系法术 / 法宝伤害
+          const a = acts[act.sp], el = a ? (act.k === 1 ? a.sp.el.id : a.fb.el) : "";
+          if (el && tf("xishou_" + el)) { d = 0; act.x = (act.x || 0) | 512; }
+        }
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.k < 3 && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMe, php, st.hp, meJc, mobJc);
@@ -307,16 +333,22 @@ G.module({
         }
         mhp -= d; dealt += d;
         if (mhp <= 0 && php > 0 && cnt.mob.yt < pMob.ytT && ch(pMob.yt)) { dealt -= 1 - mhp; mhp = 1; cnt.mob.yt++; act.x = (act.x || 0) | 16; }   // 对方御天保命
+        const SY = TL.SHENYOU || {};
+        if (mhp <= 0 && php > 0 && !syUsed && tf("shenyou") && ch(SY.CHANCE || 0)) {   // 天赋神佑：复活，恢复生命、法力（每场 1 次）
+          syUsed = 1; mhp = m.hp * (SY.PCT || 0) / 100; m.mana = Math.min(m.maxMana || 0, (m.mana || 0) + (m.maxMana || 0) * (SY.PCT || 0) / 100); act.x = (act.x || 0) | 2048;
+        }
         rec(0, d);
       };
-      const him = (lx) => {
+      let syUsed = 0;
+      const him = (lx, lj) => {
         if (m.stun > 0) { m.stun--; act = { k: 4, f: 0 }; rec(1, 0); return; }   // 被眩晕：这次不能出手
         mobShield();
         const pj = ch(pMob.pj), def0 = st.def; if (shield) st.def = shield.def;   // 有护盾：按盾防御算（代替人物本身防御）
         if (pj) st.def = st.def * (1 - pMob.pjI / 100);
         altD = shield ? Object.assign({}, st, { def: def0 * (pj ? 1 - pMob.pjI / 100 : 1) }) : null;
-        let d = mobSeal ? hit(mE(), st) : mobHit(); st.def = def0; altD = null;   // 被镇魂：只能普通攻击
+        let d = mobSeal || lj ? hit(mE(), st) : mobHit(); st.def = def0; altD = null;   // 被镇魂 / 连击：只能普通攻击
         if (lx) act.x = (act.x || 0) | 8;
+        if (lj) act.x = (act.x || 0) | 1024;
         if (pj && act.f !== 1) act.x = (act.x || 0) | 32;
         d = after(d, pMob, mhp, m.hp, mobJc, meJc);
         if (act.f !== 1 && !(act.x & 128) && !meSeal && cnt.mob.zh < pMob.zhT && ch(pMob.zh)) { meSeal = pMob.zhR; sealR.me = rounds; cnt.mob.zh++; act.x = (act.x || 0) | 64; }
@@ -342,7 +374,10 @@ G.module({
         jcTry(0); jcTry(1);
         // 连星秘法：这回合有几率再出手一次（[10] 标记 8）
         const meT = () => { me(); if (mhp > 0 && php > 0 && Math.random() * 100 < lxMe) me(true); };
-        const himT = () => { him(); if (act.k !== 4 && mhp > 0 && php > 0 && Math.random() * 100 < lxMob) him(true); };
+        const himT = () => {
+          him(); if (act.k === 0 && mhp > 0 && php > 0 && tf("lianji") && ch(TL.LIANJI || 0)) him(false, true);   // 天赋连击：普通攻击后再普通攻击一次
+          if (act.k !== 4 && mhp > 0 && php > 0 && Math.random() * 100 < lxMob) him(true);
+        };
         if (st.speed * spMe >= mE().speed * spMob) { meT(); if (mhp > 0) himT(); }   // 每回合按当前速度定先手（鼎会降低对方速度）
         else { himT(); if (php > 0) meT(); }
         if (m.deb && --m.deb.left <= 0) m.deb = null;
@@ -354,7 +389,7 @@ G.module({
       if (TEST) s.mana = tMp;
       // 战斗说明（显示在探索信息里）
       const why = `你出战时生命 ${U.fmt(hp0)}，共造成 ${U.fmt(dealt)} 伤害（对方剩余生命 ${U.fmt(Math.max(0, mhp))}/${U.fmt(m.hp)}），承受 ${U.fmt(taken)} 伤害；对方攻击 ${U.fmt(m.atk)} 防御 ${U.fmt(m.def)}${m.el ? `，${DATA.elById[m.el].name}属性，施法术 ${mSp} 次、法宝 ${mFb} 次` : ""}`;
-      const detail = { name: m.name, el: m.el || "", a: m.a, sp: spNames, spEl: spells.map(sp => sp.el.name), first: meFirst ? 0 : 1, log, mf: m.mf.slice(),
+      const detail = { name: m.name, el: m.el || "", a: m.a, sp: spNames, spEl: spells.map(sp => sp.el.name), first: meFirst ? 0 : 1, log, mf: m.mf.slice(), tf: m.tf.slice(),
         me: [R(hp0), R(st.hp), R(mana0), R(st.mana)], mob: [R(m.hp), R(m.hp), R(m.maxMana || 0), R(m.maxMana || 0)],
         // v181 这场战斗怪物的准确属性（战斗画面点怪物查看）
         ms: { hp: m.hp, atk: m.atk, def: m.def, speed: m.speed, hit: m.hit, dodge: m.dodge, mana: m.maxMana || 0, crit: m.crit || 0, res: Object.assign({}, m.res || {}),
@@ -368,7 +403,7 @@ G.module({
       const [r, w, k, sp, f, d, ph, pm, mh, mm, fx, ab] = x, el = b.el ? DATA.elById[b.el].name : "";
       const P = `<span class="bt-p">你</span>`, M = `<span class="bt-m">${b.name}</span>`, who = w ? M : P, tgt = w ? P : M;
       const S = t => `<span class="bt-s">${t}</span>`, D = n => `<span class="bt-d">${U.fmt(n)}</span>`;
-      const pre = (fx & 8 ? `发动${S("连星秘法")}，` : "") + (fx & 32 ? `发动${S("破军秘法")}，` : "");
+      const pre = (fx & 8 ? `发动${S("连星秘法")}，` : "") + (fx & 1024 ? `发动${S("连击")}，` : "") + (fx & 32 ? `发动${S("破军秘法")}，` : "");
       const how = k === 1 ? `施放${S(w ? `${el}系法术` : `《${b.sp[sp] || "法术"}》`)}` : k === 2 ? `祭出${S(w || !b.sp[sp] ? "法宝" : `「${b.sp[sp]}」`)}`
         : k === 3 ? `祭起${S(`「${b.sp[sp] || "护盾"}」`)}` : k === 4 ? "被眩晕" : k === 5 ? `发动${S("金蝉秘法")}` : "发动普通攻击";
       let res = k === 3 ? `，护盾值 ${D(d)}` : k === 4 ? "，无法行动" : k === 5 ? `，${CFG.wudao.JINCHAN && CFG.wudao.JINCHAN.ROUNDS || 3} 回合内免疫攻击` : fx & 128 ? `，被${tgt}的金蝉秘法挡下` : f === 1 ? `，被${tgt}闪避` : `，${f === 2 ? `<span class="bt-c">暴击</span>` : ""}对${tgt}造成 ${D(d)} 点伤害`;
@@ -378,6 +413,8 @@ G.module({
       if (fx & 1) res += `，${tgt}被眩晕`;
       if (fx & 64) res += `，${tgt}被镇魂，只能普通攻击`;
       if (fx & 16) res += `，${tgt}发动御天秘法，保留一点生命`;
+      if (fx & 512) res = `，被${tgt}的${S("吸收")}天赋化解，没有造成伤害`;
+      if (fx & 2048) res += `，${tgt}天赋${S("神佑")}发动，复活并恢复生命、法力`;
       if (fx & 256 && !w) res += `，获得${(b.spEl && b.spEl[sp]) || ""}系法术心得 ${CFG.gongfa.XD_GAIN === undefined ? 1 : CFG.gongfa.XD_GAIN} 点`;   // v239
       return `<p>${who}${pre}${how}${res}。</p>`;
     },
@@ -387,7 +424,7 @@ G.module({
       const sum = (w, k) => b.log.filter(x => x[1] === w && x[2] === k).reduce((t, x) => t + x[5], 0);
       const cnt = (w, k) => b.log.filter(x => x[1] === w && x[2] === k).length;
       const line = w => K.map((n, k) => cnt(w, k) ? `${n} ${cnt(w, k)} 次${k < 3 ? " " + U.fmt(sum(w, k)) : ""}` : "").filter(Boolean).join("，") || "无";
-      return `<p class="bt-sum">${el ? `${b.name}为${el}属性 · ` : ""}${b.first ? `${b.name}先手` : "你先手"}${b.mf && b.mf.length ? `<br>${b.name}秘法：${b.mf.map(k => (DATA.mifaKindById[k] || {}).name || k).join("、")}` : ""}<br>开战：你 生命 ${U.fmt(b.me[0])}/${U.fmt(b.me[1])} 法力 ${U.fmt(b.me[2])}/${U.fmt(b.me[3])} · ${b.name} 生命 ${U.fmt(b.mob[0])} 法力 ${U.fmt(b.mob[2])}<br>
+      return `<p class="bt-sum">${el ? `${b.name}为${el}属性 · ` : ""}${b.first ? `${b.name}先手` : "你先手"}${b.mf && b.mf.length ? `<br>${b.name}秘法：${b.mf.map(k => (DATA.mifaKindById[k] || {}).name || k).join("、")}` : ""}${b.tf && b.tf.length ? `<br>${b.name}天赋：${b.tf.map(k => this.tfName(k)).join("、")}` : ""}<br>开战：你 生命 ${U.fmt(b.me[0])}/${U.fmt(b.me[1])} 法力 ${U.fmt(b.me[2])}/${U.fmt(b.me[3])} · ${b.name} 生命 ${U.fmt(b.mob[0])} 法力 ${U.fmt(b.mob[2])}<br>
         你造成：${line(0)}<br>${b.name}造成：${line(1)}</p>`;
     },
     // 看详情：src = "cur" 本次探索 / "last" 上一次结果，i = 事件序号；用战斗过程画面重放，随时可跳过
@@ -420,7 +457,8 @@ G.module({
         <p>生命 ${f(m.hp)}　攻击 ${f(m.atk)}　防御 ${f(m.def)}</p><p>速度 ${f(m.speed)}　命中 ${f(m.hit)}　闪避 ${f(m.dodge)}</p>
         <p>法力 ${f(m.mana)}　暴击 ${U.num(m.crit)}%</p><p>抗性：${rs}</p>
         ${m.sp ? `<p>法术：每回合 ${m.sp[0]}% 几率，攻击×${m.sp[1]}%</p>` : ""}${m.fb ? `<p>法宝：每回合 ${m.fb[0]}% 几率，攻击×${m.fb[1]}%</p>` : ""}
-        ${b.mf && b.mf.length ? `<p>秘法：${b.mf.map(k => (DATA.mifaKindById[k] || {}).name || k).join("、")}</p>` : ""}<small>点击关闭</small>`;
+        ${b.mf && b.mf.length ? `<p>秘法：${b.mf.map(k => (DATA.mifaKindById[k] || {}).name || k).join("、")}</p>` : ""}
+        <p>天赋：${b.tf && b.tf.length ? b.tf.map(k => this.tfName(k)).join("、") : "无"}</p><small>点击关闭</small>`;
       el.style.display = "";
     },
     playBattle(b, title, txt, win, logs, replay, opt = {}) {

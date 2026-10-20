@@ -34,3 +34,22 @@ CFG.battle.RES_EL_RATE = 0.462;   // 对方该系抗性 × 此值
 CFG.battle.ACT_SEC = 1.5;   // 每次出手播放间隔（秒）
 CFG.battle.ANIM_SLOW = 1.4; // 动作动画放慢倍数（1 = 原速）
 CFG.battle.SKIP_SEC = 3;    // 现场战斗几秒后可跳过（秒）
+
+/* 怪物天赋：战斗前随机决定（只有精英、首领、四界官位有），点战斗画面里的怪物可查看
+ *   连击 普通攻击后 LIANJI% 几率再普通攻击一次；暴击 普通攻击暴击几率 +BAOJI%；必中 攻击不会被闪避
+ *   神佑 生命归零时 SHENYOU.CHANCE% 几率复活，恢复 SHENYOU.PCT% 生命和法力（每场最多 1 次）
+ *   X系吸收 免疫该系法术 / 法宝伤害（金木水火土雷各一种）；幸运 不会被暴击
+ *   敏捷 速度、命中 +STAT%；强壮 生命 +STAT%；防御 防御 +STAT%；强力 攻击 +STAT%
+ *   灵性 金木水火土雷属性伤害（法术 / 法宝）都 +LINGXING%，不分系
+ * CHANCE：[有 ≥1 种的几率%, ≥2 种, ≥3 种]，同一只怪天赋不重复 */
+CFG.battle.TALENT = {
+  LIANJI: 30, BAOJI: 20, STAT: 20, LINGXING: 20,
+  SHENYOU: { CHANCE: 20, PCT: 30 },
+  NAME: { lianji: "连击", baoji: "暴击", bizhong: "必中", shenyou: "神佑", xishou: "吸收", xingyun: "幸运", minjie: "敏捷", qiangzhuang: "强壮", fangyu: "防御", qiangli: "强力", lingxing: "灵性" },
+  CHANCE: {
+    凡界精英: [8], 凡界首领: [15],
+    四界精英: [20], 天将: [20],
+    四界首领: [35, 20], 星君: [35, 20],
+    界主: [100, 50, 25],
+  },
+};
