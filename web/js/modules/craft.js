@@ -66,10 +66,11 @@ G.module({
       }
       if (c.lv >= C.MAX) c.exp = 0;
     },
-    // 成功率 0~1：RATE_BASE + (技艺阶 − 物品阶) × RATE_STEP + 秘法%，g = 物品阶序号（0 = 一阶）
+    // 成功率 0~1：RATE_BASE + (技艺阶 − 物品阶) × RATE_STEP + (炉子阶 − 物品阶) × FURN_STEP + 秘法%，g = 物品阶序号（0 = 一阶）
     craftRate(k, g) {
       const C = CFG.craftsman, m = this.mifaBonus();
-      const pct = C.RATE_BASE + (this.craftLv(k) - (g + 1)) * C.RATE_STEP + ((k === "dan" || k === "xdan" ? m.danRate : m.qiRate) || 0);
+      const fu = this.s.furnaceUse || {}, f = k === "xqi" && !(fu.xqi >= 0) ? fu.qi : fu[k];   // 用的炉子阶序号（炼仙炉没装炼器仙炉就按炼器炉）
+      const pct = C.RATE_BASE + (this.craftLv(k) - (g + 1)) * C.RATE_STEP + (f >= 0 ? (f - g) * (C.FURN_STEP || 0) : 0) + ((k === "dan" || k === "xdan" ? m.danRate : m.qiRate) || 0);
       return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
     },
     ratePct(r) { return `${Math.round(r * 1000) / 10}%`; },
