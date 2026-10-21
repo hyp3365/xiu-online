@@ -32,8 +32,8 @@ G.module({
     lsUsed() {
       const s = this.s; let n = 0;
       for (const id in s.gongfa) n += this.ssCost(id);
-      if (s.gfLearn && !s.gongfa[s.gfLearn.id]) n += this.ssCost(s.gfLearn.id);   // 正在学习的也算
-      for (const x of (s.lq && s.lq.gf) || []) if (!s.gongfa[x.id]) n += this.ssCost(x.id);   // v173 排队的也算
+      if (s.gfLearn && s.gfLearn.id && !s.gongfa[s.gfLearn.id]) n += this.ssCost(s.gfLearn.id);   // 正在学习的也算
+      for (const x of (s.lq && s.lq.gf) || []) if (x.id && !s.gongfa[x.id]) n += this.ssCost(x.id);   // v173 排队的也算
       return n;
     },
     lsTotal() { return (this.s.lsMax || 0) + ((this.s.wd || {}).ls || 0); },   // 总灵识点 = 买的 + 神魂之道得的

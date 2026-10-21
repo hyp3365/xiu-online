@@ -1,7 +1,7 @@
 /* ★ 历练 / 自动探索（代码：modules/world.js makePlan / exploreStep / exploreMs）★
  * 一次走 TIME 步：普通怪 MONSTERS + 精英 ELITES + 灵药 HERB + 矿脉 ORE（个数可写数字或 [最少, 最多] 随机），
  *   其余补「无事发生」，打乱顺序；最后 BOSS 步固定是首领。药材矿石总数按 config/drops.js 的 dropTotal，落在灵药 / 矿脉 / 怪物步。
- * 每步秒数 = max(STEP_MIN, STEP_SEC − 宗门秘法「神行」)；每步恢复 = 上限 × HEAL_STEP（另加宗门秘法「斗血 / 斗灵」）
+ * 每步秒数 = max(STEP_MIN, STEP_SEC − 宗门秘法「神行」 − 出窍真诀)（历练、探索、出窍、灵矿、秘境、灵地都一样）；每步恢复 = 上限 × HEAL_STEP（另加宗门秘法「斗血 / 斗灵」）
  * 战败只丢本次收获。秘境步数、怪物数见 config/mijing.js，但每步秒数、恢复、STOP 用这里的。
  * ===================================================================== */
 window.CFG = window.CFG || {};

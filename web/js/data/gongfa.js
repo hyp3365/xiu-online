@@ -298,7 +298,7 @@ DATA.mifaKinds = [
   { id: "gfStudy",   name: "悟道秘法", label: "功法修炼时间", unit: "%", sign: "-", el: "jin" },
   { id: "expSpeed",  name: "聚元秘法", label: "修为修炼速度", unit: "", sign: "+", el: "huo" },
   { id: "bodySpeed", name: "炼体秘法", label: "气血修炼速度", unit: "", sign: "+", el: "tu" },
-  { id: "explore",   name: "神行秘法", label: "历练探索每步", unit: "秒", sign: "-", el: "jin" },
+  { id: "explore",   name: "神行秘法", label: "地图每步", unit: "秒", sign: "-", el: "jin" },
   { id: "danTime",   name: "丹火秘法", label: "炼丹时间", unit: "%", sign: "-", el: "huo" },
   { id: "danRate",   name: "丹心秘法", label: "炼丹成功率", unit: "%", sign: "+", el: "huo" },
   { id: "danExtra",  name: "丹灵秘法", label: "炼丹额外一颗几率", unit: "%", sign: "+", el: "huo" },
