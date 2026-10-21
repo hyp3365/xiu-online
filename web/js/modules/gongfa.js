@@ -93,7 +93,6 @@ G.module({
     },
     lqName(x) {
       const k = x.k;
-      if (k === "cqzj") return `《${this.cqzjName(x.v)}》`;
       if (k === "dan" || k === "dfb" || (!k && x.key && x.key.includes("|"))) { const [t, g] = x.key.split("|"); return `丹方《${DATA.danName(t, +g)}》`; }
       if (k === "bp") return DATA.furnaceName(x.kind, x.g) + "图纸";
       if (k === "rbp") return DATA.ringBpName(x.g, x.r);
@@ -123,10 +122,7 @@ G.module({
     lqDone(ch, c) {
       const s = this.s, name = this.lqName(c);
       if (c.k === "gfb" || c.k === "bp" || c.k === "rbp" || c.k === "dfb") { const i = this.lqBagIdx(c); if (i >= 0) { const it = s.bag[i]; this.removeAt(i, 1); if (s.bag[i] === it) delete it.lq; } }   // 叠在一起的只用掉一个
-      if (c.k === "cqzj") {   // 出窍真诀（sect.js）
-        s.cqZj = s.cqZj || []; if (!s.cqZj.includes(c.v)) s.cqZj.push(c.v);
-        this.log(`习得${name}！地图每步时间 -${U.num2(CFG.cqzj.SEC)} 秒。`, "gold");
-      } else if (ch === "gf") {
+      if (ch === "gf") {
         s.gongfa[c.id] = Math.max(1, s.gongfa[c.id] || 0);
         const info = DATA.skillInfo(c.id, 1);
         if (info && info.kind === "sp") this.autoSlotSpell(c.id);   // 法术栏有空位就自动放入（见 bag.js）

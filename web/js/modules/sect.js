@@ -38,6 +38,7 @@ G.module({
     pool: null,       // 练体池：{ i 池子, end 结束时间, gain 泡完加的属性, day, used }
     poolGain: {},     // 练体池累计加的肉身属性                 // 免费练功房：今天用了几次、本次结束时间
     cqZj: [],         // 已学会的出窍真诀卷号（1~5），每卷地图每步 −CFG.cqzj.SEC 秒
+    cqzjL: null,      // 正在学习的出窍真诀 { v 卷号, end 学会时间 }（不进功法学习队列，学会就生效，不用修炼）
     cqLearn: 0,       // 1 = 已学会元婴出窍秘法（每天次数 = 神识强度 ssPow）
     cqDay: "", cqUsed: 0,   // 元婴出窍：今天已用次数
     qlDay: "",        // v213 宗主清灵丹：上次领取日期
@@ -49,7 +50,7 @@ G.module({
 
   // 每 10 秒：事务堂任务到时间就结算一次，并自动开始下一次（离线也会补算）
   tick(offline) {
-    this.freeRoomDaily(); this.poolTick(); this.jdSettle();
+    this.freeRoomDaily(); this.poolTick(); this.jdSettle(); this.cqzjTick();
     if (this.s.sect) this.affairGen();
     this.autoTaskCheck();   // v229 每天北京时间 0:05 自动执行任务（修炼设置）；v230 离线补算到 0:05 也执行
     const s = this.s, a = s.affair;
@@ -381,6 +382,10 @@ G.module({
     // 出窍真诀：第 v 卷名字 / 是否学会 / 已学会的卷合计减少的地图每步秒数
     cqzjName(v) { return `${CFG.cqzj.NAME}·第${"一二三四五六七八九十"[v - 1] || v}卷`; },
     cqzjHas(v) { return (this.s.cqZj || []).includes(v); },
+    // 出窍真诀学到时间就学会（离线也补算）
+    cqzjTick() { const s = this.s, L = s.cqzjL; if (!L || this.now() < L.end) return;
+      s.cqzjL = null; s.cqZj = s.cqZj || []; if (!s.cqZj.includes(L.v)) s.cqZj.push(L.v);
+      this.log(`习得${this.cqzjName(L.v)}！地图每步时间 -${U.num2(CFG.cqzj.SEC)} 秒。`, "gold"); this.dirty(); },
     cqzjSec() { return (this.s.cqZj || []).filter(v => v >= 1 && v <= (CFG.cqzj.COST || []).length).length * (CFG.cqzj.SEC || 0); },
     // 元婴出窍秘法（config/sect.js 的 CFG.chuqiao）
     cqCost() { return CFG.chuqiao.LEARN_CONTRIB; },
@@ -412,9 +417,10 @@ G.module({
       }
       if (it.kind === "cqzj") {   // 出窍真诀：扣贡献后进功法学习队列，学完生效
         if (!(it.v >= 1 && it.v <= (CFG.cqzj.COST || []).length) || this.cqzjHas(it.v)) return;
-        if (!this.lqCan("gf", "cqzj:" + it.v)) return;
-        this.s.contrib -= c;
-        this.lqAdd("gf", { key: "cqzj:" + it.v, k: "cqzj", v: it.v, ms: (CFG.cqzj.LEARN_MIN || 10) * 60000 });
+        this.cqzjTick();
+        if (this.s.cqzjL) return this.log(`正在学习${this.cqzjName(this.s.cqzjL.v)}，学完才能学下一卷。`, "sys");
+        this.s.contrib -= c; this.s.cqzjL = { v: it.v, end: this.now() + (CFG.cqzj.LEARN_MIN || 10) * 60000 };
+        this.log(`开始学习${this.cqzjName(it.v)}，需 ${U.dur((CFG.cqzj.LEARN_MIN || 10) * 60)}。`, "good");
         return this.after();
       }
       if (it.kind === "furnace") { if (!this.addFurnaceItem(it.fk, it.g)) return; }
@@ -767,10 +773,11 @@ G.module({
               <button class="sm" onclick="G.exchange(${i})" ${has || rl || sl || s.contrib < c ? "disabled" : ""}>${has ? "已学会" : sl ? `${C.STAR}星宗门可兑换` : rl ? "境界不足" : "兑换"}</button></div>`];
           }
           if (it.kind === "cqzj") {
-            const has = this.cqzjHas(it.v), c = this.treasuryCost(it), key = "cqzj:" + it.v;
+            const has = this.cqzjHas(it.v), c = this.treasuryCost(it), L = s.cqzjL, me = L && L.v === it.v, ms = (CFG.cqzj.LEARN_MIN || 10) * 60000, left = me ? Math.max(0, L.end - this.now()) : 0;
             return [has, `<div class="line"><div>${DATA.li(DATA.iconImg("mifa"))}<span class="q4">${this.cqzjName(it.v)}</span>
               <small>学会后地图每步时间 -${U.num2(CFG.cqzj.SEC)} 秒（历练、探索、出窍、灵矿、秘境都算，和神行叠加） · 学习 ${U.dur((CFG.cqzj.LEARN_MIN || 10) * 60)} · ${U.fmt(c)} 贡献</small></div>
-              ${has ? `<button class="sm" disabled>已学会</button>` : this.lqBtn("gf", key, `G.exchange(${i})`, s.contrib < c)}</div>`];
+              ${has ? `<button class="sm" disabled>已学会</button>` : me ? `<button class="sm pg" disabled>${this.pgFill(left, ms)}<span>学习中 ${U.cd(left / 1000)}</span></button>`
+                : `<button class="sm" onclick="G.exchange(${i})" ${L || s.contrib < c ? "disabled" : ""}>${L ? "学习中" : "学习"}</button>`}</div>`];
           }
           const c = this.treasuryCost(it), lock = (it.star || 1) > x.star;
           const desc = it.kind === "furnace" ? `${it.fk === "dan" ? "炼丹" : "炼器"}时间 -${DATA.furnaceBonus(it.fk, it.g)}% · `

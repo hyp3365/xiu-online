@@ -46,6 +46,7 @@
       // v230 自动执行任务：北京时间 0:05（今天还没执行就是今天的，执行过就是明天的）
       if (this.autoTaskAny()) { const m5 = Math.floor((last + B) / D) * D - B + 5 * 60000; ev.push(s.autoTask.day === this.bjDay() || last >= m5 ? m5 + D : m5); }
       if (s.gfLearn) ev.push(s.gfLearn.end);
+      if (s.cqzjL) ev.push(s.cqzjL.end);   // 出窍真诀学完
       // 门派：练体池、事务堂、免费练功房到时
       if (s.pool && s.pool.end) ev.push(s.pool.end);
       if (s.jd && s.jd.cur) ev.push(s.jd.cur.end);   // 讲道室听完
