@@ -113,7 +113,7 @@ DATA.eqPctOK = a => a.k !== "crit";
 DATA.eqPct = a => { const R = _FG.attr.PCT, r = R[a.c] || R[R.length - 1]; return Math.round((r[0] + (r[1] - r[0]) * DATA.attrPos(a)) * 100) / 100; };
 DATA.attrBase = (a, g, e) => {
   const A = _FG.attr, fb = e && e.slot === "fabao" && e.attrs;
-  if (!fb && DATA.eqPctOK(a)) return (DATA.eqRef(g)[a.k] || 0) * DATA.eqPct(a) / 100 * (e && e.slot === "ring" ? (_FG.ring.MULT || 1) : 1);
+  if (!fb && DATA.eqPctOK(a)) return (DATA.eqRef(g)[a.k] || 0) * (DATA.eqPct(a) + (a.m && e ? (e.rj || 0) * ((CFG.forge.refine || {}).PCT || 0) : 0)) / 100 * (e && e.slot === "ring" ? (_FG.ring.MULT || 1) : 1);
   // 附加暴击单独设置了「每阶金色最高值」（AFFIX_TOP，装备 / 戒指）
   const TOP = !a.m && !fb && A.AFFIX_TOP;
   if (TOP && TOP[a.k] && TOP[a.k][g] !== undefined) {
