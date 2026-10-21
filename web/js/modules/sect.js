@@ -775,7 +775,7 @@ G.module({
           if (it.kind === "cqzj") {
             const has = this.cqzjHas(it.v), c = this.treasuryCost(it), L = s.cqzjL, me = L && L.v === it.v, ms = (CFG.cqzj.LEARN_MIN || 10) * 60000, left = me ? Math.max(0, L.end - this.now()) : 0;
             return [has, `<div class="line"><div>${DATA.li(DATA.iconImg("mifa"))}<span class="q4">${this.cqzjName(it.v)}</span>
-              <small>学会后地图每步时间 -${U.num2(CFG.cqzj.SEC)} 秒（历练、探索、出窍、灵矿、秘境都算，和神行叠加） · 学习 ${U.dur((CFG.cqzj.LEARN_MIN || 10) * 60)} · ${U.fmt(c)} 贡献</small></div>
+              <small>学会后地图每步时间 -${U.num2(CFG.cqzj.SEC)} 秒 · 学习 ${U.dur((CFG.cqzj.LEARN_MIN || 10) * 60)} · ${U.fmt(c)} 贡献</small></div>
               ${has ? `<button class="sm" disabled>已学会</button>` : me ? `<button class="sm pg" disabled>${this.pgFill(left, ms)}<span>学习中 ${U.cd(left / 1000)}</span></button>`
                 : `<button class="sm" onclick="G.exchange(${i})" ${L || s.contrib < c ? "disabled" : ""}>${L ? "学习中" : "学习"}</button>`}</div>`];
           }
