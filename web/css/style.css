@@ -607,3 +607,9 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 @keyframes vx-fly{0%{left:var(--x0);opacity:0}15%{opacity:1}90%{opacity:1}100%{left:var(--x1);opacity:0}}
 .vx-sword{left:var(--x0);top:var(--y,50%);width:120px;margin:-7px 0 0 -60px;transform:scaleX(var(--d));opacity:0;animation:vx-fly calc(.55s * var(--bs,1)) cubic-bezier(.5,0,.9,.6) forwards}
 .vx-sword img{width:100%;display:block;filter:drop-shadow(0 0 5px var(--c)) drop-shadow(0 0 10px var(--c)) brightness(1.2)}
+
+/* 星君 / 界主：人物光华（金色外发光 + 身后光晕呼吸） */
+.btv-u.r.glow{filter:drop-shadow(0 0 6px #fff1c2cc) drop-shadow(0 0 16px #ffcf6a99)}
+.btv-u.r.glow::before{content:"";position:absolute;left:50%;bottom:6%;width:120%;height:70%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,#fff4cf88,#ffd27a44 55%,transparent);animation:btv-glow 2.6s ease-in-out infinite;pointer-events:none;z-index:-1}
+.btv-u.r.glow img{max-height:70%}
+@keyframes btv-glow{0%,100%{opacity:.55;transform:translateX(-50%) scale(.94)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
