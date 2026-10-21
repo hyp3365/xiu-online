@@ -28,6 +28,13 @@ DATA.COLOR_Q = [0, 1, 3, 4];                                // 颜色 → 品质
 
 DATA.forgeEqName = (slot, g) => DATA.XING[g] + "·" + DATA.forgeNames[slot][g];
 DATA.forgeEqMats = g => DATA.parseMats(_FG.equip.mats[g]);
+// 精炼阶（装备 / 法宝 / 戒指的 e.rj，0 = 一阶 … 9 = 十阶）：刚炼出、升星后都是一阶；升星要上一星十阶的同类
+DATA.RJ_MAX = 10;
+DATA.rjOf = e => Math.max(0, Math.min(DATA.RJ_MAX - 1, (e && e.rj) || 0));
+DATA.rjName = e => DATA.JIE[DATA.rjOf(e)];
+DATA.rjTop = e => DATA.rjOf(e) >= DATA.RJ_MAX - 1;
+// 精炼材料：同类同星一件（另算）+ 炼制这一星时的三种矿石（数量相同）
+DATA.refineMats = e => e.slot === "ring" ? DATA.ringMats(e.g) : DATA.forgeEqMats(e.g);
 DATA.forgeEqTime = g => _FG.equip.time[g] * 60000;
 DATA.stoneName = g => DATA.JIE[g] + DATA.SS;
 DATA.stoneMats = g => DATA.parseMats(_FG.stone.mats[g]);
@@ -166,7 +173,7 @@ DATA.rollForged = (slot, g, r, el) => {
 DATA.upgradeForged = (prev, g) => {
   const e = JSON.parse(JSON.stringify(prev));
   if (e.enh > 0) { const E = DATA.enhCfg(e); e.enh = Math.max(0, e.enh - Math.max(E.DOWN_MIN === undefined ? 1 : E.DOWN_MIN, Math.floor(e.enh * (E.DOWN_PCT || 0) / 100))); }   // v152 法宝升阶：强化等级 −20%，最少 −1
-  e.g = g;
+  e.g = g; e.rj = 0;   // 升星后回到一阶
   e.name = e.slot === "ring" ? DATA.ringNames[e.r] : e.slot === "fabao" ? DATA.fabaoName(e.ft, g) : DATA.forgeNames[e.slot][g];
   return e;
 };

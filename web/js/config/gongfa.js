@@ -3,7 +3,7 @@
  * 功法第 n 层效果 = 每层效果（见下面 sect.TOTAL）× LV_MULT[n-1] × 灵根加成；其他来源 = 宗门同星级 × 各自 PCT%
  * 法术伤害 = 法术攻击 × SPELL_LV_PCT[层]% × SPELL_MUL × TYPE_MULT.spell × EFFECT_PCT × 灵根 + 精研属性伤害 − 对方减免（config/battle.js）
  *   法术攻击 = min(修为 + 肉身攻击, REF 境界参考值) + 其余全部攻击（功法、装备、戒指、法宝、丹药、练体池等）
- * 法力消耗 = REF 境界的修为突破法力 × MANA_PCT% × (1 + 该系灵根等级 × MANA_LINGEN)，四舍五入，至少 1
+ * 法力消耗 = REF 境界的修为突破法力 × MANA_PCT% × (1 + 该系灵根等级 × MANA_LINGEN) × (1 + (层 − 1) × MANA_LV)，四舍五入，至少 1
  * 修炼升层：每层 STUDY_MIN 分钟；每 STUDY_STEP 秒扣灵气 STUDY_RATE × STUDY_STAR[星级-1] × STUDY_LING × STUDY_LV[当前层-1]（每层单独倍率）
  * ===================================================================== */
 window.CFG = window.CFG || {};
@@ -54,6 +54,7 @@ CFG.gongfa = {
   ],
   MANA_PCT: 12,         // 法力消耗占参考法力 %
   MANA_LINGEN: 0.012,   // 每级灵根增加的法力消耗倍率
+  MANA_LV: 0.08,        // 法术层消耗倍率：1 层 ×1，每多 1 层 +8%（第 N 层 × (1 + (N−1) × MANA_LV)）
 };
 
 /* 宗门功法 & 法术（门派功法殿）
