@@ -391,7 +391,7 @@ G.module({
       if (TEST) s.mana = tMp;
       // 战斗说明（显示在探索信息里）
       const why = `你出战时生命 ${U.fmt(hp0)}，共造成 ${U.fmt(dealt)} 伤害（对方剩余生命 ${U.fmt(Math.max(0, mhp))}/${U.fmt(m.hp)}），承受 ${U.fmt(taken)} 伤害；对方攻击 ${U.fmt(m.atk)} 防御 ${U.fmt(m.def)}${m.el ? `，${DATA.elById[m.el].name}属性，施法术 ${mSp} 次、法宝 ${mFb} 次` : ""}`;
-      const detail = { name: m.name, el: m.el || "", a: m.a, sp: spNames, spEl: spells.map(sp => sp.el.name), vfx: [...spells.map(sp => sp.el.id), ...fabaos.map(fb => [fb.el, fb.ft])], first: meFirst ? 0 : 1, log, mf: m.mf.slice(), tf: m.tf.slice(),
+      const detail = { name: m.name, el: m.el || "", a: m.a, img: m.img, sp: spNames, spEl: spells.map(sp => sp.el.name), vfx: [...spells.map(sp => sp.el.id), ...fabaos.map(fb => [fb.el, fb.ft])], first: meFirst ? 0 : 1, log, mf: m.mf.slice(), tf: m.tf.slice(),
         me: [R(hp0), R(st.hp), R(mana0), R(st.mana)], mob: [R(m.hp), R(m.hp), R(m.maxMana || 0), R(m.maxMana || 0)],
         // v181 这场战斗怪物的准确属性（战斗画面点怪物查看）
         ms: { hp: m.hp, atk: m.atk, def: m.def, speed: m.speed, hit: m.hit, dodge: m.dodge, mana: m.maxMana || 0, crit: m.crit || 0, res: Object.assign({}, m.res || {}),
@@ -444,7 +444,9 @@ G.module({
     },
     // 怪物图：img/mob/地图序号_怪物序号.webp（DATA.maps[a].monsters 的序号）；北域首领 / 秘境怪等用 img/mob/m地图序号.webp
     //   「精英·X」「东域·X王」按 X 找图；试炼塔、晋升考验没有地图，按名字固定挑一张地图首领图
+    //   秘境 / 灵地怪：b.img = mj处_序号 / ld处_序号（makeMjMob）
     battleMobImg(b) {
+      if (b.img) return { src: `img/mob/${b.img}.webp?v=${DATA.IMG_V}`, alt: `img/mob/m0.webp?v=${DATA.IMG_V}` };
       let a = b.a, f;
       if (!(a >= 0 && a < DATA.maps.length)) { let h = 0; for (const ch of b.name || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0; a = h % DATA.maps.length; }
       else { const nm = String(b.name || "").replace(/^精英·/, "").replace(/^.域·(.+)王$/, "$1"), i = (DATA.maps[a].monsters || []).indexOf(nm); if (i >= 0) f = `${a}_${i}`; }
@@ -1121,8 +1123,9 @@ G.module({
     // 秘境 / 灵地怪物：属性在 js/data/mobs.js 按 config/mobs.js 生成
     makeMjMob(i, kind, k) {
       const d = this.mjDef(i, k), b = DATA.mobMeet(d, kind), v = (x, k) => x * DATA.mobRnd(k);
-      const name = kind === "boss" ? d.bossName : (kind === "elite" ? "精英·" : "") + U.pick(d.monsters);
-      return this.addMagic({ name, Lm: d.L, kind, boss: kind === "boss", elite: kind === "elite",
+      const pick = kind === "boss" ? -1 : Math.floor(Math.random() * d.monsters.length), name = kind === "boss" ? d.bossName : (kind === "elite" ? "精英·" : "") + d.monsters[pick];
+      const img = `${k === "ld" ? "ld" : "mj"}${i}_${pick + 1}`;   // 秘境 / 灵地怪物图：img/mob/mj第几处_序号.webp（0 = 首领，1~4 = monsters 顺序），灵地 ld 开头
+      return this.addMagic({ name, img, Lm: d.L, kind, boss: kind === "boss", elite: kind === "elite",
         hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, kind);
     },
     // 秘境 / 灵地掉落：extra 必掉 / 几率掉落（药材矿石总量见 CFG.dropTotal，按步分配，stepMats）
@@ -1130,6 +1133,7 @@ G.module({
     rollMj(loot, ev, i, k) {
       const d = this.mjDef(i, k);
       const got = [];   // v236 随机药材矿石改按 CFG.dropTotal 总量（stepMats）；这里只掉必掉的 extra
+      if (ev === "boss" && k !== "ld" && d.realm === CFG.chuqiao.LU_MJ_REALM && CFG.chuqiao.LU_DROP > 0) { const t = this.lootAdd(loot, DATA.smName("lu"), CFG.chuqiao.LU_DROP); if (t) got.push(t); }   // 元婴期秘境首领必掉养神露
       for (const x of (d.extra || {})[ev] || []) {
         if (Math.random() * 100 >= (x.chance || 0)) continue;
         const nn = x.n || [1, 1], n = U.rand(nn[0], nn[1]); if (n <= 0) continue;
@@ -1162,7 +1166,6 @@ G.module({
       const s = this.s, st = this.mjState(k), d = this.mjDef(i, k); st.used[i] = (st.used[i] || 0) + 1;
       const n = { map: -1, reg: 0, mj: i, once: !!once, queue: queue || [], start: x ? x.start + x.step * x.ms : this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.makePlan(this.mjCfg(k)), ms: this.exploreMs() };
       if (k === "ld") n.mk = "ld";
-      else if (d.realm === CFG.chuqiao.LU_MJ_REALM && CFG.chuqiao.LU_DROP > 0) this.lootAdd(n.loot, DATA.smName("lu"), CFG.chuqiao.LU_DROP);   // 元婴期秘境必定掉落养神露
       s.explore = n;   // 本次结果一直保留到下一次结算
       this.log(`进入${this.mjLabel(k)}「${d.name}」${once ? "历练" : "探索"}（期间无法修炼）。`, "sys");
     },

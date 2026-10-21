@@ -7,7 +7,7 @@
  * 药材矿石：总数见 config/drops.js 的 dropTotal.mijing，从第 drops 张凡界地图的药材 / 矿石表等概率抽（不含 fixed）
  * extra 额外掉落：按事件分（monster / elite / boss / herbEvent / oreEvent），每条 { item, chance 几率%, n [最少, 最多] } 单独判定
  *   item：火髓、空间晶核、养神露；"耀石" / "灵晶" = 随机属性，或 "火耀石" 这样指定；也可写药材 / 矿石名或 content/items.js 的物品
- * 元婴期秘境另必掉养神露（config/sect.js 的 chuqiao.LU_DROP）
+ * 元婴期秘境首领另必掉养神露（config/sect.js 的 chuqiao.LU_DROP），普通地图不掉
  * ===================================================================== */
 window.CFG = window.CFG || {};
 
@@ -28,7 +28,7 @@ CFG.mijing = {
             desc: "装备、戒指、法宝炼制和强化的专用矿石。装备、戒指可用任意一种，法宝要用同属性的。" },
     // 灵晶：金 木 水 火 土，炼制、强化灵珠（config/array.js 的 lingzhu）
     lj:   { name: "灵晶", names: ["金灵晶", "木灵晶", "水灵晶", "火灵晶", "土灵晶"], sell: 20, desc: "炼制、强化灵珠的材料，凡界秘境首领掉落。" },
-    lu:   { name: "养神露", sell: 20, desc: "炼制养神丹的材料，元婴期秘境、万妖岭首领掉落。" },
+    lu:   { name: "养神露", sell: 20, desc: "炼制养神丹的材料，元婴期秘境首领掉落。" },
     wdg:  { name: "悟道果", sell: 10, desc: "在「洞府 → 悟道室」悟道时消耗。四界功德司用功德购买。" },
     yd:   { name: "养神丹", sell: 50, desc: "在「修炼 → 神识」养神，提升神识强度（每天可元婴出窍的次数）。2 星宗门炼丹房学丹方炼制。" },
   },
@@ -38,52 +38,52 @@ CFG.mijing = {
     { name: "灵泉洞天", find: { map: 0, chance: 5 }, drops: 0,
       bossName: "碧水蛟", monsters: ["灵泉水妖", "碧鳞鱼精", "水灵", "青藤妖"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "苍梧原", find: { map: 1, chance: 5 }, drops: 1,
       bossName: "苍梧石精", monsters: ["石傀儡", "山魈", "石甲蜥", "噬灵鼠"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [1, 3] }, { item: "空间晶核", chance: 50, n: [1, 1] }, { item: "耀石", chance: 50, n: [1, 1] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "赤炎火窟", find: { map: 2, chance: 5 }, drops: 2,
       bossName: "赤鳞火蜥", monsters: ["火灵", "火鼠", "赤炎蜥", "熔岩怪"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "寒渊冰宫", find: { map: 3, chance: 5 }, drops: 3,
       bossName: "玄冰雪狼", monsters: ["冰魄妖", "寒霜狼", "冰傀儡", "雪妖"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [2, 6] }, { item: "空间晶核", chance: 50, n: [1, 2] }, { item: "耀石", chance: 50, n: [1, 2] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "万剑冢", find: { map: 3, chance: 5 }, drops: 3,
       bossName: "残剑灵", monsters: ["剑灵", "剑魂", "残剑傀儡", "剑奴"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "埋骨战场", find: { map: 4, chance: 5 }, drops: 4,
       bossName: "断魂将", monsters: ["残兵魂", "骷髅兵", "战场怨灵", "血煞兵"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [3, 9] }, { item: "空间晶核", chance: 50, n: [1, 3] }, { item: "耀石", chance: 50, n: [1, 3] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "落星谷", find: { map: 5, chance: 5 }, drops: 5,
       bossName: "陨铁巨蜥", monsters: ["星斑兽", "陨石傀儡", "星芒灵", "食铁虫"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "阴风鬼窟", find: { map: 6, chance: 5 }, drops: 6,
       bossName: "阴风老鬼", monsters: ["游魂", "厉鬼", "冥鬼", "骨妖"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [4, 12] }, { item: "空间晶核", chance: 50, n: [1, 4] }, { item: "耀石", chance: 50, n: [1, 4] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "迷雾幻林", find: { map: 6, chance: 5 }, drops: 6,
       bossName: "迷雾狐妖", monsters: ["幻影修士", "雾妖", "迷魂灵", "幻狐"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
     { name: "荒古遗迹", find: { map: 7, chance: 5 }, drops: 7,
       bossName: "独角荒兽", monsters: ["荒兽", "野魔灵", "荒原之灵", "石巨人"],
       extra: {
-        boss: [{ item: "火髓", chance: 100, n: [5, 15] }, { item: "空间晶核", chance: 50, n: [1, 5] }, { item: "耀石", chance: 50, n: [1, 5] }, { item: "灵晶", chance: 100, n: [1, 2] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
       } },
   ],
 };
