@@ -28,26 +28,17 @@ G.module({
       const ri = Math.floor(L / DATA.LAYERS), o = CFG.trib.TIME;
       return Math.max(1, o[DATA.realms[ri]] !== undefined ? o[DATA.realms[ri]] : o[DATA.NM_DEF.realm[ri]]);
     },
-    // 劫云：属性 = 突破后那一层（境界、层）的修为 + 肉身 + 三类功法 × 当层倍率 × 随机 CFG.trib.RAND
-    //   行 [境界, [层起, 层止], 宗门组, 坊市组, 功德司组, 每层倍率]，每组同怪物 [类别, 前星学%, 前星层, 星级, 本星学%, 本星层]
-    //   组里写 [起, 止] 的数从层起到层止平均递增（学% 不取整，功法层、星级取整）；旧格式 [类别, 学%, 功法层]（全部星级同一个学%）仍能读
+    // 劫云：L = 突破后的层序；按突破前那一层（L − 1）的境界、层查 CFG.trib.MOB，格式同怪物（[a, b] 开始渡劫时随机）
+    //   属性 = 那一层配置的修为突破 + 肉身突破 + 三类功法（DATA.mobCalc）× (1 + (层 − 层起) × 每层增加)
     tribRow(L) {
-      const T = CFG.trib, ri = Math.floor(L / DATA.LAYERS), lay = L % DATA.LAYERS + 1;
+      const T = CFG.trib, F = Math.max(0, L - 1), ri = Math.floor(F / DATA.LAYERS), lay = F % DATA.LAYERS + 1;
       const R = DATA.mobRange, r = T.MOB.find(r => r[0] === ri && lay >= R(r[1])[0] && lay <= R(r[1])[1]) || T.MOB.filter(r => r[0] <= ri).pop() || [ri, [1, 10], 0];
-      const ly = R(r[1]), p = ly[1] > ly[0] ? Math.max(0, Math.min(1, (lay - ly[0]) / (ly[1] - ly[0]))) : 0;   // 这一层在分段里的位置 0 ~ 1
-      const lerp = (v, round) => { const a = R(v), x = a[0] + (a[1] - a[0]) * p; return round ? Math.round(x) : x; };
-      const gs = r.slice(2, -1).filter(Array.isArray);
-      const cat = c => {
-        const x = gs.find(y => y[0] === c);
-        if (!x) return [c, 0, 0, 0, 0, 0];   // 没写的类别 = 不学
-        if (x.length <= 3) { const pc = lerp(x[1]), g = lerp(x[2], true); return [c, pc, g, 0, pc, g]; }   // 旧格式
-        return [c, lerp(x[1]), lerp(x[2], true), lerp(x[3], true), lerp(x[4]), lerp(x[5], true)];
-      };
-      const k = 1 + (lay - ly[0]) * (+r[r.length - 1] || 0);   // 最后一个数 = 每层倍率
-      return [ri, lay, cat(1), cat(2), cat(3), k];   // 怪物 6 个数格式；星级 0 = 该境界能学到的最高星
+      const gs = r.slice(2, -1).filter(Array.isArray), cat = c => gs.find(y => y[0] === c) || [c, 0, 0, 1, 0, 0];   // 没写的类别 = 不学
+      const k = 1 + Math.max(0, lay - R(r[1])[0]) * (+r[r.length - 1] || 0);
+      return [ri, lay, cat(1), cat(2), cat(3), k];
     },
     makeTrib(L) {
-      const T = CFG.trib, st = DATA.mobStats(this.tribRow(L));
+      const T = CFG.trib, st = DATA.mobRoll(this.tribRow(L));   // 学%、功法层按配置随机
       const R = T.RAND, rnd = R[0] + Math.random() * (R[1] - R[0]);
       return { atk: st.atk * rnd * (+((CFG.rates || {}).TRIB ?? 1) || 0), crit: T.crit };   // config/rates.js 雷劫强度总倍率
     },
