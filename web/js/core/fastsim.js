@@ -114,13 +114,13 @@
       let hp = s.hp, mana = s.mana, ling = s.ling, exp = s.exp, stone = s.stone, contrib = s.contrib, bodyExp = s.bodyExp, lack = s.lackWarned;
       let freeLeft = freeOn ? s.freeCult.left : 0;
       let bl = buffs.map(b => b.left);
-      let at = gs ? gs.at : 0, done = gs ? gs.done : 0, spent = gs ? gs.spent : 0, spentStone = gs ? gs.spentStone : undefined, rU = gs ? gs.rU || 0 : 0, stalled = gs ? gs.stalled : undefined;
+      let at = gs ? gs.at : 0, done = gs ? gs.done : 0, spent = gs ? gs.spent : 0, spentStone = gs ? gs.spentStone : undefined, su = gs ? gs.su || 0 : 0, rU = gs ? gs.rU || 0 : 0, stalled = gs ? gs.stalled : undefined;
       let m = 0, stop = false;
       for (; m < n && !stop; m++) {
         const now = tk + m * T;
         // 用临时变量算这一次，遇到事件就整次作废，交给逐个结算
         let h = hp, mp = mana, L = ling, ex = exp, sn = stone, ct = contrib, be = bodyExp, lk = lack, fl = freeLeft;
-        let a2 = at, d2 = done, s2 = spent, ss2 = spentStone, ru2 = rU, sl2 = stalled, bl2 = bl;
+        let a2 = at, d2 = done, s2 = spent, ss2 = spentStone, su2 = su, ru2 = rU, sl2 = stalled, bl2 = bl;
         // 1. player：生命、法力恢复
         if (h < HP) h = Math.min(HP, h + HP * R0.hp / 100);
         if (mp < MP) mp = Math.min(MP, mp + MP * R0.mana / 100);
@@ -138,7 +138,10 @@
             let can = Math.min(want, Math.floor(L / per), sps ? Math.floor(sn / sps) : Infinity);
             if (can < rem && can % 2) can--;
             L -= can * per; s2 += can * per; d2 = can >= rem ? gs.total : Math.min(gs.total, d2 + can * STEP * mul);
-            if (sps) { sn -= can * sps; ss2 = (ss2 || 0) + can * sps; }
+            if (sps) {   // 同 gongfa.js：按单位四舍五入累计，这层走完扣满 sc
+              const C = gs.sc || Math.round(gs.stone * Math.ceil(gs.total / STEP)); su2 += can * mul;
+              const tgt = d2 >= gs.total ? C : Math.min(C, Math.round(gs.stone * su2)), pay = Math.max(0, tgt - (ss2 || 0));
+              sn -= pay; ss2 = (ss2 || 0) + pay; }
             if (GR) { ct -= Math.floor((ru2 + can) / RU) * GR.cost; ru2 = (ru2 + can) % RU; }
             sl2 = can < want && d2 < gs.total;
             if (d2 >= gs.total) break;   // 修炼完成：事件
@@ -173,7 +176,7 @@
         if (sn >= payMin) break;
         // 这一次没有事件：提交
         hp = h; mana = mp; ling = L; exp = ex; stone = sn; contrib = ct; bodyExp = be; lack = lk; freeLeft = fl;
-        at = a2; done = d2; spent = s2; spentStone = ss2; rU = ru2; stalled = sl2; bl = bl2;
+        at = a2; done = d2; spent = s2; spentStone = ss2; su = su2; rU = ru2; stalled = sl2; bl = bl2;
         if (ended) stop = true;
       }
       // 上面 break 时 m 是作废那一次的序号（= 已提交次数）；正常结束时 m = 已提交次数
@@ -182,7 +185,7 @@
       s.hp = hp; s.mana = mana; s.ling = ling; s.exp = exp; s.stone = stone; s.contrib = contrib; s.bodyExp = bodyExp; s.lackWarned = lack;
       if (freeOn) s.freeCult.left = freeLeft;
       buffs.forEach((b, k) => { b.left = bl[k]; });
-      if (gs) { gs.at = at; gs.done = done; gs.spent = spent; if (spentStone !== undefined) gs.spentStone = spentStone; if (rU) gs.rU = rU; else delete gs.rU; if (stalled !== undefined) gs.stalled = stalled; }
+      if (gs) { gs.at = at; gs.done = done; gs.spent = spent; if (spentStone !== undefined) gs.spentStone = spentStone; if (su) gs.su = su; if (rU) gs.rU = rU; else delete gs.rU; if (stalled !== undefined) gs.stalled = stalled; }
       if (stop) this.dirty();   // 丹药药力耗尽：修炼速度重新计算（和 cultivate.js 一样）
       return done_n;
     },

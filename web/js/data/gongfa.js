@@ -324,7 +324,7 @@ DATA.mifaFullPct = (kind, star) => {
 };
 DATA.mifaFullTxt = (kind, pct) => kind === "hpBattle" ? `每步再回生命上限 ${U.num(pct)}%` : kind === "mpBattle" ? `每步再回法力上限 ${U.num(pct)}%` : `再 +${U.num(pct)}%`;
 DATA.isMifa = id => id.split(":")[1] === "mf";
-DATA.mifaLearnCost = star => { const W = CFG.wudao, m = (W.STAR_COST || [])[star - 1] || 1; return { stone: Math.floor(W.LEARN_STONE * m), contrib: Math.floor(W.LEARN_CONTRIB * m) }; };
+DATA.mifaLearnCost = star => { const W = CFG.wudao, m = (W.STAR_COST || [])[star - 1] || 1; return { stone: (W.LEARN_STONES || [])[star - 1] || 0, contrib: Math.floor(W.LEARN_CONTRIB * m) }; };
 DATA.mifaInfo = (id, lv = 1) => {
   const [w, , kind] = id.split(":"), star = +w.slice(1), K = DATA.mifaKindById[kind], W = CFG.wudao;
   if (!K || !(star >= 1 && star <= 10)) return null;
@@ -334,5 +334,5 @@ DATA.mifaInfo = (id, lv = 1) => {
   return { kind: "mf", id, star, mk: K, lv, el: DATA.elById[K.el], label: K.label,
     name: `${DATA.MIFA_PREFIX[star - 1] || star + "星"}·${K.name}`, value: val(lv), next: val(lv + 1), perLv: per,
     cost: DATA.mifaLearnCost(star),
-    stonePer: Math.floor((W.STUDY_STONE || 0) * ((W.STAR_COST || [])[star - 1] || 1)) };   // 修炼每 5 秒灵石
+    layerStone: (W.LAYER_STONE || [])[star - 1] || 0 };   // 修炼升一层的灵石（平均分到每 5 秒）
 };
