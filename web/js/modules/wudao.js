@@ -32,7 +32,7 @@ G.module({
     learnMifa(kind, star) {   // star 不写 = 本宗门星级；可学本星及以下的秘法
       const s = this.s, sect = this.sectInfo(); if (!sect) return;
       star = Math.floor(+star || sect.star); if (star < 1 || star > sect.star || !DATA.mifaKindById[kind]) return;
-      const id = DATA.mifaId(star, kind), c = DATA.mifaLearnCost(star);
+      const id = DATA.mifaId(star, kind), c = DATA.mifaLearnCost(star, kind);
       if (s.gongfa[id]) return;
       if (!this.lqCan("gf", id)) return;   // v173 学习队列：首次学习要时间（同星级功法 × MIFA_MUL）
       if (s.stone < c.stone) return this.log("灵石不足。", "sys");
@@ -53,7 +53,7 @@ G.sectWudaoView = function () {
   for (let st = x.star; st >= 1; st--) {
     const c = DATA.mifaLearnCost(st);
     cards.push({ head: `<h3>${hall} · ${st}星秘法</h3>`, rows: DATA.mifaKinds.map(K => {
-      const id = DATA.mifaId(st, K.id), lv = s.gongfa[id] || 0, g = DATA.mifaInfo(id, Math.max(1, lv));
+      const id = DATA.mifaId(st, K.id), c = DATA.mifaLearnCost(st, K.id), lv = s.gongfa[id] || 0, g = DATA.mifaInfo(id, Math.max(1, lv));
       const eff = K.id === "explore" ? `圆满后每步 -${U.num2(g.perLv)} 秒` : K.id === "pojun" ? `圆满后 ${fmt(K, g.perLv)}，无视防御 ${U.num(((CFG.wudao.POJUN || {}).IGNORE || [])[st - 1] || 0)}%` : K.full ? `圆满后 ${fmt(K, g.perLv)}` : `每层 ${fmt(K, g.perLv)}`;
       const xp = DATA.mifaFullPct(K.id, st);   // 聚元 / 炼体 / 斗血 / 斗灵 圆满额外 %
       const effTxt = xp ? `${eff}，圆满${DATA.mifaFullTxt(K.id, xp)}` : eff;
