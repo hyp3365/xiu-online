@@ -123,32 +123,33 @@ DATA.mobJz = a => (DATA.maps[a].mob || {})["界主"] || DATA.MOB_NONE;
 // ---------- 试炼塔守关者（v221，config/mobs.js 的 tower）：按「第几层 ÷ 总层数」算境界、宗门功法学习比例、功法层、阶段倍率 ----------
 //   逢 10 层 × BOSS（v222）；2 星及以上 = 上一星塔顶（不含 BOSS 倍）的全部属性 + 本星塔多出来的境界 / 肉身属性 + 本星宗门功法，本星部分 × 阶段倍率
 DATA._tower = {};
-DATA.towerPart = (star, floor, max) => {   // 返回 { own: 本星这一层的属性（已 × 倍率）, base: 上一星塔顶, realm, lay, pct, gf, mul }
+DATA.towerPart = (star, floor, max) => {   // 返回 { total, ng: 不含功法的累计属性, realm, lay, pct, gf, mul }
   const T = CFG.mobs.tower, LN = T.REALMS * DATA.LAYERS, f = Math.max(1, Math.min(max, floor)), p = f / max;
   const step = (n) => Math.max(1, Math.min(n, Math.ceil(p * n - 1e-9)));
   const r0 = CFG.sect.REQ_REALM[star - 1];
   const j = step(LN), realm = Math.min(DATA.realms.length - 1, r0 + Math.floor((j - 1) / DATA.LAYERS)), lay = (j - 1) % DATA.LAYERS + 1;
   const gf = step(T.GF_MAX), sg = step(T.STAGES);
-  const pct = T.PCT_END !== undefined ? T.PCT_START + (T.STAGES > 1 ? (sg - 1) * (T.PCT_END - T.PCT_START) / (T.STAGES - 1) : 0) : T.PCT_START + (sg - 1) * T.PCT_ADD;   // 学习比例：第 1 段 PCT_START % 平均递增到最后一段 PCT_END %
+  const pct = T.PCT_START + (T.STAGES > 1 ? (sg - 1) * (T.PCT_END - T.PCT_START) / (T.STAGES - 1) : 0);   // 学习比例：第 1 段 PCT_START % 平均递增到最后一段 PCT_END %
   const mul = (T.MUL + (sg - 1) * T.MUL_ADD) / 100;   // 第 1 段 MUL %，每段 + MUL_ADD %
   const Lof = (r, l) => r * DATA.LAYERS + l;
   const cur = DATA.refStats(realm, lay, 0, star, 1), bd = DATA.mobBody(Lof(realm, lay));
   let pre = null, pbd = null, base = null;
-  if (star > 1) {   // 上一星塔顶
+  if (star > 1) {   // 上一星塔顶（不含功法，功法按 PRE_PCT / PRE_GF 另算）
     const pm = DATA.towerMax(star - 1), pp = DATA.towerPart(star - 1, pm, pm);
-    pre = DATA.refStats(pp.realm, pp.lay, 0, star - 1, 1); pbd = DATA.mobBody(Lof(pp.realm, pp.lay)); base = pp.total;
+    pre = DATA.refStats(pp.realm, pp.lay, 0, star - 1, 1); pbd = DATA.mobBody(Lof(pp.realm, pp.lay)); base = pp.ng;
   }
   const add = {}; for (const k of DATA.MOB_KEYS) add[k] = 0;
-  for (const sc of DATA.sects || []) { if (sc.star !== star) continue;   // 只算本星的宗门功法，全部功法 × 学习比例（平均）
-    for (const t of DATA.gfTypesOf(sc.src)) { const v = DATA.mobGfVal(DATA.gongfaId(sc.id, t.id), gf);
-      if (add[t.stat] !== undefined) add[t.stat] += v[0] * pct / 100; if (t.stat2 && add[t.stat2] !== undefined) add[t.stat2] += v[1] * pct / 100; } }
-  const own = {}, total = {};
+  for (const sc of DATA.sects || []) {   // 本星：学 pct%、gf 层；前面星级：学 PRE_PCT%、PRE_GF 层（全部功法 × 学习比例，平均）
+    const P = sc.star === star ? pct : sc.star < star ? (T.PRE_PCT || 0) : 0, L = sc.star === star ? gf : T.PRE_GF || 1; if (!P) continue;
+    for (const t of DATA.gfTypesOf(sc.src)) { const v = DATA.mobGfVal(DATA.gongfaId(sc.id, t.id), L);
+      if (add[t.stat] !== undefined) add[t.stat] += v[0] * P / 100; if (t.stat2 && add[t.stat2] !== undefined) add[t.stat2] += v[1] * P / 100; } }
+  const ng = {}, total = {};
   for (const k of DATA.MOB_KEYS) {
-    own[k] = (cur[k] - (pre ? pre[k] : 0) + bd[k] - (pbd ? pbd[k] : 0) + add[k]) * mul;
-    total[k] = (base ? base[k] : 0) + own[k];
+    ng[k] = (base ? base[k] : 0) + (cur[k] - (pre ? pre[k] : 0) + bd[k] - (pbd ? pbd[k] : 0)) * mul;
+    total[k] = ng[k] + add[k] * mul;
   }
   total.manaBr = cur.manaBr;   // 修为突破法力（耗法力用，按当前境界，不叠加）
-  return { own, base, total, realm, lay, pct, gf, mul, L: Lof(realm, lay) - 1 };
+  return { ng, total, realm, lay, pct, gf, mul, L: Lof(realm, lay) - 1 };
 };
 DATA.towerStage = (star, floor, max) => {
   const key = star + ":" + floor + ":" + max;
