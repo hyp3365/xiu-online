@@ -210,6 +210,7 @@ G.module({
       const s = this.s, key = type + "|" + g, c = DATA.danLearnCost(type, g);
       if (s.recipes.includes(key) || !DATA.recipes[type] || DATA.danCat(type)) return;   // 仙冥魔神丹方去四界功德司学
       if (!this.lqCan("dan", key)) return;   // v173 学习队列
+      if (!this.sectInfo()) return this.log("尚未加入门派。", "sys");
       if (DATA.danStar(type, g) > this.sectInfo().star) return this.log(`需要 ${DATA.danStar(type, g)} 星及以上门派才能学习。`, "sys");
       if (s.contrib < c) return this.log("贡献不足。", "sys");
       s.contrib -= c; this.lqAdd("dan", { key, k: "dan", ms: DATA.danLearnTime(type, g) }); this.after();
@@ -444,6 +445,7 @@ G.module({
       const s = this.s, key = this.forgeKey(kind, g, slot), L = this.forgeLearnOf(kind, g), c = L.c;
       if (s.forgeKnown.includes(key)) return;
       if (!this.lqCan("forge", key)) return;   // v173 学习队列
+      if (kind !== "lz" && !this.sectInfo()) return this.log("尚未加入门派。", "sys");
       if (kind !== "lz" && g >= this.sectInfo().star) return this.log(`需要 ${g + 1} 星及以上门派才能学习。`, "sys");
       if (s.contrib < c) return this.log("贡献不足。", "sys");
       s.contrib -= c; this.lqAdd("forge", { key, k: "forge", ms: L.min * 60000 }); this.after();

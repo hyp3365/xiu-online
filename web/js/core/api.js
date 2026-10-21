@@ -31,7 +31,9 @@ const API = {
     const opt = { method: method || (body === undefined ? "GET" : "POST"), headers: { "Content-Type": "application/json" }, cache: "no-store" };
     if (this.token) opt.headers["X-Token"] = this.token;
     if (body !== undefined && body !== null) opt.body = typeof body === "string" ? body : JSON.stringify(body);
-    const r = await fetch(this.BASE + path, opt);
+    let r;
+    try { r = await fetch(this.BASE + path, opt); }
+    catch (e) { console.warn("fetch failed:", e); throw new Error("网络连接失败（可能是网络不稳或服务器正在重启），请稍后再试"); }   // 浏览器原文是英文 Failed to fetch / Load failed
     const j = await r.json().catch(() => ({ error: "服务器无响应" }));
     if (!r.ok) { const e = new Error(j.error || "请求失败 " + r.status); e.status = r.status; throw e; }
     return j;
@@ -155,7 +157,7 @@ const API = {
       const original = G[name];
       this._originalActions.set(name, original);
       G[name] = (...args) => this.sendAction(name, this.captureActionArgs(name, args)).catch(error => {
-        if (G && typeof G.log === "function") G.log(error.message || "服务器操作失败", "bad");
+        if (G && typeof G.log === "function") G.log(this.zhErr(error.message || "服务器操作失败"), "bad");
         return false;
       });
       this._wrapped.add(name);
@@ -207,7 +209,10 @@ const API = {
     },
   },
 
+  // 浏览器 / 脚本自带的英文错误（Failed to fetch、Cannot read properties…）换成中文提示，原文写到控制台
+  zhErr(text) { const t = String(text || ""); if (!t || /[\u4e00-\u9fa5]/.test(t)) return t || "操作失败"; console.warn("action error:", t); return "操作失败（网络或服务器暂时不可用），请稍后再试"; },
   showActionFeedback(text, tone = "sys") {
+    text = this.zhErr(text);
     this.setSync(text);
     const toast = document.getElementById("toast");
     if (!toast) return;

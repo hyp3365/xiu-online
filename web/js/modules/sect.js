@@ -395,7 +395,7 @@ G.module({
     },
     exchange(i) {
       const it = this.treasuryList()[i], c = this.treasuryCost(it);
-      if (!it || this.s.contrib < c || (it.star || 1) > this.sectInfo().star) return;
+      if (!it || !this.sectInfo() || this.s.contrib < c || (it.star || 1) > this.sectInfo().star) return;
       if (it.kind === "chuqiao") {
         const C = CFG.chuqiao;
         if (this.s.cqLearn || C.STAR > this.sectInfo().star) return;
@@ -554,6 +554,7 @@ G.module({
         <div class="btns"><button onclick="G.testFight()">开始测试</button></div></div>`;
     },
     challengeTower() {
+      if (!this.sectInfo()) return this.log("尚未加入门派。", "sys");
       const star = this.sectInfo().star, f = this.towerFloor() + 1; if (f > this.towerMax()) return;
       const st = this.stats();
       if (this.s.hp < st.hp * CFG.battle.TOWER_HP_MIN) return this.log("生命不足三成，先休养片刻。", "sys");
