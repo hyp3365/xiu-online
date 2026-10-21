@@ -598,68 +598,12 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 .job-btns{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;flex:0 0 auto}
 .job-btns .sm{white-space:nowrap}
 .craft-log{max-height:60vh;overflow-y:auto}
-/* v246 法术 / 法宝特效（world.js btVfx）：--x0 出手方、--x1 目标，--d 方向（1 向右、-1 向左），--c 主色 --c2 亮色 */
+/* v247 法术 / 法宝特效（world.js btVfx / btFx）：画布粒子 .vx-cv；剑类法宝三把飞剑仍用 CSS（.vx-sword）。--x0 出手方、--x1 目标，--d 方向 */
+.vx-cv{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3}
 .vx{position:absolute;pointer-events:none;--c:#ff7a2a;--c2:#ffe0a0}
 .vx-jin{--c:#e6b830;--c2:#fff4c0}.vx-mu{--c:#3fae4a;--c2:#d4ffb0}.vx-shui{--c:#2e8fe0;--c2:#d0f0ff}.vx-huo{--c:#ff5a1c;--c2:#ffe0a0}.vx-tu{--c:#a8742e;--c2:#f0d8a8}.vx-lei{--c:#9a6aff;--c2:#f0e6ff}
 .btv-stage.vx-shake{animation:vx-shake calc(.4s * var(--bs,1))}
 @keyframes vx-shake{0%,100%{transform:none}20%{transform:translate(-5px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
-/* 命中爆光 + 火星 */
-.vx-boom{left:var(--x1);top:55%;width:70px;height:70px;margin:-35px 0 0 -35px;border-radius:50%;background:radial-gradient(#fff 0,var(--c2) 25%,var(--c) 55%,transparent 70%);animation:vx-boom calc(.6s * var(--bs,1)) ease-out forwards;mix-blend-mode:screen}
-.vx-boom.big{width:120px;height:120px;margin:-60px 0 0 -60px}
-@keyframes vx-boom{0%{transform:scale(.2);opacity:1}60%{opacity:.9}100%{transform:scale(1.6);opacity:0}}
-.vx-spark{left:var(--x1);top:55%;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--c2);box-shadow:0 0 6px 2px var(--c);animation:vx-spark calc(.6s * var(--bs,1)) ease-out forwards}
-@keyframes vx-spark{0%{transform:rotate(var(--a)) translateX(0);opacity:1}100%{transform:rotate(var(--a)) translateX(var(--r)) scale(.3);opacity:0}}
-/* 金：三道剑气 */
-.vx-qi{left:var(--x0);top:var(--y,50%);width:70px;height:8px;margin:-4px 0 0 -35px;border-radius:50%;background:linear-gradient(90deg,transparent,var(--c) 40%,#fff);transform:scaleX(var(--d));filter:drop-shadow(0 0 6px var(--c));opacity:0;animation:vx-fly calc(.5s * var(--bs,1)) ease-in forwards}
 @keyframes vx-fly{0%{left:var(--x0);opacity:0}15%{opacity:1}90%{opacity:1}100%{left:var(--x1);opacity:0}}
-/* 木：藤蔓从地面卷向目标 + 飞叶 */
-.vx-vine{left:var(--x1);top:72%;width:60px;height:0;margin-left:-30px;border-radius:30px 30px 0 0;background:repeating-linear-gradient(170deg,var(--c) 0 6px,#2a7a30 6px 12px);box-shadow:0 0 10px var(--c);opacity:.85;animation:vx-vine calc(.85s * var(--bs,1)) ease-out forwards}
-@keyframes vx-vine{0%,30%{height:0;top:72%}60%{height:46%;top:30%}80%{opacity:.85}100%{height:46%;top:30%;opacity:0}}
-.vx-leaf{left:var(--x0);top:var(--y);width:14px;height:8px;border-radius:0 100% 0 100%;background:linear-gradient(135deg,var(--c2),var(--c));opacity:0;animation:vx-leaf calc(.6s * var(--bs,1)) ease-in forwards}
-@keyframes vx-leaf{0%{left:var(--x0);opacity:0;transform:rotate(0)}20%{opacity:1}100%{left:var(--x1);opacity:.6;transform:translateY(calc(var(--s) * 30px)) rotate(540deg)}}
-/* 水：水浪推过去 + 冰锥 */
-.vx-wave{left:var(--x0);top:62%;width:90px;height:60px;margin:-30px 0 0 -45px;border-radius:50% 50% 10% 10%;background:radial-gradient(ellipse at 50% 100%,var(--c2),var(--c) 50%,transparent 72%);transform:scaleX(var(--d));opacity:0;animation:vx-wave calc(.6s * var(--bs,1)) ease-in forwards}
-@keyframes vx-wave{0%{left:var(--x0);opacity:0;height:20px}20%{opacity:.9}100%{left:var(--x1);opacity:.4;height:80px}}
-.vx-ice{left:calc(var(--x1) + var(--o));top:30%;width:12px;height:44px;margin-left:-6px;background:linear-gradient(var(--c2),#fff 60%,var(--c));clip-path:polygon(50% 100%,0 0,100% 0);filter:drop-shadow(0 0 4px var(--c));animation:vx-ice calc(.35s * var(--bs,1)) ease-in forwards}
-@keyframes vx-ice{0%{top:5%;opacity:0}30%{opacity:1}100%{top:45%;opacity:1}}
-/* 火：流星 */
-.vx-meteor{left:var(--x0);top:20%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:radial-gradient(#fff,var(--c2) 30%,var(--c) 65%,transparent 72%);box-shadow:0 0 24px 10px var(--c),calc(var(--d) * -30px) -10px 20px 6px #ff9a3a88,calc(var(--d) * -60px) -20px 18px 4px #ff6a2a44;animation:vx-meteor calc(.56s * var(--bs,1)) ease-in forwards}
-@keyframes vx-meteor{0%{left:var(--x0);top:22%;transform:scale(.5)}100%{left:var(--x1);top:55%;transform:scale(1.3)}}
-/* 土：落石 */
-.vx-rock{left:calc(var(--x1) + var(--o));top:-10%;width:34px;height:30px;margin-left:-17px;background:radial-gradient(circle at 35% 30%,var(--c2),var(--c) 55%,#5a3a14);clip-path:polygon(20% 0,80% 6%,100% 50%,82% 100%,15% 92%,0 40%);transform:scale(var(--s));opacity:0;animation:vx-rock calc(.5s * var(--bs,1)) ease-in forwards}
-@keyframes vx-rock{0%{top:-10%;opacity:1}100%{top:50%;opacity:1;rotate:200deg}}
-/* 雷：乌云 + 闪电 + 闪白 */
-.vx-cloud{left:var(--x1);top:4%;width:120px;height:36px;margin-left:-60px;border-radius:50%;background:radial-gradient(ellipse,#3a3050,#5a4a78 50%,transparent 72%);opacity:0;animation:vx-cloud calc(.85s * var(--bs,1)) forwards}
-@keyframes vx-cloud{0%{opacity:0}30%,80%{opacity:.95}100%{opacity:0}}
-.vx-bolt{left:var(--x1);top:8%;width:40px;height:52%;margin-left:-20px;animation:vx-bolt calc(.45s * var(--bs,1)) forwards}
-.vx-bolt svg{width:100%;height:100%;fill:#fff;filter:drop-shadow(0 0 4px var(--c2)) drop-shadow(0 0 10px var(--c))}
-@keyframes vx-bolt{0%,40%{opacity:1}20%,60%{opacity:.3}100%{opacity:0}}
-.vx-flash{inset:0;background:var(--c2);mix-blend-mode:screen;animation:vx-flash calc(.35s * var(--bs,1)) forwards}
-@keyframes vx-flash{0%{opacity:.6}100%{opacity:0}}
-/* 法宝·剑：三把飞剑 */
 .vx-sword{left:var(--x0);top:var(--y,50%);width:120px;margin:-7px 0 0 -60px;transform:scaleX(var(--d));opacity:0;animation:vx-fly calc(.55s * var(--bs,1)) cubic-bezier(.5,0,.9,.6) forwards}
 .vx-sword img{width:100%;display:block;filter:drop-shadow(0 0 5px var(--c)) drop-shadow(0 0 10px var(--c)) brightness(1.2)}
-/* 刀：月牙刀光 + 斩痕 */
-.vx-crescent{left:var(--x0);top:55%;width:70px;height:110px;margin:-55px 0 0 -35px;border-radius:50%;box-shadow:calc(var(--d) * 14px) 0 0 0 var(--c2),calc(var(--d) * 14px) 0 14px 4px var(--c);animation:vx-fly calc(.5s * var(--bs,1)) ease-in forwards}
-.vx-cut{left:var(--x1);top:55%;width:120px;height:5px;margin:-2px 0 0 -60px;background:linear-gradient(90deg,transparent,#fff,var(--c2),transparent);box-shadow:0 0 10px var(--c);transform:rotate(-35deg) scaleX(0);animation:vx-cut calc(.4s * var(--bs,1)) ease-out forwards}
-@keyframes vx-cut{0%{transform:rotate(-35deg) scaleX(0);opacity:1}40%{transform:rotate(-35deg) scaleX(1);opacity:1}100%{transform:rotate(-35deg) scaleX(1.1);opacity:0}}
-/* 锤：巨锤从天砸下 */
-.vx-hammer{left:var(--x1);top:-30%;width:56px;height:80px;margin-left:-28px;background:linear-gradient(90deg,#00000000 42%,#6a4a24 42% 58%,#00000000 58%) 0 34px/100% 46px no-repeat,linear-gradient(var(--c2),var(--c) 60%,#4a3418) 0 0/100% 34px no-repeat;border-radius:6px;filter:drop-shadow(0 0 8px var(--c));transform-origin:50% 100%;animation:vx-hammer calc(.6s * var(--bs,1)) cubic-bezier(.6,0,1,.6) forwards}
-@keyframes vx-hammer{0%{top:-30%;transform:rotate(calc(var(--d) * -50deg)) scale(.8)}100%{top:22%;transform:rotate(0) scale(1.2)}}
-.vx-ringwave{left:var(--x1);top:66%;width:140px;height:30px;margin:-15px 0 0 -70px;border-radius:50%;border:3px solid var(--c2);box-shadow:0 0 12px var(--c);animation:vx-rw calc(.55s * var(--bs,1)) ease-out forwards}
-@keyframes vx-rw{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.5);opacity:0}}
-/* 环：旋转飞环 + 束缚 */
-.vx-hoop{left:var(--x0);top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;border:6px solid var(--c2);box-shadow:0 0 10px var(--c),inset 0 0 8px var(--c);animation:vx-hoop calc(.58s * var(--bs,1)) ease-in forwards}
-@keyframes vx-hoop{0%{left:var(--x0);transform:rotateX(70deg) rotate(0) scale(.6)}100%{left:var(--x1);top:56%;transform:rotateX(70deg) rotate(720deg) scale(1.4)}}
-.vx-bind{left:var(--x1);top:56%;width:100px;height:26px;margin:-13px 0 0 -50px;border-radius:50%;border:4px solid var(--c2);box-shadow:0 0 12px var(--c);animation:vx-bind calc(.45s * var(--bs,1)) ease-in forwards}
-@keyframes vx-bind{0%{transform:scale(1.4);opacity:1}100%{transform:scale(.7);opacity:0}}
-/* 鼎：大鼎压下 */
-.vx-ding{left:var(--x1);top:-35%;width:84px;height:76px;margin-left:-42px;background:radial-gradient(ellipse at 50% 30%,var(--c2),var(--c) 60%,#3a2810);clip-path:polygon(4% 0,24% 0,24% 12%,76% 12%,76% 0,96% 0,96% 14%,88% 18%,90% 70%,80% 72%,82% 100%,68% 100%,66% 76%,34% 76%,32% 100%,18% 100%,20% 72%,10% 70%,12% 18%,4% 14%);filter:drop-shadow(0 0 10px var(--c));animation:vx-drop calc(.62s * var(--bs,1)) cubic-bezier(.6,0,1,.7) forwards}
-@keyframes vx-drop{0%{top:-35%;transform:scale(.7)}88%{top:30%;transform:scale(1.15)}100%{top:30%;transform:scale(1.1,1)}}
-/* 印：大印盖下 + 方形印纹 */
-.vx-yin{left:var(--x1);top:-35%;width:70px;height:78px;margin-left:-35px;background:linear-gradient(var(--c2),var(--c)) 30% 0/40% 34% no-repeat,radial-gradient(circle at 50% 30%,var(--c2),var(--c) 70%,#3a2810) 0 100%/100% 66% no-repeat;border-radius:6px;filter:drop-shadow(0 0 10px var(--c));animation:vx-drop calc(.62s * var(--bs,1)) cubic-bezier(.6,0,1,.7) forwards}
-.vx-seal{left:var(--x1);top:62%;width:110px;height:110px;margin:-55px 0 0 -55px;border:4px double var(--c2);box-shadow:0 0 14px var(--c),inset 0 0 14px var(--c);transform:rotateX(70deg) rotate(45deg);animation:vx-seal calc(.6s * var(--bs,1)) ease-out forwards}
-@keyframes vx-seal{0%{transform:rotateX(70deg) rotate(45deg) scale(.3);opacity:1}100%{transform:rotateX(70deg) rotate(90deg) scale(1.4);opacity:0}}
-/* 盾：盾牌撞过去 */
-.vx-fbshield{left:var(--x0);top:52%;width:50px;height:60px;margin:-30px 0 0 -25px;background:radial-gradient(circle at 50% 35%,var(--c2),var(--c) 70%);clip-path:polygon(50% 0,100% 14%,92% 62%,50% 100%,8% 62%,0 14%);filter:drop-shadow(0 0 8px var(--c));animation:vx-fly calc(.52s * var(--bs,1)) ease-in forwards}
-.vx-shbash{left:var(--x1);top:55%;width:20px;height:90px;margin:-45px 0 0 -10px;border-radius:50%;background:radial-gradient(ellipse,#fff,var(--c2) 40%,transparent 70%);animation:vx-boom calc(.4s * var(--bs,1)) ease-out forwards}

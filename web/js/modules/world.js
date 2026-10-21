@@ -563,30 +563,215 @@ G.module({
       else if (k === 4) { add("btv-pop gray", "眩晕", w); this.btHp(); }
       else { add("btv-shield gold", "", w, 1000); this.btHp(); }
     },
-    // v246 法术 / 法宝特效：法术按属性（金剑气、木藤叶、水浪冰锥、火流星、土落石、雷劈），法宝按形状（剑、刀、锤、环、盾、鼎、印），颜色跟属性；返回命中时刻（毫秒，未乘放慢倍数）
+    // v247 法术 / 法宝特效（画布粒子，发光叠加）：法术按属性（金剑光、木飞叶缠藤、水柱溅射、火球爆炸、土落石尘爆、雷电弧劈下），
+    //   法宝按形状 ft（0 剑：三把飞剑，用 CSS；1 刀、2 锤、3 环、4 盾、5 鼎、6 印：写实图 img/fx_*.webp + 光尾 + 冲击），颜色跟属性；返回命中时刻（毫秒，未乘放慢倍数）
     btVfx(fxEl, w, k, el, ft, SL, tg) {
-      const X0 = w ? 76 : 24, X1 = w ? 24 : 76, dir = w ? -1 : 1;
-      const mk = (cls, ms, css, html) => { const n = document.createElement("div"); n.className = "vx " + cls + " vx-" + el;
-        n.style.cssText = `--x0:${X0}%;--x1:${X1}%;--d:${dir};` + (css || ""); if (html) n.innerHTML = html; fxEl.appendChild(n); setTimeout(() => n.remove(), ms * SL); return n; };
-      const later = (ms, f) => setTimeout(f, ms * SL);
-      const boom = (big, t) => later(t, () => { mk("vx-boom" + (big ? " big" : ""), 700); for (let i = 0; i < (big ? 10 : 7); i++) mk("vx-spark", 650, `--a:${Math.round(Math.random() * 360)}deg;--r:${30 + Math.random() * (big ? 60 : 36)}px`); });
-      const shake = t => later(t, () => { const st = fxEl.parentNode; st.classList.remove("vx-shake"); void st.offsetWidth; st.classList.add("vx-shake"); });
+      const E = this.btFx(fxEl); if (!E) return 500;
+      const C = { jin: [255, 210, 90], mu: [110, 230, 90], shui: [90, 180, 255], huo: [255, 120, 40], tu: [210, 160, 90], lei: [170, 140, 255] }[el] || [255, 200, 120];
+      const W = E.W, H = E.H, S = H / 225, X0 = (w ? 0.76 : 0.24) * W, X1 = (w ? 0.24 : 0.76) * W, Y = 0.56 * H, d = w ? -1 : 1;
+      const R = (a, b) => a + Math.random() * (b - a);
+      const at = (ms, f) => setTimeout(f, ms * SL);
+      const T = ms => ms * SL;
+      const P = o => E.parts.push(Object.assign({ x: 0, y: 0, vx: 0, vy: 0, g: 0, drag: 1, age: 0, life: 600, sz: 4, grow: 1, col: C, a: 1, kind: "glow" }, o, { life: T(o.life || 600) })) && E.kick();
+      const O = (dur, draw, o) => { E.objs.push(Object.assign({ t0: performance.now(), dur: T(dur), draw }, o || {})); E.kick(); };
+      const FIRE = [[255, 250, 220], [255, 210, 90], [255, 120, 30], [190, 40, 10]];
+      const spark = (x, y, n, col, sp, g) => { for (let i = 0; i < n; i++) { const a = R(0, 6.283), v = R(.3, 1) * sp * S; P({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (g ? v * .4 : 0), g: g || 0, drag: .94, life: R(300, 650), sz: R(1, 2.2) * S, col: col || C, kind: "streak" }); } };
+      const flash = (a, col) => O(260, (c, p) => { c.globalCompositeOperation = "lighter"; c.fillStyle = `rgba(${(col || C).join(",")},${a * (1 - p)})`; c.fillRect(0, 0, W, H); });
+      const ring = (x, y, r1, col, flat) => O(520, (c, p) => { const r = r1 * S * (.2 + p); c.globalCompositeOperation = "lighter"; c.strokeStyle = `rgba(${(col || C).join(",")},${(1 - p) * .55})`; c.lineWidth = (3.5 * (1 - p) + .8) * S;
+        c.shadowColor = `rgb(${(col || C).join(",")})`; c.shadowBlur = 12 * S; c.beginPath(); c.ellipse(x, y, r, r * (flat || 1), 0, 0, 6.283); c.stroke(); c.shadowBlur = 0; });
+      const dust = (x, y, n, sp) => { for (let i = 0; i < n; i++) { const a = R(3.4, 6.0); P({ x: x + R(-10, 10) * S, y, vx: Math.cos(a) * R(.2, 1) * sp * S, vy: Math.sin(a) * R(.1, .5) * sp * S, drag: .93, life: R(600, 1100), sz: R(8, 16) * S, grow: 2.6, col: [150, 120, 90], a: .55, kind: "smoke" }); } };
+      const debris = (x, y, n) => { for (let i = 0; i < n; i++) P({ x, y, vx: R(-3, 3) * S, vy: R(-5, -2) * S, g: .25 * S, life: R(500, 800), sz: R(2, 5) * S, col: [110, 90, 70], kind: "rock", rot: R(0, 6), vr: R(-.3, .3), a: 1 }); };
+      const shake = ms => at(ms, () => { const st = fxEl.parentNode; st.classList.remove("vx-shake"); void st.offsetWidth; st.classList.add("vx-shake"); });
+      // 沿路径飞的东西：每帧调 f(x, y, p)
+      const fly = (dur, x0, y0, x1, y1, arc, f, ease) => O(dur, (c, p) => { const q = ease ? ease(p) : p, x = x0 + (x1 - x0) * q, y = y0 + (y1 - y0) * q - Math.sin(q * Math.PI) * arc * S; f(c, x, y, q); });
       if (k === 1) {
-        if (el === "jin") { for (let i = 0; i < 3; i++) mk("vx-qi", 800, `animation-delay:${i * 90 * SL}ms;--y:${44 + i * 7}%`); boom(false, 520); return 560; }
-        if (el === "mu") { mk("vx-vine", 900); for (let i = 0; i < 8; i++) mk("vx-leaf", 900, `animation-delay:${i * 40 * SL}ms;--y:${40 + Math.random() * 24}%;--s:${Math.random() * 2 - 1}`); boom(false, 560); return 600; }
-        if (el === "shui") { mk("vx-wave", 900); for (let i = 0; i < 3; i++) later(380 + i * 70, () => mk("vx-ice", 600, `--o:${(i - 1) * 6}%`)); boom(false, 540); return 580; }
-        if (el === "tu") { for (let i = 0; i < 3; i++) mk("vx-rock", 800, `animation-delay:${i * 110 * SL}ms;--o:${(i - 1) * 7}%;--s:${0.8 + i * 0.2}`); boom(true, 600); shake(600); return 620; }
-        if (el === "lei") { mk("vx-cloud", 900); later(320, () => { mk("vx-bolt", 500, "", '<svg viewBox="0 0 40 200" preserveAspectRatio="none"><path d="M24 0 L10 80 L22 84 L6 200 L34 70 L20 66 L30 0Z"/></svg>'); mk("vx-flash", 400); }); boom(true, 360); shake(360); return 380; }
-        mk("vx-meteor", 700); boom(true, 560); return 560;   // 火
+        if (el === "lei") {   // 雷：天色一暗，云里先闪几下，随后多道分叉电弧劈到目标身上，闪白 + 电火花
+          O(900, (c, p) => { c.globalCompositeOperation = "source-over"; c.fillStyle = `rgba(8,6,25,${.45 * Math.sin(Math.min(1, p * 1.4) * Math.PI)})`; c.fillRect(0, 0, W, H); });
+          for (let i = 0; i < 3; i++) at(80 + i * 70, () => { const x = X1 + R(-60, 60) * S; O(90, (c, p) => this.btBolt(c, x, 0, x + R(-40, 40) * S, R(.1, .25) * H, S, C, (1 - p) * .6, 0)); });
+          const strike = (t, a, br) => at(t, () => { const sx = X1 + R(-30, 30) * S, seed = Math.random(); const ex = X1 + R(-4, 4) * S; O(300, (c, p) => this.btBolt(c, sx, -10, ex, Y - 10 * S, S * 1.4, C, (p < .3 ? 1 : p < .45 ? .35 : p < .6 ? 1 : (1 - p) * 2.5) * a, br, seed)); });
+          strike(330, 1, 3); strike(400, .8, 2); strike(470, 1, 3); strike(560, .5, 1);
+          at(330, () => { flash(.55, [230, 220, 255]); spark(X1, Y, 26, [220, 210, 255], 7, .1);
+            O(420, (c, p) => { E.glow(c, X1, Y, 60 * S, C, .5 * (1 - p)); for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283, r = R(14, 34) * S; this.btBolt(c, X1, Y, X1 + Math.cos(a) * r, Y + Math.sin(a) * r, S * .4, C, (1 - p) * .9, 0); } }); });
+          shake(330); return 360;
+        }
+        if (el === "huo") {   // 火：火球带拖尾火焰和黑烟飞过去，撞上炸开（火焰、火星、黑烟、冲击环）
+          fly(520, X0, Y - 6 * S, X1, Y, 26, (c, x, y) => { E.glow(c, x, y, 26 * S, [255, 150, 50], .9); E.glow(c, x, y, 12 * S, [255, 245, 210], 1);
+            for (let i = 0; i < 6; i++) P({ x: x + R(-5, 5) * S, y: y + R(-5, 5) * S, vx: -d * R(.5, 1.6) * S, vy: R(-1, .2) * S, drag: .96, life: R(250, 450), sz: R(7, 13) * S, grow: .3, pal: FIRE, blend: "source-over", a: .85 });
+            if (Math.random() < .25) P({ x: x - d * 14 * S, y, vx: -d * .5 * S, vy: -R(.3, .8) * S, life: 600, sz: 5 * S, grow: 2.5, col: [95, 85, 80], a: .25, kind: "smoke" }); }, p => p * p * .4 + p * .6);
+          at(520, () => { flash(.35, [255, 170, 80]); ring(X1, Y, 70, [255, 160, 60], .45);
+            for (let i = 0; i < 70; i++) { const a = R(0, 6.283), v = R(.5, 4.5) * S; P({ x: X1, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - S, drag: .93, life: R(350, 700), sz: R(8, 18) * S, grow: .25, pal: FIRE, blend: i % 3 ? "source-over" : "lighter", a: .9 }); }
+            spark(X1, Y, 30, [255, 200, 90], 8, .12);
+            at(250, () => { for (let i = 0; i < 8; i++) P({ x: X1 + R(-20, 20) * S, y: Y - R(0, 20) * S, vx: R(-.6, .6) * S, vy: -R(.4, 1.1) * S, drag: .97, life: R(800, 1200), sz: R(8, 12) * S, grow: 3, col: [80, 70, 65], a: .3, kind: "smoke" }); }); });
+          shake(520); return 540;
+        }
+        if (el === "shui") {   // 水：一道水柱冲过去，撞上四溅（水珠带重力落下）+ 水雾 + 涟漪
+          const jx0 = X0 + d * 22 * S, jy0 = Y - 8 * S, cy = Y - 60 * S;
+          const jet = (q, t) => { const u = 1 - t; return [u * u * jx0 + 2 * u * t * ((jx0 + X1) / 2) + t * t * X1, u * u * jy0 + 2 * u * t * cy + t * t * Y]; };
+          O(620, (c, p) => { const head = Math.min(1, p / .7), tail = Math.max(0, (p - .55) / .45), n = 26; if (head <= tail) return;
+            const pts = []; for (let i = 0; i <= n; i++) pts.push(jet(0, tail + (head - tail) * i / n));
+            const t0 = performance.now() / 60; c.globalCompositeOperation = "source-over"; c.lineCap = "round";
+            for (const [lw, st] of [[13, "rgba(40,120,220,.35)"], [8, "rgba(80,165,250,.75)"], [3.2, "rgba(225,245,255,.9)"]]) { c.strokeStyle = st; c.beginPath();
+              pts.forEach(([x, y], i) => { const wob = Math.sin(i * 1.3 + t0) * 1.4 * S; i ? c.lineTo(x, y + wob) : c.moveTo(x, y + wob); }); c.lineWidth = lw * S; c.stroke(); }
+            const [hx, hy] = pts[n]; for (let i = 0; i < 3; i++) P({ x: hx, y: hy, vx: R(-1.5, 1.5) * S, vy: R(-1.5, .5) * S, g: .12 * S, life: R(250, 420), sz: R(1, 2) * S, col: [190, 230, 255], kind: "streak" }); });
+          at(440, () => { flash(.12, [200, 230, 255]);
+            for (let i = 0; i < 70; i++) { const a = R(3.5, 5.9), v = R(1.5, 6.5) * S; P({ x: X1 + R(-8, 8) * S, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: .22 * S, life: R(450, 800), sz: R(1, 2.2) * S, col: Math.random() < .5 ? [235, 248, 255] : [100, 175, 250], kind: i % 4 ? "streak2" : "drop" }); }
+            for (let i = 0; i < 12; i++) P({ x: X1 + R(-20, 20) * S, y: Y + R(-15, 15) * S, vx: R(-.8, .8) * S, vy: -R(.2, .8) * S, drag: .97, life: R(700, 1100), sz: R(12, 20) * S, grow: 2.2, col: [220, 240, 255], a: .35, kind: "smoke" }); });
+          return 460;
+        }
+        if (el === "tu") {   // 土：几块巨石从天而降，砸地尘土飞扬、碎石四溅
+          for (let i = 0; i < 4; i++) { const ox = R(-30, 30) * S, sz = R(14, 24) * S, t = i * 90, vr = R(-.15, .15);
+            at(t, () => fly(460, X1 + ox + d * 40 * S, -30 * S, X1 + ox * .5, Y + R(-6, 10) * S, 0, (c, x, y, q) => { E.rock(c, x, y, sz, q * 6 * vr * 10, [128, 104, 80]);
+              P({ x: x + R(-sz, sz) * .4, y: y - sz * .6, vx: R(-.2, .2) * S, vy: -.4 * S, life: 450, sz: sz * .45, grow: 2.2, col: [140, 120, 100], a: .28, kind: "smoke" }); }, p => p * p));
+            at(t + 460, () => { dust(X1 + ox * .5, Y + 14 * S, 6, 4); debris(X1 + ox * .5, Y, 6); }); }
+          at(460, () => flash(.1, [255, 220, 170]));
+          shake(460); shake(730); return 480;
+        }
+        if (el === "mu") {   // 木：一阵飞叶带着绿光旋过去，目标脚下藤蔓破土缠绕
+          for (let i = 0; i < 26; i++) { const t = i * 14, ph = R(0, 6.283), amp = R(8, 22), yo = R(-14, 14);
+            at(t, () => fly(480, X0 + d * 20 * S, Y + yo * S, X1, Y + yo * .4 * S, 0, (c, x, y, q) => { const yy = y + Math.sin(q * 9 + ph) * amp * S * (1 - q * .6);
+              E.leaf(c, x, yy, 6 * S, q * 14 + ph, [80 + (i % 3) * 30, 190, 70]); if (Math.random() < .25) P({ x, y: yy, life: 300, sz: 3 * S, col: [170, 255, 140] }); })); }
+          at(380, () => { for (let v = 0; v < 6; v++) { const bx = X1 + R(-34, 34) * S, h = R(50, 85) * S, sw = R(-1, 1), wd = R(3, 5) * S;
+              O(700, (c, p) => E.vine(c, bx, Y + 30 * S, h, sw, wd, Math.min(1, p * 2.2), p > .75 ? (1 - p) * 4 : 1)); } });
+          at(500, () => { for (let i = 0; i < 24; i++) { const a = R(0, 6.283), v = R(1, 3.5) * S; P({ x: X1, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: .04 * S, drag: .95, life: R(500, 900), sz: 5 * S, col: [90, 200, 70], kind: "leaf", rot: R(0, 6), vr: R(-.3, .3) }); }
+            spark(X1, Y, 14, [190, 255, 150], 4); });
+          return 500;
+        }
+        // 金：三道锐利的金色剑光斩过去，命中迸出金属火星
+        for (let i = 0; i < 3; i++) { const yo = (i - 1) * 16 * S, rot = (i - 1) * .25;
+          at(i * 80, () => fly(380, X0 + d * 20 * S, Y + yo, X1, Y + yo * .3, 0, (c, x, y, q) => { E.crescent(c, x, y, 34 * S, d, rot, C, q < .1 ? q * 10 : 1);
+            if (Math.random() < .8) P({ x: x - d * 6 * S, y: y + R(-14, 14) * S, vx: -d * R(1, 2) * S, life: 220, sz: 1.5 * S, col: [255, 240, 180], kind: "streak" }); }, p => p * p * .3 + p * .7));
+          at(i * 80 + 380, () => { spark(X1, Y + yo * .3, 16, [255, 230, 150], 9, .15); O(240, (c, p) => { c.globalCompositeOperation = "lighter"; c.strokeStyle = `rgba(255,245,200,${1 - p})`; c.lineWidth = 3 * S * (1 - p); c.shadowColor = "#ffd36b"; c.shadowBlur = 14 * S;
+            c.beginPath(); c.moveTo(X1 - 40 * S, Y + yo * .3 - (20 - i * 18) * S); c.lineTo(X1 + 40 * S, Y + yo * .3 + (20 - i * 18) * S); c.stroke(); c.shadowBlur = 0; }); }); }
+        at(380, () => flash(.15, [255, 230, 160])); return 400;
       }
-      const T = (DATA.fabaoTypes[ft] || {});
-      if (T.shield) { mk("vx-fbshield", 700); later(250, () => mk("vx-shbash", 500)); boom(false, 520); shake(520); return 540; }   // 盾：撞过去
-      if (ft === 0) { for (let i = 0; i < 3; i++) mk("vx-sword", 900, `animation-delay:${i * 80 * SL}ms;--y:${42 + i * 8}%`, `<img src="img/bt_sword.webp?v=${DATA.IMG_V || 1}" alt="">`); boom(false, 600); return 640; }
-      if (ft === 1) { mk("vx-crescent", 750); later(480, () => mk("vx-cut", 450)); boom(false, 500); return 520; }
-      if (ft === 2) { mk("vx-hammer", 900); boom(true, 600); shake(600); later(600, () => mk("vx-ringwave", 600)); return 620; }
-      if (ft === 3) { mk("vx-hoop", 900); later(560, () => mk("vx-bind", 500)); boom(false, 560); return 580; }
-      if (ft === 5) { mk("vx-ding", 1000); later(620, () => mk("vx-ringwave", 600)); boom(true, 620); shake(620); return 640; }
-      mk("vx-yin", 1000); later(620, () => mk("vx-seal", 650)); boom(true, 620); shake(620); return 640;   // 印
+      // ---------- 法宝 ----------
+      const img = n => E.img(n);
+      const trail = (c, x, y) => { E.glow(c, x, y, 30 * S, C, .45); if (Math.random() < .9) P({ x: x + R(-6, 6) * S, y: y + R(-6, 6) * S, vx: -d * R(.3, 1) * S, vy: R(-.5, .5) * S, life: R(250, 450), sz: R(3, 6) * S, grow: .4 }); };
+      const mixW = C.map(v => v + (255 - v) * .6 | 0);
+      const slam = (x, y, big) => { flash(big ? .14 : .1, mixW); ring(x, y + 20 * S, big ? 95 : 70, C, .3); ring(x, y + 20 * S, big ? 60 : 45, [255, 255, 255], .3); dust(x, y + 22 * S, big ? 14 : 8, 5); debris(x, y + 10 * S, big ? 12 : 6); spark(x, y, 20, C, 7, .1); };
+      if (ft === 0) { const mk = (cls, ms, css, html) => { const n = document.createElement("div"); n.className = "vx " + cls + " vx-" + el; n.style.cssText = `--x0:${w ? 76 : 24}%;--x1:${w ? 24 : 76}%;--d:${d};` + (css || ""); if (html) n.innerHTML = html; fxEl.appendChild(n); setTimeout(() => n.remove(), ms * SL); return n; };
+        for (let i = 0; i < 3; i++) mk("vx-sword", 900, `animation-delay:${i * 80 * SL}ms;--y:${42 + i * 8}%`, `<img src="img/bt_sword.webp?v=${DATA.IMG_V || 1}" alt="">`);
+        at(600, () => { spark(X1, Y, 22, [255, 240, 200], 8, .12); flash(.15, C); E.glow && O(300, (c, p) => E.glow(c, X1, Y, 50 * S * (.5 + p), C, 1 - p)); }); return 640; }   // 剑：三把飞剑（保留原效果）
+      if (ft === 1) {   // 刀：旋转飞斩过去，命中拉出一道大刀光
+        const im = img("dao"), ln = 96 * S;
+        fly(480, X0 + d * 10 * S, Y - 10 * S, X1, Y - 4 * S, 18, (c, x, y, q) => { trail(c, x, y); E.draw(c, im, x, y, ln, d * q * 4 * Math.PI * 2, 1, d < 0); });
+        at(480, () => { spark(X1, Y, 24, [255, 240, 200], 9, .12); flash(.12, mixW);
+          O(300, (c, p) => E.crescent(c, X1 + d * 30 * S, Y, 58 * S * (.8 + p * .3), d, -.5, C, 1 - p * p)); });
+        return 500;
+      }
+      if (ft === 2) {   // 锤：巨锤在目标头顶现形，抡下砸地，冲击波 + 尘土碎石 + 震屏
+        const im = img("chui"), ln = 100 * S, px = X1 + d * 18 * S;
+        O(620, (c, p) => { const q = p < .45 ? 0 : Math.pow((p - .45) / .55, 2.2), a = d * (-1.4 + q * 1.4) * (p < .45 ? 1 : 1), y = Y - 40 * S - (1 - q) * 30 * S;
+          E.glow(c, px, y, 50 * S, C, .35 * Math.min(1, p * 4)); E.draw(c, im, px, y, ln, a, Math.min(1, p * 4), false, .5, .95); });
+        at(620, () => slam(X1, Y, true)); shake(620); return 630;
+      }
+      if (ft === 3) {   // 环：旋转着飞过去（立体翻转），套住目标收紧
+        const im = img("huan"), ln = 50 * S;
+        fly(560, X0 + d * 10 * S, Y - 8 * S, X1, Y - 4 * S, 30, (c, x, y, q) => { trail(c, x, y); E.draw(c, im, x, y, ln * (.7 + q * .5), q * 10, 1, false, .5, .5, Math.abs(Math.cos(q * 12)) * .7 + .3); });
+        at(560, () => { spark(X1, Y, 18, C, 5); flash(.15, C);
+          O(520, (c, p) => { const r = (60 - p * 30) * S; E.glow(c, X1, Y, r * 1.2, C, .4 * (1 - p)); E.draw(c, im, X1, Y + 6 * S, r * 2, 0, 1 - p * p, false, .5, .5, .28);
+            c.globalCompositeOperation = "lighter"; c.strokeStyle = `rgba(${C.join(",")},${(1 - p) * .6})`; c.lineWidth = 1.6 * S; c.shadowColor = `rgb(${C.join(",")})`; c.shadowBlur = 12 * S; c.beginPath(); c.ellipse(X1, Y + 6 * S, r, r * .28, 0, 0, 6.283); c.stroke(); c.shadowBlur = 0; }); });
+        return 580;
+      }
+      if (ft === 5 || ft === 6) {   // 鼎 / 印：从天而降压在目标身上，落地冲击；印另有方形印纹
+        const im = img(ft === 5 ? "ding" : "yin"), ln = (ft === 5 ? 88 : 78) * S;
+        O(640, (c, p) => { const q = p < .25 ? 0 : Math.pow((p - .25) / .75, 2.4), y = -60 * S + (Y - 6 * S + 60 * S) * q, sc = .75 + q * .35;
+          E.glow(c, X1, y, ln * .8, C, .5 * Math.min(1, p * 3)); E.draw(c, im, X1, y, ln * sc, 0, Math.min(1, p * 4)); });
+        at(640, () => { slam(X1, Y, true); O(500, (c, p) => { E.draw(c, im, X1, Y - 6 * S, ln * 1.1 * (1 + p * .08), 0, 1 - p); });
+          if (ft === 6) O(700, (c, p) => { const r = (40 + p * 70) * S; c.save(); c.translate(X1, Y + 24 * S); c.scale(1, .32); c.rotate(.785 + p); c.globalCompositeOperation = "lighter";
+            c.strokeStyle = `rgba(${C.join(",")},${1 - p})`; c.shadowColor = `rgb(${C.join(",")})`; c.shadowBlur = 16 * S; c.lineWidth = 4 * S; c.strokeRect(-r, -r, r * 2, r * 2); c.lineWidth = 2 * S; c.strokeRect(-r * .78, -r * .78, r * 1.56, r * 1.56); c.restore(); }); });
+        shake(640); return 650;
+      }
+      // 盾（及其他）：一面光盾撞过去
+      fly(480, X0 + d * 16 * S, Y, X1, Y, 0, (c, x, y) => { E.glow(c, x, y, 34 * S, C, .7); E.glow(c, x, y, 14 * S, [255, 255, 255], .7); trail(c, x, y); });
+      at(480, () => slam(X1, Y, false)); return 500;
+    },
+    // 画布特效引擎：每个战斗画面一块 canvas，粒子 + 定时绘制对象，没东西时停帧
+    btFx(fxEl) {
+      let E = this._btFx;
+      if (!E || !E.cv.isConnected || E.cv.parentNode !== fxEl) {
+        const r = fxEl.getBoundingClientRect(); if (!r.width) return null;
+        const cv = document.createElement("canvas"); cv.className = "vx-cv"; fxEl.appendChild(cv);
+        const dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+        const c = cv.getContext("2d"), sprites = {}, imgs = {};
+        E = this._btFx = { cv, c, W: cv.width, H: cv.height, parts: [], objs: [], run: false };
+        const sprite = col => { const key = col.join(","); if (sprites[key]) return sprites[key];
+          const s = document.createElement("canvas"); s.width = s.height = 64; const g = s.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+          gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(.22, `rgba(${key},.95)`); gr.addColorStop(.55, `rgba(${key},.35)`); gr.addColorStop(1, `rgba(${key},0)`);
+          g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (sprites[key] = s); };
+        const smoke = col => { const key = "s" + col.join(","); if (sprites[key]) return sprites[key];
+          const s = document.createElement("canvas"); s.width = s.height = 64; const g = s.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+          gr.addColorStop(0, `rgba(${col.join(",")},.8)`); gr.addColorStop(.5, `rgba(${col.join(",")},.35)`); gr.addColorStop(1, `rgba(${col.join(",")},0)`);
+          g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return (sprites[key] = s); };
+        E.glow = (c, x, y, r, col, a, blend) => { c.globalCompositeOperation = blend || "lighter"; c.globalAlpha = Math.max(0, Math.min(1, a)); c.drawImage(sprite(col), x - r, y - r, r * 2, r * 2); c.globalAlpha = 1; };
+        E.img = n => { if (!imgs[n]) { imgs[n] = new Image(); imgs[n].src = `img/fx_${n}.webp?v=${DATA.IMG_V || 1}`; } return imgs[n]; };
+        // 画图：ln = 长边像素，ax/ay 旋转中心（0~1），sx 横向压缩（环翻转）
+        E.draw = (c, im, x, y, ln, rot, a, flip, ax, ay, sx) => { if (!im.complete || !im.naturalWidth) return; const k = ln / Math.max(im.naturalWidth, im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
+          c.save(); c.globalCompositeOperation = "source-over"; c.globalAlpha = Math.max(0, Math.min(1, a)); c.translate(x, y); c.rotate(rot || 0); c.scale((flip ? -1 : 1) * (sx || 1), 1);
+          c.drawImage(im, -w * (ax === undefined ? .5 : ax), -h * (ay === undefined ? .5 : ay), w, h); c.restore(); };
+        E.rock = (c, x, y, r, rot, col) => { c.save(); c.translate(x, y); c.rotate(rot); c.globalCompositeOperation = "source-over";
+          const g = c.createRadialGradient(-r * .35, -r * .35, r * .1, 0, 0, r * 1.1); g.addColorStop(0, `rgb(${col.map(v => Math.min(255, v + 40)).join(",")})`); g.addColorStop(.6, `rgb(${col.join(",")})`); g.addColorStop(1, "rgb(60,40,25)");
+          c.fillStyle = g; c.beginPath(); const n = 8; for (let i = 0; i < n; i++) { const a = i / n * 6.283, rr = r * (.75 + ((i * 37) % 10) / 30); i ? c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+          c.closePath(); c.fill(); c.save(); c.clip(); c.strokeStyle = "rgba(30,20,12,.55)"; c.lineWidth = Math.max(.6, r * .06);
+          for (let i = 0; i < 3; i++) { const a = i * 2.1 + .4; c.beginPath(); c.moveTo(Math.cos(a) * r * .1, Math.sin(a) * r * .1); c.lineTo(Math.cos(a + .3) * r * .5, Math.sin(a + .3) * r * .5); c.lineTo(Math.cos(a - .2) * r, Math.sin(a - .2) * r); c.stroke(); }
+          c.fillStyle = "rgba(255,240,210,.18)"; c.beginPath(); c.arc(-r * .35, -r * .35, r * .45, 0, 6.283); c.fill();
+          for (let i = 0; i < 7; i++) { c.fillStyle = i % 2 ? "rgba(30,20,10,.25)" : "rgba(255,240,220,.15)"; c.beginPath(); c.arc(Math.cos(i * 2.4) * r * .55, Math.sin(i * 3.1) * r * .5, r * .09, 0, 6.283); c.fill(); }
+          c.restore(); c.strokeStyle = "rgba(35,22,12,.75)"; c.lineWidth = Math.max(1, r * .07); c.stroke(); c.restore(); };
+        E.leaf = (c, x, y, r, rot, col) => { c.save(); c.translate(x, y); c.rotate(rot); c.globalCompositeOperation = "source-over";
+          const g = c.createLinearGradient(-r, 0, r, 0); g.addColorStop(0, `rgb(${col.map(v => v * .55 | 0).join(",")})`); g.addColorStop(.5, `rgb(${col.join(",")})`); g.addColorStop(1, `rgb(${col.map(v => v * .7 | 0).join(",")})`);
+          c.fillStyle = g; c.beginPath(); c.moveTo(-r, 0); c.quadraticCurveTo(0, -r * .55, r, 0); c.quadraticCurveTo(0, r * .55, -r, 0); c.fill();
+          c.strokeStyle = "rgba(20,60,15,.6)"; c.lineWidth = Math.max(.6, r * .08); c.beginPath(); c.moveTo(-r, 0); c.lineTo(r * .9, 0); c.stroke(); c.restore(); };
+        // 藤蔓：从地面长出、弯曲、渐细，带刺
+        E.vine = (c, bx, by, h, sw, wd, grow, a) => { const n = 18, pts = []; for (let i = 0; i <= n * grow; i++) { const t = i / n; pts.push([bx + Math.sin(t * 5 + sw * 3) * 14 * t * (wd / 4) + sw * t * 20, by - h * t]); }
+          if (pts.length < 2) return; c.save(); c.globalCompositeOperation = "source-over"; c.globalAlpha = Math.max(0, a); c.lineCap = "round";
+          for (let i = 1; i < pts.length; i++) { const t = i / n; c.strokeStyle = `rgb(${40 + t * 30 | 0},${95 + t * 50 | 0},${30 + t * 10 | 0})`; c.lineWidth = wd * (1 - t * .8) + .5; c.beginPath(); c.moveTo(...pts[i - 1]); c.lineTo(...pts[i]); c.stroke();
+            if (i % 3 === 0) { c.strokeStyle = "rgba(170,220,120,.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(...pts[i]); c.lineTo(pts[i][0] + (i % 6 ? 5 : -5) * wd / 4, pts[i][1] - 3); c.stroke(); } }
+          c.restore(); };
+        // 月牙剑光
+        // 剑光：细长弧线，白芯 + 属性色外光，尾端渐隐
+        E.crescent = (c, x, y, r, d, rot, col, a) => { c.save(); c.translate(x, y); c.rotate(rot); c.scale(d, 1); c.globalCompositeOperation = "lighter"; c.lineCap = "round";
+          const seg = 14, a0 = -1.15, a1 = 1.15; c.shadowColor = `rgb(${col.join(",")})`; c.shadowBlur = r * .35;
+          for (let i = 0; i < seg; i++) { const u0 = a0 + (a1 - a0) * i / seg, u1 = a0 + (a1 - a0) * (i + 1) / seg, mid = 1 - Math.abs((i + .5) / seg - .5) * 2;
+            c.strokeStyle = `rgba(${col.join(",")},${a * .45 * mid})`; c.lineWidth = r * .16 * mid + .5; c.beginPath(); c.arc(-r * .6, 0, r, u0, u1); c.stroke();
+            c.strokeStyle = `rgba(255,252,235,${a * mid})`; c.lineWidth = r * .05 * mid + .4; c.beginPath(); c.arc(-r * .6, 0, r, u0, u1); c.stroke(); }
+          c.restore(); };
+        const loop = () => {
+          const now = performance.now(), dt = Math.min(50, now - (E.last || now)) / 16.7; E.last = now;
+          c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = "source-over"; c.clearRect(0, 0, E.W, E.H);
+          E.objs = E.objs.filter(o => { const p = (now - o.t0) / o.dur; if (p < 0) return true; if (p >= 1) return false; c.save(); o.draw(c, p); c.restore(); return true; });
+          E.parts = E.parts.filter(q => { q.age += dt * 16.7; if (q.age >= q.life) return false; const t = q.age / q.life;
+            q.vx *= Math.pow(q.drag, dt); q.vy = q.vy * Math.pow(q.drag, dt) + q.g * dt; const ox = q.x, oy = q.y; q.x += q.vx * dt; q.y += q.vy * dt;
+            const sz = q.sz * (1 + (q.grow - 1) * t);
+            let col = q.col; if (q.pal) { const f = t * (q.pal.length - 1), i = Math.min(q.pal.length - 2, f | 0), u = f - i; col = q.pal[i].map((v, j) => v + (q.pal[i + 1][j] - v) * u | 0); }
+            if (q.kind === "glow") E.glow(c, q.x, q.y, sz, col, q.a * (1 - t * t), q.blend);
+            else if (q.kind === "smoke") { c.globalCompositeOperation = "source-over"; c.globalAlpha = q.a * (1 - t); c.drawImage(smoke(col), q.x - sz, q.y - sz, sz * 2, sz * 2); c.globalAlpha = 1; }
+            else if (q.kind === "streak") { c.globalCompositeOperation = "lighter"; c.strokeStyle = `rgba(${col.join(",")},${1 - t})`; c.lineWidth = sz; c.lineCap = "round"; c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x - q.vx * 2.2, q.y - q.vy * 2.2); c.stroke(); }
+            else if (q.kind === "streak2") { c.globalCompositeOperation = "source-over"; c.strokeStyle = `rgba(${col.join(",")},${.9 * (1 - t)})`; c.lineWidth = sz; c.lineCap = "round"; c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x - q.vx * 1.8, q.y - q.vy * 1.8); c.stroke(); }
+            else if (q.kind === "drop") { c.globalCompositeOperation = "source-over"; c.globalAlpha = .85 * (1 - t * t); c.fillStyle = `rgb(${col.join(",")})`; c.beginPath(); c.ellipse(q.x, q.y, sz * .6, sz, Math.atan2(q.vy, q.vx) + 1.57, 0, 6.283); c.fill();
+              c.fillStyle = "rgba(255,255,255,.7)"; c.beginPath(); c.arc(q.x - sz * .2, q.y - sz * .3, sz * .25, 0, 6.283); c.fill(); c.globalAlpha = 1; }
+            else if (q.kind === "rock") { q.rot += q.vr * dt; E.rock(c, q.x, q.y, sz, q.rot, col); }
+            else if (q.kind === "leaf") { q.rot += q.vr * dt; c.globalAlpha = 1 - t * t; E.leaf(c, q.x, q.y, sz, q.rot, col); c.globalAlpha = 1; }
+            return true; });
+          if (E.objs.length || E.parts.length) requestAnimationFrame(loop); else { E.run = false; E.last = 0; c.clearRect(0, 0, E.W, E.H); }
+        };
+        E.kick = () => { if (!E.run) { E.run = true; requestAnimationFrame(loop); } };
+        ["dao", "chui", "huan", "ding", "yin"].forEach(E.img);
+      }
+      return E;
+    },
+    // 分叉电弧：中点位移法生成折线，画三层（外光、中光、白芯）；br 分叉数；seed 让同一道闪电在几帧里形状不变
+    btBolt(c, x0, y0, x1, y1, S, col, a, br, seed) {
+      if (a <= 0) return;
+      let s = seed === undefined ? Math.random() * 1e6 : seed * 1e6 + 1; const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+      const path = (ax, ay, bx, by, dev, n) => { let pts = [[ax, ay], [bx, by]]; for (let k = 0; k < n; k++) { const np = [pts[0]]; for (let i = 1; i < pts.length; i++) { const [px, py] = pts[i - 1], [qx, qy] = pts[i];
+        const mx = (px + qx) / 2 + (rnd() - .5) * dev, my = (py + qy) / 2 + (rnd() - .5) * dev * .3; np.push([mx, my], pts[i]); } pts = np; dev *= .55; } return pts; };
+      const L = Math.hypot(x1 - x0, y1 - y0), main = path(x0, y0, x1, y1, L * .35, 6), lines = [[main, 1]];
+      for (let b = 0; b < (br || 0); b++) { const i = 8 + Math.floor(rnd() * (main.length - 20)), [bx, by] = main[Math.max(0, Math.min(main.length - 1, i))];
+        const ang = Math.atan2(y1 - y0, x1 - x0) + (rnd() - .5) * 1.6, ln = L * (.15 + rnd() * .25); lines.push([path(bx, by, bx + Math.cos(ang) * ln, by + Math.sin(ang) * ln, ln * .4, 4), .5]); }
+      c.save(); c.globalCompositeOperation = "lighter"; c.lineJoin = "round"; c.lineCap = "round";
+      for (const [pts, wv] of lines) { const stroke = (lw, st) => { c.strokeStyle = st; c.lineWidth = lw; c.beginPath(); c.moveTo(...pts[0]); for (const p of pts) c.lineTo(...p); c.stroke(); };
+        c.shadowColor = `rgb(${col.join(",")})`; c.shadowBlur = 20 * S; stroke(10 * S * wv, `rgba(${col.join(",")},${.25 * a})`); c.shadowBlur = 8 * S; stroke(4 * S * wv, `rgba(${col.map(v => Math.min(255, v + 60)).join(",")},${.6 * a})`); c.shadowBlur = 0; stroke(Math.max(1, 1.6 * S * wv), `rgba(255,255,255,${a})`); }
+      c.restore();
     },
     // v165 护盾光圈：护盾在的时候一直显示，套住人物 / 怪物（比人物大一点），破碎时消失
     btRing(w, on) {
