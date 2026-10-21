@@ -90,7 +90,7 @@ G.module({
     },
     lqName(x) {
       const k = x.k;
-      if (k === "dan" || (!k && x.key && x.key.includes("|"))) { const [t, g] = x.key.split("|"); return `丹方《${DATA.danName(t, +g)}》`; }
+      if (k === "dan" || k === "dfb" || (!k && x.key && x.key.includes("|"))) { const [t, g] = x.key.split("|"); return `丹方《${DATA.danName(t, +g)}》`; }
       if (k === "bp") return DATA.furnaceName(x.kind, x.g) + "图纸";
       if (k === "rbp") return DATA.ringBpName(x.g, x.r);
       if (x.key !== undefined) return this.forgeKeyName(x.key);
@@ -115,10 +115,10 @@ G.module({
       }
     },
     // 背包里正在学 / 排队的那本（学完才从背包消失）
-    lqBagIdx(c) { return this.s.bag.findIndex(it => it.lq && it.t === c.k && (c.k === "gfb" ? it.id === c.id : it.kind === c.kind && it.g === c.g && it.r === c.r)); },
+    lqBagIdx(c) { return this.s.bag.findIndex(it => it.lq && it.t === c.k && (c.k === "gfb" ? it.id === c.id : c.k === "dfb" ? it.type === c.type && it.g === c.g : it.kind === c.kind && it.g === c.g && it.r === c.r)); },
     lqDone(ch, c) {
       const s = this.s, name = this.lqName(c);
-      if (c.k === "gfb" || c.k === "bp" || c.k === "rbp") { const i = this.lqBagIdx(c); if (i >= 0) { const it = s.bag[i]; this.removeAt(i, 1); if (s.bag[i] === it) delete it.lq; } }   // 叠在一起的只用掉一个
+      if (c.k === "gfb" || c.k === "bp" || c.k === "rbp" || c.k === "dfb") { const i = this.lqBagIdx(c); if (i >= 0) { const it = s.bag[i]; this.removeAt(i, 1); if (s.bag[i] === it) delete it.lq; } }   // 叠在一起的只用掉一个
       if (ch === "gf") {
         s.gongfa[c.id] = Math.max(1, s.gongfa[c.id] || 0);
         const info = DATA.skillInfo(c.id, 1);

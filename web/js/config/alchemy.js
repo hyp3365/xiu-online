@@ -19,7 +19,10 @@ CFG.alchemy = {
     MERIT: [300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],   // 每枚功德，一阶~十阶
   },
   // 仙冥魔神丹方不在宗门学：在对应一界第 i 张地图的功德司用功德学 i 阶（地图第 1 张 = 一阶）
-  GD_RECIPE: { MERIT: 5000, STEP: 1000 },   // 学习功德 = MERIT + STEP × (阶 − 1)
+  GD_RECIPE: { MERIT: 5000, STEP: 1000,   // 兑换功德 = MERIT + STEP × (阶 − 1)；兑换到背包，在背包里学习
+    // 学习时间（分钟）= LEARN_MIN + LEARN_STEP × (阶 − 1)；再减 神识强度 × SS_SEC 秒，再 × (1 − 减少%)
+    // 减少% = floor(神识强度 ÷ 100) × SS_PCT，最多 SS_PCT_MAX；最后不低于 MIN_SEC 秒（界面不显示这些减少）
+    LEARN_MIN: 720, LEARN_STEP: 90, SS_SEC: 10, SS_PCT: 2, SS_PCT_MAX: 50, MIN_SEC: 30 },
   MAX_BATCH: 100,    // 一炉最多炼几枚
   QUEUE: 10,         // 炼丹队列上限（排队即扣药材，取消退回）
   /* 丹方：数组都是 10 个数，下标 0~9 = 一阶~十阶

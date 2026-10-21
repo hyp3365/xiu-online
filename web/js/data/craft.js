@@ -52,6 +52,12 @@ DATA.danRecipe = (type, g) => DATA.parseMats(_AL.recipes[type].herbs[g]);
 DATA.danTime = (type, g) => _AL.recipes[type].time[g] * 60000;     // 毫秒（未算炉子加成）
 DATA.danLearnTime = (type, g) => _AL.recipes[type].learnTime[g] * 60000;
 DATA.danLearnCost = (type, g) => (_AL.recipes[type].learnCost || [])[g] || 0;
+// 四界功德司丹方在背包里学习的时间（毫秒），ss = 神识强度
+DATA.danGdLearnMs = (g, ss) => { const R = _AL.GD_RECIPE || {}, d = (k, v) => R[k] === undefined ? v : R[k];
+  ss = Math.max(0, ss || 0);
+  let sec = (d("LEARN_MIN", 720) + d("LEARN_STEP", 90) * g) * 60 - ss * d("SS_SEC", 10);
+  sec *= 1 - Math.min(d("SS_PCT_MAX", 50), Math.floor(ss / 100) * d("SS_PCT", 2)) / 100;
+  return Math.max(d("MIN_SEC", 30), sec) * 1000; };
 DATA.danGdCost = g => { const R = _AL.GD_RECIPE || {}; return (R.MERIT === undefined ? 5000 : R.MERIT) + (R.STEP === undefined ? 1000 : R.STEP) * g; };   // 四界功德司学丹方的功德
 DATA.danPrice = (type, g) => (_AL.recipes[type].price || [])[g] || 0;
 

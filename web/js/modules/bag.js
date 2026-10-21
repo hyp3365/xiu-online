@@ -36,7 +36,7 @@ G.module({
     // 法宝栏、法术栏当前开启格数：每个大境界 1 格
     // 背包排序：先按类型（修炼丹 → 属性丹 → 药材 → 矿石 → 装备），同类型再按品阶从低到高
     sortBag() {
-      const order = it => it.t === "pill" ? 0 : it.t === "dan" || it.t === "ql" ? 1 : it.t === "mat" ? (it.kind === "herb" ? 2 : 3) : it.t === "fu" ? 4 : it.t === "bp" || it.t === "ss" || it.t === "rbp" || it.t === "hx" || it.t === "sm" ? 5 : it.t === "eq" ? (it.e.slot === "fabao" ? 7 : 6) : it.t === "cu" ? 8 : 9;
+      const order = it => it.t === "pill" ? 0 : it.t === "dan" || it.t === "ql" ? 1 : it.t === "mat" ? (it.kind === "herb" ? 2 : 3) : it.t === "fu" ? 4 : it.t === "bp" || it.t === "ss" || it.t === "rbp" || it.t === "dfb" || it.t === "hx" || it.t === "sm" ? 5 : it.t === "eq" ? (it.e.slot === "fabao" ? 7 : 6) : it.t === "cu" ? 8 : 9;
       const grade = it => it.t === "eq" ? it.e.g * 10 + it.e.q : it.g || 0;
       const sub = it => it.t === "pill" || it.t === "dan" ? it.type : it.t === "eq" ? it.e.slot : it.kind || "";
       this.s.bag.sort((a, b) => order(a) - order(b) || grade(a) - grade(b) || (sub(a) < sub(b) ? -1 : sub(a) > sub(b) ? 1 : 0));
@@ -119,6 +119,7 @@ G.module({
       if (it.t === "hx") return DATA.HX;
       if (it.t === "sm") return DATA.smName(it.k, it.ft, it.tier);
       if (it.t === "rbp") return DATA.ringBpName(it.g, it.r);
+      if (it.t === "dfb") return DATA.danName(it.type, it.g) + "丹方";
       if (it.e.attrs && it.e.slot === "fabao") return `${DATA.XING[it.e.g]}·${DATA.elById[it.e.el].name}·${DATA.fabaoName(it.e.ft, it.e.g, it.e.name)}${it.e.enh ? ` +${it.e.enh}` : ""}`;
       if (it.e.attrs) return `${DATA.XING[it.e.g]}·${it.e.name}${it.e.enh ? ` +${it.e.enh}` : ""}`;
       return `${DATA.realms[it.e.g]}·${it.e.name}`;
@@ -128,7 +129,7 @@ G.module({
       if (it.t === "dan") return DATA.danPrice(it.type, it.g);
       if (it.t === "mat") return DATA.matPrice(it.kind, it.g);
       if (it.t === "cu") { const d = this.cuDef(it.name); return d ? d.sell || 0 : 0; }
-      if (it.t === "ss" || it.t === "book" || it.t === "gfb" || it.t === "ql") return 0;
+      if (it.t === "ss" || it.t === "book" || it.t === "gfb" || it.t === "ql" || it.t === "dfb") return 0;
       if (it.t === "hx") return CFG.forge.reset.SELL || 0;
       if (it.t === "sm") { const v = (CFG.mijing.items[it.k] || {}).sell || 0; return Array.isArray(v) ? v[it.ft || 0] || 0 : v; }
       if (it.t === "rbp") return CFG.forge.ring.bpSell[it.g] || 0;
@@ -152,6 +153,7 @@ G.module({
         case "sm": return DATA.smIcon(it.k, it.ft);
         case "book": case "gfb": return DATA.iconImg("mifa");
         case "bp": case "rbp": return DATA.iconImg("bp");
+        case "dfb": return DATA.danIcon(it.type);
         case "cu": return DATA.cuIcon(this.cuDef(it.name));
       }
       return "";
@@ -186,6 +188,14 @@ G.module({
       if (it.lq || !this.lqCan("gf", it.id)) return;   // v173 学习队列：学完才从背包消失
       if (!this.lsCheck(it.id)) return;   // 神识（shenshi.js）
       it.lq = 1; this.lqAdd("gf", { id: it.id, k: "gfb", ms: DATA.gfLearnMin(g.star) * 60000 }); this.closeModal(); this.after();
+    },
+    // 四界功德司丹方：在背包里学习（时间受神识强度减少），学完才从背包消失
+    learnDanScroll(i) {
+      const s = this.s, it = s.bag[i]; if (!it || it.t !== "dfb") return;
+      const key = it.type + "|" + it.g;
+      if (s.recipes.includes(key)) return this.log("已经学会了。", "sys");
+      if (it.lq || !this.lqCan("dan", key)) return;
+      it.lq = 1; this.lqAdd("dan", { key, k: "dfb", type: it.type, g: it.g, ms: DATA.danGdLearnMs(it.g, s.ssPow) }); this.closeModal(); this.after();
     },
     // v173 背包里功法 / 图纸的学习按钮：学习中显示进度，排队中，学完才从背包消失
     bagLearnBtn(it, ch, key, on, has, ms) {
@@ -246,6 +256,10 @@ G.module({
         const g = DATA.skillInfo(it.id, 1), has = this.hasGongfa(it.id), need = this.ssCost(it.id), left = Math.max(0, this.lsLeft());
         h += `<p>试炼塔秘诀${g && g.label ? ` · ${g.label}每层 +${this.gfValue(g, g.perLv)}` : ""}<br>学习占用灵识点 ${need}（剩余 ${left}）${has ? "<br><span class='q5'>已学会。</span>" : left < need ? "<br><span class='q5'>灵识点不足，可在「修炼 → 神识」增加或遗忘功法。</span>" : ""}</p>
           <div class="btns">${this.bagLearnBtn(it, "gf", it.id, `G.learnGfBook(${i})`, has, g ? DATA.gfLearnMin(g.star) * 60000 : 0)}</div>`;
+      } else if (it.t === "dfb") {
+        const key = it.type + "|" + it.g, has = this.s.recipes.includes(key);
+        h += `<p>四界丹方 · ${DATA.recipeEffect(it.type, it.g)}<br>学习后可在洞府炼丹房炼制。${has ? "<br><span class='q5'>已学会。</span>" : ""}</p>
+          <div class="btns">${this.bagLearnBtn(it, "dan", key, `G.learnDanScroll(${i})`, has, DATA.danGdLearnMs(it.g, this.s.ssPow))}</div>`;
       } else if (it.t === "rbp") {
         const has = it.r === undefined ? this.s.forgeKnown.includes(this.forgeKey("ring", it.g)) : this.ringKnown(it.r, it.g);
         h += `<p>学习后可在洞府炼器室把${DATA.XING[it.g - 1]}${DATA.ringNames[it.r] || "戒指（全部 9 种）"}升为${DATA.XING[it.g]}（上一星同种戒指 + 三种矿石）。${has ? "<br><span class='q5'>已学会。</span>" : ""}</p>
@@ -503,6 +517,7 @@ G.module({
  else if (it.t === "book") cells += `<div class="cell q1" onclick="G.openItem(${i})"><img class="mi" src="${DATA.iconImg("mifa")}" alt="">${CFG.start.book.name}</div>`;
  else if (it.t === "gfb") cells += `<div class="cell q3" onclick="G.openItem(${i})"><img class="mi" src="${DATA.iconImg("mifa")}" alt="">${this.itemName(it)}</div>`;
  else if (it.t === "hx") cells += `<div class="cell q4" onclick="G.openItem(${i})"><img class="mi" src="${DATA.iconImg("hx")}" alt="">${DATA.HX}<span class="n">${U.fmt(it.n)}</span></div>`;
+      else if (it.t === "dfb") cells += `<div class="cell q${Math.min(5, Math.floor(it.g / 2))}" onclick="G.openItem(${i})">${DATA.danImg(DATA.danIcon(it.type), DATA.danCls(it.type, it.g), "mi")}${DATA.danName(it.type, it.g)}丹方</div>`;
       else if (it.t === "rbp") cells += `<div class="cell q${Math.min(5, Math.floor(it.g / 2))}" onclick="G.openItem(${i})"><img class="mi" src="${DATA.iconImg("bp")}" alt="">${DATA.ringNames[it.r] || "戒指"}图纸${it.n > 1 ? `<span class="n">${it.n}</span>` : ""}</div>`;
  else if (it.t === "ss") cells += `<div class="cell q${Math.min(5, Math.floor(it.g / 2))}" onclick="G.openItem(${i})"><img class="mi" src="${DATA.iconImg("ss")}" alt="">${DATA.stoneName(it.g)}<span class="n">${it.n}</span></div>`;
       else if (it.t === "cu") { const d = this.cuDef(it.name); cells += `<div class="cell q${d ? d.q || 0 : 0}" onclick="G.openItem(${i})"><img class="mi" src="${DATA.cuIcon(d)}" alt="">${it.name}<span class="n">${U.fmt(it.n)}</span></div>`; }

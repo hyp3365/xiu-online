@@ -1108,10 +1108,13 @@ G.module({
     learnGdRecipe(a, type) {
       const s = this.s, o = DATA.jieGfOf("gd", a), d = this.gdRecipeList(a).find(x => x.type === type); if (!o || !d) return;
       const key = type + "|" + d.g;
-      if (s.recipes.includes(key) || !this.lqCan("dan", key)) return;
+      if (s.recipes.includes(key)) return this.log("已经学会了。", "sys");
+      if (s.bag.some(x => x.t === "dfb" && x.type === type && x.g === d.g)) return this.log("背包里已经有这张丹方了。", "sys");
       if (!this.realmOK(o.reqRealm)) return this.log(`境界不足，需要${DATA.realmLabel(o.reqRealm)}。`, "sys");
       if ((s.merit || 0) < d.cost) return this.log("功德不足。", "sys");
-      s.merit -= d.cost; this.lqAdd("dan", { key, k: "dan", ms: DATA.danLearnTime(type, d.g) }); this.after();
+      if (this.bagFull()) return this.log("背包已满。", "sys");
+      s.merit -= d.cost; s.bag.push({ t: "dfb", type, g: d.g });   // 兑换到背包，在背包里学习
+      this.log(`兑换了${DATA.danName(type, d.g)}丹方，放入背包，可在背包里学习。`, "good"); this.after();
     },
     buySgDan(a, type, n) {
       const s = this.s, o = DATA.jieGfOf("gd", a), d = this.sgDanList(a).find(x => x.type === type); if (!o || !d) return;
@@ -1132,11 +1135,11 @@ G.module({
           ${lock ? `<button class="sm" disabled>境界不足</button>` : `<div class="sg-btns"><button class="sm" onclick="G.buySgDan(${a},'${d.type}',1)" ${poor ? "disabled" : ""}>购买</button><button class="sm" onclick="G.buySgDan(${a},'${d.type}',10)" ${poor ? "disabled" : ""}>×10</button></div>`}</div>`; }).join("") : "";
       const recs = gd ? this.gdRecipeList(a).map(d => { const key = d.type + "|" + d.g, has = s.recipes.includes(key);
         return [has, `<div class="line"><div>${DATA.danImg(DATA.danIcon(d.type), DATA.danCls(d.type, d.g), "li")}《${DATA.danName(d.type, d.g)}》<span class="tag">${DATA.recipeEffect(d.type, d.g)}</span>
-          <small>${this.matsText(DATA.danRecipe(d.type, d.g))}<br>${U.fmt(d.cost)} 功德 · 学习 ${U.dur(DATA.danLearnTime(d.type, d.g) / 1000)}</small></div>
-          ${has ? `<button class="sm" disabled>已学会</button>` : lock ? `<button class="sm" disabled>境界不足</button>` : this.lqBtn("dan", key, `G.learnGdRecipe(${a},'${d.type}')`, (s.merit || 0) < d.cost)}</div>`]; }) : [];
+          <small>${this.matsText(DATA.danRecipe(d.type, d.g))}<br>${U.fmt(d.cost)} 功德</small></div>
+          ${has ? `<button class="sm" disabled>已学会</button>` : s.bag.some(x => x.t === "dfb" && x.type === d.type && x.g === d.g) ? `<button class="sm" disabled>已在背包</button>` : lock ? `<button class="sm" disabled>境界不足</button>` : `<button class="sm" onclick="G.learnGdRecipe(${a},'${d.type}')" ${(s.merit || 0) < d.cost ? "disabled" : ""}>兑换</button>`}</div>`]; }) : [];
       const fruit = gd ? (c => `<div class="card"><h3>${DATA.smName("wdg")}</h3><div class="line"><div>${DATA.li(DATA.smIcon("wdg"))}${DATA.smName("wdg")}<small>洞府悟道室悟道用 · ${c} 功德/个 · 已有 ${U.fmt(this.smCount("wdg"))}</small></div>
         <div class="sg-btns"><button class="sm" onclick="G.buyWdFruit(1)" ${(s.merit || 0) < c ? "disabled" : ""}>购买</button><button class="sm" onclick="G.buyWdFruit(10)" ${(s.merit || 0) < c * 10 ? "disabled" : ""}>×10</button></div></div></div>`)(CFG.wudaoRoom.FRUIT_MERIT) : "";
-      return this.lqCard("gf") + fruit + `<div class="card"><h3>${o.name}<small>${gd ? `功德 ${U.fmt(s.merit || 0)}` : `灵石 ${U.fmt(s.stone)} · 本图贡献 ${U.fmt(this.xjGxOf(a))}`}</small></h3>${rows}</div>${recs.length ? this.lqCard("dan") + `<div class="card"><h3>丹方<small>用功德学习</small></h3>${U.doneLast(recs)}</div>` : ""}${dans ? `<div class="card"><h3>上古丹</h3>${dans}</div>` : ""}`;
+      return this.lqCard("gf") + fruit + `<div class="card"><h3>${o.name}<small>${gd ? `功德 ${U.fmt(s.merit || 0)}` : `灵石 ${U.fmt(s.stone)} · 本图贡献 ${U.fmt(this.xjGxOf(a))}`}</small></h3>${rows}</div>${recs.length ? this.lqCard("dan") + `<div class="card"><h3>丹方<small>用功德兑换，在背包里学习</small></h3>${U.doneLast(recs)}</div>` : ""}${dans ? `<div class="card"><h3>上古丹</h3>${dans}</div>` : ""}`;
     },
     // 管理员：网页里更新游戏（服务器拉取 GitHub 最新代码，完成后刷新页面）
     async webUpdate() {
