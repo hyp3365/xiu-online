@@ -28,6 +28,7 @@ const U = {
   // 最多保留 2 位小数（0.8999999 → 0.9）
   dec(n) { return String(Math.round(n * 100) / 100); },
   num(n) { return n < 100 ? String(Math.floor(n * 10) / 10) : U.fmt(n); },
+  num2(n) { return n < 100 ? String(Math.round(n * 100) / 100) : U.fmt(n); },   // 两位小数（秘法 0.25 秒这类）
   // 秒数 → “X天X小时X分”
   dur(sec) {
     sec = Math.floor(sec);

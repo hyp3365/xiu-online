@@ -271,7 +271,7 @@ G.module({
       const lg = g.kind === "mf" || g.noEl ? 0 : this.s.lingen[g.el.id] || 0, lgTxt = lg ? `（${g.el.name}灵根 +${U.dec(this.lingenPct(lg, g.kind))}%）` : "";
       // 属性数值颜色：没有灵根加成 = 白色，有加成 = 绿色（数值已含加成）
       const cv = v => `<b class="${lg ? "gf-up" : "gf-base"}">${v}</b>`;
-      const mfv = v => `${g.mk.sign}${U.num(v)}${g.mk.unit}`;
+      const mfv = v => `${g.mk.sign}${U.num2(v)}${g.mk.unit}`;
       const xp = g.kind === "mf" ? DATA.mifaFullPct(g.mk.id, g.star) : 0;   // 聚元 / 炼体 / 斗血 / 斗灵 圆满额外 %
       const desc = g.kind === "mf" && xp
         ? `${g.label} ${mfv(g.value)}${max ? "" : `，下一层 ${mfv(g.next)}`}，圆满${max ? "" : "后"}${DATA.mifaFullTxt(g.mk.id, xp)}`

@@ -47,14 +47,14 @@ G.module({
 /* 门派 · 秘法殿页面（sect.js 调用） */
 G.sectWudaoView = function () {
   const s = this.s, x = this.sectInfo(), tot = this.mifaBonus();
-  const fmt = (K, v) => `${K.sign}${U.num(v)}${K.unit}`, hall = DATA.nmPick(CFG.names.sectHall, "wudao", "秘法殿");
+  const fmt = (K, v) => `${K.sign}${U.num2(v)}${K.unit}`, hall = DATA.nmPick(CFG.names.sectHall, "wudao", "秘法殿");
   // N 星宗门显示 1~N 星秘法（高星在前）
   const cards = [];
   for (let st = x.star; st >= 1; st--) {
     const c = DATA.mifaLearnCost(st);
     cards.push({ head: `<h3>${hall} · ${st}星秘法</h3>`, rows: DATA.mifaKinds.map(K => {
       const id = DATA.mifaId(st, K.id), lv = s.gongfa[id] || 0, g = DATA.mifaInfo(id, Math.max(1, lv));
-      const eff = K.id === "explore" ? `圆满后每步 -${U.num(g.perLv)} 秒` : K.id === "pojun" ? `圆满后 ${fmt(K, g.perLv)}，无视防御 ${U.num(((CFG.wudao.POJUN || {}).IGNORE || [])[st - 1] || 0)}%` : K.full ? `圆满后 ${fmt(K, g.perLv)}` : `每层 ${fmt(K, g.perLv)}`;
+      const eff = K.id === "explore" ? `圆满后每步 -${U.num2(g.perLv)} 秒` : K.id === "pojun" ? `圆满后 ${fmt(K, g.perLv)}，无视防御 ${U.num(((CFG.wudao.POJUN || {}).IGNORE || [])[st - 1] || 0)}%` : K.full ? `圆满后 ${fmt(K, g.perLv)}` : `每层 ${fmt(K, g.perLv)}`;
       const xp = DATA.mifaFullPct(K.id, st);   // 聚元 / 炼体 / 斗血 / 斗灵 圆满额外 %
       const effTxt = xp ? `${eff}，圆满${DATA.mifaFullTxt(K.id, xp)}` : eff;
       return [!!lv, `<div class="line"><div>${DATA.skillIco(g)}《${g.name}》<span class="tag">${st}星</span>${lv ? `<span class="tag">${lv}/${DATA.GONGFA_MAX}层</span>` : ""}
