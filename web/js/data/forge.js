@@ -87,6 +87,7 @@ for (const k in DATA.fbAttrNames) DATA.fbAttrNames[k] = DATA.nmPick(CFG.names.fb
 DATA.fbRange = k => { const F = _FG.fabao; return (F.MAIN || {})[k] || (F.AFFIX || {})[k] || (F.SPECIAL || {})[k]; };
 DATA.fbPct = a => { const R = DATA.fbRange(a.k), r = R && (R[a.c] || R[R.length - 1]), q = a.k === "shHpMain" || a.k === "shDef" ? 100 : 10;   // v167 盾主属性比例保留两位小数
   return r ? Math.round((r[0] + (r[1] - r[0]) * (a.p || 0)) * q) / q : 0; };
+DATA.fbRj = (k, e) => (((_FG.fabao.REFINE || {})[k]) || 0) * DATA.rjOf(e);   // 法宝精炼加的百分点
 // 比例 × 哪个参考属性（不写 = 本身就是 %）
 DATA.FB_REF_OF = { shHpMain: "hp", shHp: "hp", sAtk: "atk", dSAtk: "atk", sHit: "hit" };
 
@@ -113,7 +114,7 @@ DATA.eqPctOK = a => a.k !== "crit";
 DATA.eqPct = a => { const R = _FG.attr.PCT, r = R[a.c] || R[R.length - 1]; return Math.round((r[0] + (r[1] - r[0]) * DATA.attrPos(a)) * 100) / 100; };
 DATA.attrBase = (a, g, e) => {
   const A = _FG.attr, fb = e && e.slot === "fabao" && e.attrs;
-  if (!fb && DATA.eqPctOK(a)) return (DATA.eqRef(g)[a.k] || 0) * (DATA.eqPct(a) + (a.m && e ? (e.rj || 0) * ((CFG.forge.refine || {}).PCT || 0) : 0)) / 100 * (e && e.slot === "ring" ? (_FG.ring.MULT || 1) : 1);
+  if (!fb && DATA.eqPctOK(a)) return (DATA.eqRef(g)[a.k] || 0) * (DATA.eqPct(a) + (a.m && e ? DATA.rjOf(e) * ((CFG.forge.refine || {}).PCT || 0) : 0)) / 100 * (e && e.slot === "ring" ? (_FG.ring.MULT || 1) : 1);
   // 附加暴击单独设置了「每阶金色最高值」（AFFIX_TOP，装备 / 戒指）
   const TOP = !a.m && !fb && A.AFFIX_TOP;
   if (TOP && TOP[a.k] && TOP[a.k][g] !== undefined) {
@@ -122,13 +123,13 @@ DATA.attrBase = (a, g, e) => {
   }
   if (fb) {   // v108 法宝：比例 %（按颜色随机）；FB_REF_OF 里的 = 参考属性 × %，盾 = 参考生命 / 防御 × SHIELD_MULT × %；鼎 = 回合数
     if (a.k === "sDing") return (_FG.fabao.DING_ROUNDS || [])[a.c] || 1;
-    const v = DATA.fbPct(a), ref = DATA.fbRef(g);
+    const v = DATA.fbPct(a) + DATA.fbRj(a.k, e), ref = DATA.fbRef(g);
     // v165 盾（方案 A，同攻击法宝）：基数 = 自己修为 + 肉身（不超过参考值）+ 功法
     // v167 盾主属性：法宝对应境界（参考）生命 / 防御 × SHIELD_MULT（3.8）× %
     const SM = _FG.fabao.SHIELD_MULT || 1;
     if (a.k === "shHpMain") return ref.hp * SM * v / 100;
     if (a.k === "shDef") return ref.def * SM * v / 100;
-    if (a.k === "shHp") { let m = 0; for (const b of e.attrs) if (b.k === "shHpMain") m += ref.hp * SM * DATA.fbPct(b) / 100; return m * v / 100; }   // v170 附加护盾值 = 盾主属性护盾值 × %（不算强化）
+    if (a.k === "shHp") { let m = 0; for (const b of e.attrs) if (b.k === "shHpMain") m += ref.hp * SM * (DATA.fbPct(b) + DATA.fbRj(b.k, e)) / 100; return m * v / 100; }   // v170 附加护盾值 = 盾主属性护盾值 × %（不算强化）
     return DATA.FB_REF_OF[a.k] ? ref[DATA.FB_REF_OF[a.k]] * v / 100 : v;
   }
   // 主属性暴击%：base.crit × 阶数 × 颜色范围倍率（附加暴击都在上面 AFFIX_TOP）
@@ -271,7 +272,7 @@ DATA.fabaoInfo = (e, own) => {
   o.pct *= rv(F.DMG_REALM);
   // 法力 = 该阶对应境界的修为突破法力 × MANA_PCT[主属性颜色]%；颜色只看第一条主属性
   const main = e.attrs.find(a => a.m === 1) || {};
-  o.mana = Math.max(0, ref.manaBr * ((F.MANA_PCT || [])[main.c || 0] || 0) / 100 * (1 - o.cutPct / 100));
+  o.mana = Math.max(0, ref.manaBr * (((F.MANA_PCT || [])[main.c || 0] || 0) + DATA.fbRj("mana", e)) / 100 * (1 - o.cutPct / 100));
   return o;
 };
 
