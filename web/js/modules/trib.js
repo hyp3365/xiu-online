@@ -4,7 +4,7 @@
  * 数值全部在 js/config/trib.js。
  * 流程：修为满了点「突破」→ 渡劫准备页（SLOTS 个格子，放法宝 / 法术 / 丹药，丹药每格 1 颗）
  *       → 「开始渡劫」→ 渡劫页（上方劫云，下方人物）
- * 劫云只有攻击，每 HIT_SEC 秒劈一次，人物不还手；撑过 TIME 秒没倒 = 突破成功。
+ * 劫云只有攻击，每 HIT_SEC 秒劈一次（金木水火土雷六种属性轮流，属性伤害 = 攻击 − 防御 × RES_RATE − 该系抗性），人物不还手；撑过 TIME 秒没倒 = 突破成功。
  * 按 G.now() 计时：关掉页面、关掉游戏，劫云照样劈，回来时一次算完。
  * 点「开始突破」先倒计时 PRE_SEC 秒，再开始劈；渡劫中点格子使用法宝 / 法术（得护盾）、丹药（回生命法力），数值见 CFG.trib.USE。
  *
@@ -44,11 +44,14 @@ G.module({
       return { atk: st.atk * rnd * (+((CFG.rates || {}).TRIB ?? 1) || 0), crit: T.crit };   // config/rates.js 雷劫强度总倍率
     },
     // 劫云劈一次的伤害 [伤害, 是否暴击]
-    tribHit(x) {
-      const BT = CFG.battle, sh = x.shield, body = this.stats().def, def = sh && sh.hp > 0 ? (sh.def || 0) : body;   // 有护盾：按盾防御算（代替本身防御）
+    // 属性伤害（同怪物法术）：减免 = 防御 × RES_RATE + 该系抗性 × RES_EL_RATE；有护盾时用盾防御代替本身防御，抗性照算
+    tribEl(n) { const E = DATA.elements; return E[((n || 0) % E.length + E.length) % E.length]; },   // 第 n 道雷（从 0 起）的属性：金木水火土雷轮流
+    tribHit(x, el) {
+      const BT = CFG.battle, sh = x.shield, st = this.stats(), body = st.def, def = sh && sh.hp > 0 ? (sh.def || 0) : body;
+      const RR = BT.RES_RATE === undefined ? BT.DEF_RATE : BT.RES_RATE, ER = BT.RES_EL_RATE === undefined ? 1 : BT.RES_EL_RATE, res = ((st.res || {})[el] || 0) * ER;
       const mn = DATA.minDmg(this.s.mortal ? 0 : this.s.L), r = (BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN));
       const c = Math.random() * 100 < Math.min(DATA.CRIT_CAP || 100, x.crit), k = r * (c ? BT.CRIT_MULT : 1);
-      return [Math.max(mn, x.atk - def * BT.DEF_RATE) * k, c, Math.max(mn, x.atk - body * BT.DEF_RATE) * k];   // 第三项：按本身防御算的伤害（盾碎溢出用）
+      return [Math.max(mn, x.atk - def * RR - res) * k, c, Math.max(mn, x.atk - body * RR - res) * k];   // 第三项：按本身防御算的伤害（盾碎溢出用）
     },
 
     /* ---------- 准备页的格子 ---------- */
@@ -97,7 +100,8 @@ G.module({
     // 「突破」按钮：有渡劫在进行就看渡劫页，没有就进准备页
     openTrib() { this.tribOpen = true; this.tribRender(true); },
     closeTrib() {
-      this.tribOpen = false; $("#trib").classList.add("hidden"); $("#trib").innerHTML = "";
+      this.tribOpen = false;
+      const el = typeof document !== "undefined" && document.getElementById("trib"); if (el) { el.classList.add("hidden"); el.innerHTML = ""; }   // 服务器上没有页面
       if (this.s.trib && this.s.trib.result) this.s.trib = null;   // 结束后离开才清除记录
       this.render();
     },
@@ -119,7 +123,8 @@ G.module({
         if (nextHit > x.time) { if (this.now() >= x.start + x.time * 1000) { x.sec = x.time; this.endTrib(true); } break; }
         if (this.now() < x.start + nextHit * 1000) break;
         x.sec = nextHit;
-        let [d, c, dBody] = this.tribHit(x), ab = 0, brk = false;
+        const el = this.tribEl(x.hits);
+        let [d, c, dBody] = this.tribHit(x, el.id), ab = 0, brk = false;
         const sh = x.shield;
         if (sh && sh.hp > 0) {   // 护盾：伤害已按盾防御算（tribHit），再减「受到伤害减少%」，剩下先扣护盾值
           const dS = d * (1 - (sh.red || 0) / 100);
@@ -127,8 +132,9 @@ G.module({
           if (sh.hp <= 0) { x.shield = null; brk = true; if (d > 0) d = d / dS * dBody; }   // 盾碎：溢出部分按人物本身防御算
         }
         s.hp -= d; x.taken += d; x.hits++;
-        hit = { d, c, ab };
-        x.log.unshift(`第${x.sec}秒：劫雷劈中你 ${U.fmt(d)}${c ? "（暴击）" : ""}${ab ? `（护盾抵挡 ${U.fmt(ab)}）` : ""}${brk ? "，护盾破碎" : ""}`);
+        hit = { n: x.hits, d, c, ab, el: el.id };
+        x.last = hit;   // 最近一击：联网时客户端按它画闪电、飘伤害
+        x.log.unshift(`第${x.sec}秒：${el.name}属性劫雷劈中你 ${U.fmt(d)}${c ? "（暴击）" : ""}${ab ? `（护盾抵挡 ${U.fmt(ab)}）` : ""}${brk ? "，护盾破碎" : ""}`);
         if (x.log.length > 60) x.log.length = 60;
         if (s.hp <= 0) this.endTrib(false);
         else if (x.sec >= x.time) this.endTrib(true);
@@ -162,13 +168,17 @@ G.module({
       const x = this.s.trib;
       if (!x) { if (full || el.dataset.mode !== "prep") { el.dataset.mode = "prep"; el.innerHTML = this.tribPrepHtml(); } return; }
       const mode = x.result ? "end" : "run";
+      // 联网：劈雷在服务器结算，客户端发现 x.last 是新的一击就画出来
+      const key = x.start + ":" + (x.last ? x.last.n : -1);
+      if (this._tribSeen === undefined || !String(this._tribSeen).startsWith(x.start + ":")) this._tribSeen = key;   // 刚打开页面：不补画旧的
+      else if (this._tribSeen !== key) { this._tribSeen = key; if (x.last) this._tribHit = x.last; }
       // 最后一击（劈死或撑到最后一秒）：先在渡劫画面把这道雷劈出来、扣血，约 1 秒后再显示结果
       if (!full && mode === "end" && el.dataset.mode === "run") {
         if (this._tribHit) { this._tribHold = Date.now() + 1000; setTimeout(() => this.tribRender(false), 1050); }
         if (this._tribHold && Date.now() < this._tribHold) { this.tribUpd(); return; }
       }
       this._tribHold = 0;
-      if (full || el.dataset.mode !== mode) { el.dataset.mode = mode; el.innerHTML = this.tribRunHtml(); this._tribHit = null; return; }
+      if (full || el.dataset.mode !== mode) { el.dataset.mode = mode; el.innerHTML = this.tribRunHtml(); if (mode === "end") this._tribHit = null; else if (this._tribHit) this.tribUpd(); return; }
       this.tribUpd();
     },
     // 渡劫画面：只更新会变的数字、血条、日志，有新的一击就画闪电
@@ -223,7 +233,7 @@ G.module({
       }).join("");
       const id = "tjb" + Date.now() % 100000;
       const svg = ls => `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs><filter id="${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs><g filter="url(#${id})">${ls.map(({ p, lv }) => `<polyline class="g" points="${pts(p)}" style="stroke-width:${lv ? 6 : 18}"/>`).join("")}</g>${draw(ls)}</svg>`;
-      const b = document.createElement("div"); b.className = "tj-bolt" + (h.c ? " crit" : "");
+      const b = document.createElement("div"); b.className = "tj-bolt el-" + (h.el || "lei") + (h.c ? " crit" : "");
       const ls = make(); b.innerHTML = svg(ls) + `<div class="tj-hitglow"></div>`;
       st.appendChild(b);
       // 回闪：同一主干稍微抖动后再亮一次
@@ -232,7 +242,7 @@ G.module({
       st.classList.remove("tj-flash"); void st.offsetWidth; st.classList.add("tj-flash");
       hero.classList.remove("tj-shake"); void hero.offsetWidth; hero.classList.add("tj-shake");
       const ring = document.getElementById("tj-shield"); if (ring && h.ab) { ring.classList.remove("hit"); void ring.offsetWidth; ring.classList.add("hit"); }
-      const n = document.createElement("div"); n.className = "tj-dmg" + (h.c ? " crit" : ""); n.textContent = "-" + U.fmt(h.d) + (h.c ? " 暴击" : "");
+      const n = document.createElement("div"); n.className = "tj-dmg el-" + (h.el || "lei") + (h.c ? " crit" : ""); n.textContent = (h.el && DATA.elById[h.el] ? DATA.elById[h.el].name + " " : "") + "-" + U.fmt(h.d) + (h.c ? " 暴击" : "");
       n.style.left = 52 + Math.random() * 20 + "%"; st.appendChild(n); setTimeout(() => n.remove(), 1200);
     },
     // 舞台：上方劫云（img/trib_cloud.webp），下方打坐人物（img/trib_hero.webp），中间放倒计时

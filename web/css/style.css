@@ -298,6 +298,15 @@ button.sm.active{background:#5a4220;border-color:#c9a45c;color:#f3d48b}   /* v24
 @keyframes tjShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .tj-dmg{position:absolute;top:52%;z-index:5;color:#ff8a70;font-weight:bold;font-size:17px;text-shadow:0 0 6px #000,0 1px 2px #000;pointer-events:none;animation:tjDmg 1.2s ease-out forwards;white-space:nowrap}
 .tj-dmg.crit{color:#ffd166;font-size:21px}
+
+/* 劫雷六种属性颜色：外层辉光 / 中层 / 雷芯 / 伤害数字 */
+.tj-bolt.el-jin polyline.g{stroke:#e8b530}.tj-bolt.el-jin polyline.m{stroke:#ffe9a3}.tj-bolt.el-jin polyline.c{stroke:#fff6d6}.tj-bolt.el-jin .tj-hitglow{background:radial-gradient(circle,#ffe9a3aa,transparent 70%)}.tj-dmg.el-jin{color:#ffd75e}
+.tj-bolt.el-mu polyline.g{stroke:#2fae4e}.tj-bolt.el-mu polyline.m{stroke:#a6f0b4}.tj-bolt.el-mu polyline.c{stroke:#effff2}.tj-bolt.el-mu .tj-hitglow{background:radial-gradient(circle,#a6f0b4aa,transparent 70%)}.tj-dmg.el-mu{color:#7de08f}
+.tj-bolt.el-shui polyline.g{stroke:#2b7fff}.tj-bolt.el-shui polyline.m{stroke:#9fd0ff}.tj-bolt.el-shui polyline.c{stroke:#eef7ff}.tj-bolt.el-shui .tj-hitglow{background:radial-gradient(circle,#9fd0ffaa,transparent 70%)}.tj-dmg.el-shui{color:#7cc0ff}
+.tj-bolt.el-huo polyline.g{stroke:#ff4a14}.tj-bolt.el-huo polyline.m{stroke:#ffb07a}.tj-bolt.el-huo polyline.c{stroke:#fff1e6}.tj-bolt.el-huo .tj-hitglow{background:radial-gradient(circle,#ffb07aaa,transparent 70%)}.tj-dmg.el-huo{color:#ff7a4a}
+.tj-bolt.el-tu polyline.g{stroke:#a8742a}.tj-bolt.el-tu polyline.m{stroke:#e6c27f}.tj-bolt.el-tu polyline.c{stroke:#fff4e0}.tj-bolt.el-tu .tj-hitglow{background:radial-gradient(circle,#e6c27faa,transparent 70%)}.tj-dmg.el-tu{color:#d9a85a}
+.tj-bolt.el-lei polyline.g{stroke:#7a5cff}.tj-bolt.el-lei polyline.m{stroke:#b9a8ff}.tj-bolt.el-lei polyline.c{stroke:#ffffff}.tj-bolt.el-lei .tj-hitglow{background:radial-gradient(circle,#b9a8ffaa,transparent 70%)}.tj-dmg.el-lei{color:#c3b2ff}
+.tj-dmg.crit{font-size:21px;text-shadow:0 0 8px #fff8,0 0 6px #000,0 1px 2px #000}
 @keyframes tjDmg{0%{opacity:0;transform:translateY(8px) scale(.8)}15%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-46px) scale(1)}}
 .tj-info{margin:8px 0}
 .tj-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 6px}
