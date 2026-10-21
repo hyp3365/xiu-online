@@ -1140,7 +1140,7 @@ G.module({
     },
     // 管理员：网页里更新游戏（服务器拉取 GitHub 最新代码，完成后刷新页面）
     async webUpdate() {
-      if (this.updating || !confirm("从 GitHub 拉取最新代码并重启存档服务？在线玩家会短暂断线并重连。")) return;
+      if (this.updating || !(await this.ask("从 GitHub 拉取最新代码并重启存档服务？在线玩家会短暂断线并重连。"))) return;
       this.updating = true; this.render();
       try { await API.adminUpdate(); } catch (e) { this.updating = false; this.log("更新失败：" + e.message, "bad"); return this.render(); }
       const t0 = Date.now(), poll = async () => {

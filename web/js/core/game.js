@@ -223,6 +223,20 @@ const G = {
   // 进度条（叠在“学习中 / 剩余时间”文字下面）：left 剩余毫秒，total 总毫秒；外层元素加 class="pg"
   pgFill(left, total) { const p = total > 0 ? Math.min(100, Math.max(0, (1 - left / total) * 100)) : 0; return `<i class="pgf" style="width:${p.toFixed(1)}%"></i>`; },
   modal(html) { $("#modal-box").innerHTML = html; $("#modal").classList.remove("hidden"); },
+  // 游戏风格确认框（代替浏览器 confirm，不显示「网址为…的网页显示」）：返回 Promise<true/false>；叠在其它弹窗上面
+  ask(text, title = "确认", okText = "确定") {
+    if (typeof document === "undefined" || !document.body || !document.createElement) return Promise.resolve(true);
+    let el = document.getElementById("ask");
+    if (!el) { el = document.createElement("div"); el.id = "ask"; el.className = "modal hidden"; el.style.zIndex = 30; el.innerHTML = `<div class="modal-box" style="max-width:420px"></div>`; document.body.appendChild(el); }
+    const esc = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/\n/g, "<br>");
+    const box = el.firstChild;
+    box.innerHTML = `<h2>${esc(title)}</h2><p style="text-align:center;line-height:1.7">${esc(text)}</p><div class="btns"><button class="primary" data-a="1">${esc(okText)}</button><button data-a="0">取消</button></div>`;
+    el.classList.remove("hidden");
+    return new Promise(resolve => {
+      const done = v => { el.classList.add("hidden"); el.onclick = null; resolve(v); };
+      el.onclick = e => { const b = e.target.closest ? e.target.closest("button[data-a]") : null; if (b) { e.stopPropagation(); done(b.dataset.a === "1"); } else if (e.target === el) done(false); };
+    });
+  },
   closeModal() { $("#modal").classList.add("hidden"); },
 
   /* ---------- 启动 ---------- */

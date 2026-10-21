@@ -165,7 +165,7 @@ G.module({
       } catch (e) { this.log("生成失败：" + e.message, "bad"); }
     },
     async delGift(code) {
-      if (!confirm(`删除礼包码 ${code}？`)) return;
+      if (!(await this.ask(`删除礼包码 ${code}？`))) return;
       try { await API.giftDelete(code); this.log(`已删除礼包码 ${code}。`, "sys"); this.loadGifts(); } catch (e) { this.log("删除失败：" + e.message, "bad"); }
     },
     giftAdminView() {

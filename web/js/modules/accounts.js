@@ -21,7 +21,7 @@ G.module({
     },
     async accDel(id) {
       const u = (this.accList || []).find(x => x.id === id); if (!u) return;
-      if (!confirm(`删除账号「${u.username}」？存档会一起删除，无法恢复。`)) return;
+      if (!(await this.ask(`删除账号「${u.username}」？存档会一起删除，无法恢复。`))) return;
       try { await API.userDelete(id); this.log(`已删除账号 ${u.username}。`, "sys"); this.loadAccs(); }
       catch (e) { this.log("删除失败：" + e.message, "bad"); }
     },

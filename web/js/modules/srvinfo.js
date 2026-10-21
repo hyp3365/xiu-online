@@ -23,7 +23,7 @@ G.module({
     srvSetIv(v) { if (this.srvF) { this.srvF.interval = v; this.render(); } },
     async srvSaveGh(clearToken) {
       const F = this.srvF; if (!F || this.srvBusy) return;
-      if (clearToken && !confirm("清除已保存的 GitHub 令牌？清除后不会再自动上传。")) return;
+      if (clearToken && !(await this.ask("清除已保存的 GitHub 令牌？清除后不会再自动上传。"))) return;
       this.srvBusy = true; this.render();
       try {
         const j = await API.req("admin/gh", { repo: F.repo, token: F.token, interval: F.interval, clearToken: !!clearToken });
@@ -43,7 +43,7 @@ G.module({
     async ghRestoreRun(repo, token, fromSrv) {
       if (this._restoring) return;
       if (!fromSrv && (!String(repo || "").trim() || !String(token || "").trim())) return alert("请填写仓库和令牌。");
-      if (!confirm("从 GitHub 下载最新备份，替换服务器上的【全部账号和存档】？\n当前数据库会先在服务器上备份一份。在线玩家会断线。")) return;
+      if (!(await this.ask("从 GitHub 下载最新备份，替换服务器上的【全部账号和存档】？\n当前数据库会先在服务器上备份一份。在线玩家会断线。"))) return;
       this._restoring = true; this.srvBusy = true; if (fromSrv) this.render();
       this._lockModal = true;
       this.modal(`<h2>恢复存档</h2><p>正在从 GitHub 下载备份并恢复，请稍候…</p>`);
@@ -70,7 +70,7 @@ G.module({
       } catch (e) { this.log("保存失败：" + e.message, "bad"); }
       this.srvBusy = false; this.render();
     },
-    lnGo(url) { if (confirm(`本机切换到这条线路？\n${url}`)) API.goLine(url); },
+    lnGo(url) { this.ask(`本机切换到这条线路？\n${url}`).then(ok => { if (ok) API.goLine(url); }); },
     lnCard(esc) {
       const L = this.lnInfo || { lines: [], def: "" }, cur = API.curLine(), app = typeof window !== "undefined" && window.XiuApp && window.XiuApp.switchTo;
       const rows = L.lines.map(x => { const k = API.lineKey(x.url), isDef = k === API.lineKey(L.def), here = k === cur;

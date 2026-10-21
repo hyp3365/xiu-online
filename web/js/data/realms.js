@@ -48,14 +48,13 @@ DATA.brSum = (rows, n, tag) => {
   }
   return c[Math.max(0, n)] || {};
 };
-// 修为突破属性：凡人基础（player.base / RES_BASE）+ 突破到第 L 层的合计；L < 0 = 凡人
-DATA.realmStat = (L, k) => (k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0) + (DATA.brSum(_R.GAIN, L < 0 ? 0 : L + 1, "xw")[k] || 0);
-// 肉身突破属性：突破 n 层的合计
-DATA.bodyStat = (n, k) => DATA.brSum(_R.BODY_GAIN, n, "rs")[k] || 0;
-// 人物自己的突破属性：突破加的部分 × 总倍率（config/realm.js GAIN_RATE / BODY_GAIN_RATE，只影响人物，怪物、雷劫、装备参考属性不变；修炼速度不乘）
-DATA.plRealmStat = (L, k) => { const b = k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0, r = k === "cultivate" ? 1 : (_R.GAIN_RATE === undefined ? 1 : +_R.GAIN_RATE);
-  return b + (DATA.brSum(_R.GAIN, L < 0 ? 0 : L + 1, "xw")[k] || 0) * r; };
-DATA.plBodyStat = (n, k) => DATA.bodyStat(n, k) * (_R.BODY_GAIN_RATE === undefined ? 1 : +_R.BODY_GAIN_RATE);
+// 突破属性总倍率（config/realm.js GAIN_RATE / BODY_GAIN_RATE）：每层突破加的属性 × 倍率，人物、怪物、雷劫、装备参考属性全部生效；修炼速度不乘
+DATA.gainRate = (body, k) => { const v = body ? _R.BODY_GAIN_RATE : _R.GAIN_RATE; return k === "cultivate" || v === undefined ? 1 : +v || 0; };
+// 修为突破属性：凡人基础（player.base / RES_BASE）+ 突破到第 L 层的合计 × 倍率；L < 0 = 凡人
+DATA.realmStat = (L, k) => (k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0) + (DATA.brSum(_R.GAIN, L < 0 ? 0 : L + 1, "xw")[k] || 0) * DATA.gainRate(false, k);
+// 肉身突破属性：突破 n 层的合计 × 倍率
+DATA.bodyStat = (n, k) => (DATA.brSum(_R.BODY_GAIN, n, "rs")[k] || 0) * DATA.gainRate(true, k);
+DATA.plRealmStat = DATA.realmStat; DATA.plBodyStat = DATA.bodyStat;
 
 // 人物属性：base = 凡人基础（再加修为突破合计，见 DATA.realmStat）；fixed 不随境界
 DATA.playerFixed = _P.fixed;

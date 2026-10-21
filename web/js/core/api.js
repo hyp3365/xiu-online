@@ -380,7 +380,7 @@ const API = {
       if (this.CONFIRMS[name]) {
         let text = "";
         try { text = this.CONFIRMS[name](...args); } catch {}
-        if (text && !confirm(text)) return false;
+        if (text && !(await G.ask(text))) return false;
       }
     }
     const buttonPending = this.markButtonPending(button);

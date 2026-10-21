@@ -74,7 +74,7 @@ G.module({
       this.modal(`<h2>${f.g < 0 ? "空地" : DATA.herbs[f.g]}</h2>${info}
         <h3 style="margin-top:8px">${f.g < 0 ? "种植" : "更换种植"}</h3>
         <div class="room-grid">${seeds}</div>
-        <div class="btns">${f.g >= 0 ? `<button onclick="if(confirm('铲除后本季作物作废，确定？'))G.clearField(${i},true)">铲除</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
+        <div class="btns">${f.g >= 0 ? `<button onclick="G.ask('铲除后本季作物作废，确定？').then(ok=>ok&&G.clearField(${i},true))">铲除</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
     },
     plantField(i, g) {
       const f = this.s.fields[i];

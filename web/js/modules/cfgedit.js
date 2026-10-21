@@ -69,7 +69,7 @@ G.module({
       ["怪物属性", [["MOB", "总倍率（所有怪物，雷劫除外）"]]],
       ["雷劫强度", [["TRIB", "总倍率"]]],
       ["突破需要", [["BREAK", "总倍率（修为突破的修为、肉身突破的气血）"]]],
-      ["突破属性", [["realm:GAIN_RATE", "修为突破属性总倍率"], ["realm:BODY_GAIN_RATE", "肉身突破属性总倍率"]]],
+      ["突破属性", [["realm:GAIN_RATE", "修为突破属性总倍率（人物、怪物、雷劫都生效）"], ["realm:BODY_GAIN_RATE", "肉身突破属性总倍率（人物、怪物、雷劫都生效）"]]],
     ],
     cfgQuickGet(key) {
       if (key.startsWith("realm:")) { const v = CFG.realm[key.slice(6)]; return v === undefined ? 1 : v; }
@@ -141,7 +141,7 @@ G.module({
       if (btn) btn.disabled = false;
     },
     async cfgReset() {
-      const f = this._cfgFile; if (!f || !confirm(`把 ${f.name} 恢复成默认参数？改过的内容会丢失。`)) return;
+      const f = this._cfgFile; if (!f || !(await this.ask(`把 ${f.name} 恢复成默认参数？改过的内容会丢失。`))) return;
       try { await API.req("admin/config/reset", { name: f.name }); this._cfgReload = true; API.showActionFeedback("已恢复默认"); this.cfgOpenFile(f.name); }
       catch (e) { this.cfgSetMsg(e.message, true); }
     },

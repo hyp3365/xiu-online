@@ -53,8 +53,8 @@ G.module({
       API.logout();
       setTimeout(() => location.reload(), 100);
     },
-    restart() {
-      if (!confirm("确定删除这个账号的存档，从头开始？")) return;
+    async restart() {
+      if (!(await this.ask("确定删除这个账号的存档，从头开始？"))) return;
       this._stopped = true;
       API.resetCharacter().then(() => location.reload()).catch(e => { this._stopped = false; this.modal(`<h2>重置失败</h2><p>${e.message}</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`); });
     },
