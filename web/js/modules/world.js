@@ -126,6 +126,8 @@ G.module({
       for (const e of DATA.elements) m.res[e.id] = b.res && b.res[e.id] !== undefined ? b.res[e.id] : rv * DATA.mobRnd("res_" + e.id) * (e.id === m.el ? O : 1);   // v227 每系单独随机；每系抗性 = 怪物抗性（修为 + 肉身 + 真诀）× 倍率，本属性再 × OWN_RES
       const cv = c => c ? { chance: c.几率 || 0, pct: c.伤害 || 0, mana: c.消耗 || [0, 1] } : null;
       m.spell = cv(M.法术); m.fabao = cv(M.法宝);
+      const MR = +((CFG.rates || {}).MOB ?? 1);   // config/rates.js 怪物属性总倍率（暴击%不乘；雷劫不走这里）
+      if (MR !== 1 && MR >= 0) { for (const k of ["hp", "atk", "def", "speed", "hit", "dodge"]) if (typeof m[k] === "number") m[k] *= MR; m.mana = m.maxMana = m.mana * MR; for (const e in m.res) m.res[e] *= MR; }
       const S = M.盾; m.shield = S ? { chance: S.几率 || 0, max: S.次数 || 0, hp: S.护盾值, def: S.盾防御, mana: S.消耗 || [0, 1], red: MG.SHIELD_RED || 0 } : null;
       return m;
     },
@@ -650,8 +652,14 @@ G.module({
     // 本次探索的灵石总收益：这一处平均灵石 + 随机整数[−RAND, RAND]（每次探索算一次，记在 x.rs）
     runStone(x) {
       if (x.rs === undefined) { const RD = CFG.drop.RUN_STONE.RAND || 0, K = x.kuang ? (CFG.explore.KUANG.SHARE === undefined ? 100 : CFG.explore.KUANG.SHARE) / 100 : 1;   // 灵矿：东域 × SHARE%
-        x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? 0 : x.reg || 0, x.mj, x.mk) * K + U.rand(-RD, RD)); }
+        x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? 0 : x.reg || 0, x.mj, x.mk) * K + U.rand(-RD, RD)) * this.incMul(x); }
       return x.rs;
+    },
+    // config/rates.js 地图收益倍率：总倍率 × 分类（凡界地图 / 四界地图 / 秘境 / 灵地）
+    incMul(x) {
+      const G0 = (CFG.rates || {}).MAP_GAIN || {}, n = v => (v === undefined ? 1 : Math.max(0, +v || 0));
+      const k = x.mj !== undefined ? (x.mk === "ld" ? "lingdi" : "mijing") : ((DATA.maps[x.map] || {}).w || "fan") === "fan" ? "fan" : "sijie";
+      return n(G0.ALL) * n(G0[k]);
     },
     // 击败怪物的掉落，写进 loot，返回描述文字
     //   灵石：本次总收益分摊到本次的怪：首领合计 BOSS_SHARE%，其余普通怪、精英怪平分
@@ -755,6 +763,7 @@ G.module({
       if (!x.plan) x.plan = this.exPlan(x);
       if (x.step === 0 || !x.mp) x.mp = this.matPlan(x);   // v236 每次开始：定好本次药材 / 矿石总量
       const si = x.step, sm = () => this.stepMats(x, si);
+      if (x.loot) { const k = this.incMul(x); if (k !== 1) x.loot.k = k; else delete x.loot.k; }
       const type = { n: "nothing", m: "monster", e: "elite", b: "boss", h: "herb", o: "ore", k: "kuang" }[x.plan[x.step]] || "nothing";
       x.step++;
       // 每走一步恢复生命、法力（HEAL_STEP + 宗门秘法「斗血 / 斗灵」）；战斗回合中不恢复
@@ -902,6 +911,7 @@ G.module({
     // 按名字把东西记进 loot：火髓 / 专用材料 / 药材矿石 / 自定义物品
     //   耀石 / 灵晶：名字是「耀石」「灵晶」（没写属性）每个随机一种属性
     lootAdd(loot, name, n) {
+      if (loot.k !== undefined && loot.k !== 1) { n = Math.floor(n * loot.k + Math.random()); if (n <= 0) return ""; }   // 地图收益倍率（incMul，exploreStep 写进 loot.k）
       if (name === DATA.HX) { loot.hx = (loot.hx || 0) + n; return `${DATA.HX}×${n}`; }
       const sm = DATA.smByName(name);
       if (sm) {

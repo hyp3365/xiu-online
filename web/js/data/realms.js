@@ -34,8 +34,9 @@ const _R = CFG.realm, _P = CFG.player;
 DATA.brRow = (rows, r) => { let o = null; for (const x of rows || []) if (x[0] <= r && (!o || x[0] >= o[0])) o = x; return o; };
 // 突破到第 T 层需要的修为 / 气血：行 = [境界, 一层需要, 十层需要]，中间每层平均加，最后 × 总倍率 rate
 DATA.brNeed = (rows, T, rate) => { T = Math.max(0, T); const x = DATA.brRow(rows, Math.floor(T / DATA.LAYERS)); return x ? Math.round((x[1] + ((x[2] || x[1]) - x[1]) / (DATA.LAYERS - 1) * (T % DATA.LAYERS)) * (rate || 1)) : 0; };
-DATA.needExp = L => DATA.brNeed(_R.EXP, L + 1, _R.EXP_RATE);   // 第 L 层 → 第 L+1 层
-DATA.MORTAL_EXP = DATA.brNeed(_R.EXP, 0, _R.EXP_RATE);          // 凡人 → 练气一层
+DATA.brRate = () => +((CFG.rates || {}).BREAK ?? 1) || 0;   // config/rates.js 突破需要总倍率
+DATA.needExp = L => Math.round(DATA.brNeed(_R.EXP, L + 1, _R.EXP_RATE) * DATA.brRate());   // 第 L 层 → 第 L+1 层
+DATA.MORTAL_EXP = Math.round(DATA.brNeed(_R.EXP, 0, _R.EXP_RATE) * DATA.brRate());          // 凡人 → 练气一层
 // 突破 n 层（第 0 ~ n-1 层）增加的属性合计（缓存）
 DATA._brSum = {};
 DATA.brSum = (rows, n, tag) => {
@@ -51,6 +52,10 @@ DATA.brSum = (rows, n, tag) => {
 DATA.realmStat = (L, k) => (k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0) + (DATA.brSum(_R.GAIN, L < 0 ? 0 : L + 1, "xw")[k] || 0);
 // 肉身突破属性：突破 n 层的合计
 DATA.bodyStat = (n, k) => DATA.brSum(_R.BODY_GAIN, n, "rs")[k] || 0;
+// 人物自己的突破属性：突破加的部分 × 总倍率（config/realm.js GAIN_RATE / BODY_GAIN_RATE，只影响人物，怪物、雷劫、装备参考属性不变；修炼速度不乘）
+DATA.plRealmStat = (L, k) => { const b = k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0, r = k === "cultivate" ? 1 : (_R.GAIN_RATE === undefined ? 1 : +_R.GAIN_RATE);
+  return b + (DATA.brSum(_R.GAIN, L < 0 ? 0 : L + 1, "xw")[k] || 0) * r; };
+DATA.plBodyStat = (n, k) => DATA.bodyStat(n, k) * (_R.BODY_GAIN_RATE === undefined ? 1 : +_R.BODY_GAIN_RATE);
 
 // 人物属性：base = 凡人基础（再加修为突破合计，见 DATA.realmStat）；fixed 不随境界
 DATA.playerFixed = _P.fixed;

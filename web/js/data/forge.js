@@ -9,14 +9,14 @@
  * ===================================================================== */
 const _FG = CFG.forge;
 
-// 每阶每部位一种装备（一阶 ~ 十二阶）
+// 每星每部位一种装备（一星 ~ 十星）
 DATA.forgeNames = {
-  helmet:  ["青铜盔", "玄铁盔", "赤炎冠", "寒玉冠", "紫金冠", "星辰冠", "太虚冠", "混元冠", "鸿蒙冠", "道源冠", "太初冠", "无极冠"],
-  armor:   ["青铜甲", "玄铁甲", "赤炎袍", "寒玉衣", "紫金甲", "星辰战衣", "太虚道袍", "混元宝甲", "鸿蒙仙衣", "道源圣衣", "太初神甲", "无极圣袍"],
-  weapon:  ["青铜剑", "玄铁剑", "赤炎刀", "寒玉剑", "紫金锏", "星辰剑", "太虚剑", "混元戟", "鸿蒙剑", "道源剑", "太初剑", "无极剑"],
-  legs:    ["青铜护腿", "玄铁护腿", "赤炎护膝", "寒玉腿甲", "紫金腿甲", "星辰护腿", "太虚护腿", "混元腿甲", "鸿蒙护腿", "道源护腿", "太初腿甲", "无极护腿"],
-  boots:   ["青铜靴", "玄铁靴", "赤炎靴", "寒玉靴", "紫金靴", "星辰靴", "太虚靴", "混元靴", "鸿蒙靴", "道源靴", "太初靴", "无极靴"],
-  pendant: ["青铜坠", "玄铁坠", "赤炎佩", "寒玉佩", "紫金坠", "星辰佩", "太虚佩", "混元坠", "鸿蒙佩", "道源佩", "太初佩", "无极佩"],
+  helmet:  ["青铜盔", "玄铁盔", "赤炎冠", "寒玉冠", "紫金冠", "星辰冠", "太虚冠", "混元冠", "鸿蒙冠", "道源冠"],
+  armor:   ["青铜甲", "玄铁甲", "赤炎袍", "寒玉衣", "紫金甲", "星辰战衣", "太虚道袍", "混元宝甲", "鸿蒙仙衣", "道源圣衣"],
+  weapon:  ["青铜剑", "玄铁剑", "赤炎刀", "寒玉剑", "紫金锏", "星辰剑", "太虚剑", "混元戟", "鸿蒙剑", "道源剑"],
+  legs:    ["青铜护腿", "玄铁护腿", "赤炎护膝", "寒玉腿甲", "紫金腿甲", "星辰护腿", "太虚护腿", "混元腿甲", "鸿蒙护腿", "道源护腿"],
+  boots:   ["青铜靴", "玄铁靴", "赤炎靴", "寒玉靴", "紫金靴", "星辰靴", "太虚靴", "混元靴", "鸿蒙靴", "道源靴"],
+  pendant: ["青铜坠", "玄铁坠", "赤炎佩", "寒玉佩", "紫金坠", "星辰佩", "太虚佩", "混元坠", "鸿蒙佩", "道源佩"],
 };
 // 名字在 config/names.js 的 forge（上面是原名，读档对照用）
 DATA.NM_DEF.forge = JSON.parse(JSON.stringify(DATA.forgeNames));
@@ -26,7 +26,7 @@ DATA.attrNames = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", s
 for (const k in DATA.attrNames) DATA.attrNames[k] = DATA.nmPick(CFG.names.attr, k, DATA.attrNames[k]);
 DATA.COLOR_Q = [0, 1, 3, 4];                                // 颜色 → 品质样式（白 绿 紫 金）
 
-DATA.forgeEqName = (slot, g) => DATA.JIE[g] + "·" + DATA.forgeNames[slot][g];
+DATA.forgeEqName = (slot, g) => DATA.XING[g] + "·" + DATA.forgeNames[slot][g];
 DATA.forgeEqMats = g => DATA.parseMats(_FG.equip.mats[g]);
 DATA.forgeEqTime = g => _FG.equip.time[g] * 60000;
 DATA.stoneName = g => DATA.JIE[g] + DATA.SS;
@@ -36,7 +36,7 @@ DATA.stoneTime = g => _FG.stone.time[g] * 60000;
 // 法宝：7 种形状（config/forge.js 的 fabao.types：剑 刀 锤 环 盾 鼎 印），属性炼制时自己选，显示如 一阶·火·剑
 //   法宝在存档里：ft = 形状序号、el = 属性
 DATA.fabaoTypes = _FG.fabao.types;
-DATA.forgeNames.fabao = DATA.JIE.map(() => DATA.slots.fabao);        // 门派炼器室图谱名：一阶·法宝
+DATA.forgeNames.fabao = DATA.XING.map(() => DATA.slots.fabao);        // 门派炼器室图谱名：一阶·法宝
 DATA.elIdx = el => Math.max(0, DATA.elements.findIndex(x => x.id === el));   // 属性序号（金木水火土雷 = 0~5）
 // 法宝名字（config/names.js 的 fabaoName[形状][阶]），没写就用形状名
 DATA.fabaoName = (ft, g, def) => { const L = (CFG.names.fabaoName || {})[ft]; return (L && L[g]) || def || (DATA.fabaoTypes[ft] || {}).name || "法宝"; };
@@ -67,10 +67,10 @@ DATA.eqSlots6 = DATA.forgeSlots.filter(x => x !== "fabao"); // 头盔 ~ 吊坠
 DATA.ringNames = ["破军戒", "磐石戒", "长生戒", "灵犀戒", "疾风戒", "鹰眼戒", "幻影戒", "烈阳戒", "玄武戒"];
 DATA.NM_DEF.ring = DATA.ringNames.slice();                  // 原名（读档对照用）；名字在 config/names.js 的 ring
 DATA.ringNames = DATA.nmArr(CFG.names.ring, DATA.ringNames);
-DATA.ringName = (r, g) => DATA.JIE[g] + "·" + DATA.ringNames[r];
+DATA.ringName = (r, g) => DATA.XING[g] + "·" + DATA.ringNames[r];
 DATA.ringMats = g => DATA.parseMats(_FG.ring.mats[g]);
 DATA.ringTime = g => _FG.ring.time[g] * 60000;
-DATA.ringBpName = (g, r) => DATA.JIE[g] + (DATA.ringNames[r] || "戒指") + "图纸";   // v26：图纸分戒指种类（r）
+DATA.ringBpName = (g, r) => DATA.XING[g] + (DATA.ringNames[r] || "戒指") + "图纸";   // v26：图纸分戒指种类（r）
 // 法宝属性名（额外伤害 elDmg 带一个属性 el）
 DATA.fbAttrNames = { uses: "祭出次数", pct: "伤害", elDmg: "额外伤害", ignRes: "无视抗性", manaCut: "法力消耗减少%",
   sAtk: "攻击", dSAtk: "攻击", sHit: "命中", sCrit: "暴击%", sCritDmg: "暴击伤害%", sMana: "本法宝法力消耗减少%", sDing: "降低属性", sYin: "眩晕几率%",

@@ -33,7 +33,7 @@ DATA.recipeHas = (type, g) => !!(_AL.recipes[type] && _AL.recipes[type].herbs[g]
 // v41：丹方分类（0 凡丹 1 仙丹 2 冥丹 3 魔丹 4 神丹）、学习需要的门派星级、加成的属性
 DATA.danCat = type => (_AL.recipes[type] && _AL.recipes[type].cat) || 0;
 // 凡丹：N 星宗门有一阶~N 阶（用户定，2026-10-20）；仙冥魔神丹在四界功德司学，这里的星级只作旧配置兼容
-DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || g + 1;   // 凡丹学习需要的门派星级（仙冥魔神丹在功德司学，不看星级）
+DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || Math.min(5, Math.floor(g / (_AL.SECT_STAR_TIERS || 2)) + 1);   // 凡丹学习需要的门派星级：1~5 星宗门每星两阶（一二阶 1 星 … 九十阶 5 星），6~10 星宗门全部；仙冥魔神丹在功德司学
 DATA.danStat = type => (_AL.recipes[type] && _AL.recipes[type].stat) || type;
 // v42：仙冥魔神丹（cat ≥ 1）用炼丹仙炉、炼丹仙师；修炼丹的品质 = 阶 + REALM0
 DATA.danFu = type => DATA.danCat(type) ? "xdan" : "dan";
@@ -57,7 +57,7 @@ DATA.danPrice = (type, g) => (_AL.recipes[type].price || [])[g] || 0;
 
 /* ---------- 炼丹炉 / 炼器炉 ---------- */
 DATA.furnaces = _FU;                                                // dan / qi
-DATA.furnaceName = (kind, g) => DATA.JIE[g] + _FU[kind].name;
+DATA.furnaceName = (kind, g) => (kind === "qi" || kind === "xqi" ? DATA.XING : DATA.JIE)[g] + _FU[kind].name;   // 炼器炉 / 炼器仙炉按星
 DATA.furnaceMats = (kind, g) => DATA.parseMats(_FU[kind].mats[g]);
 DATA.furnaceTime = (kind, g) => _FU[kind].time[g] * 60000;
 DATA.furnaceBonus = (kind, g) => g >= 0 ? _FU[kind].bonus[g] : 0;  // 缩短时间 %

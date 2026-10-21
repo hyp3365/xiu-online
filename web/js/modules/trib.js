@@ -41,7 +41,7 @@ G.module({
     makeTrib(L) {
       const T = CFG.trib, st = DATA.mobStats(this.tribRow(L));
       const R = T.RAND, rnd = R[0] + Math.random() * (R[1] - R[0]);
-      return { atk: st.atk * rnd, crit: T.crit };
+      return { atk: st.atk * rnd * (+((CFG.rates || {}).TRIB ?? 1) || 0), crit: T.crit };   // config/rates.js 雷劫强度总倍率
     },
     // 劫云劈一次的伤害 [伤害, 是否暴击]
     tribHit(x) {

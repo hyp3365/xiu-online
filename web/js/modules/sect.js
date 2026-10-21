@@ -470,7 +470,7 @@ G.module({
     },
     towerDesc(star) {   // v223 塔的奖励说明
       const T = CFG.sect.trial, r = (T.RING || [])[star - 1], M = T.MIJUE || {}, i = star - 1, ev = (M.EVERY || [])[i] || 0, last = (M.LAST || [])[i] || 0, out = [];
-      if (r !== undefined && r >= 0 && DATA.ringNames[r]) out.push(`第 10 层奖励${DATA.ringName(r, 0)}，第 20~100 层依次奖励它的二阶~十阶升级图纸`);
+      if (r !== undefined && r >= 0 && DATA.ringNames[r]) out.push(`第 10 层奖励${DATA.ringName(r, 0)}，第 20~100 层依次奖励它的二星~十星升级图纸`);
       if (ev > 0 && ((M.PCT || [])[i] || 0) > 0) out.push(`每 ${ev} 层奖励一本试炼塔秘诀`);
       if (last > 0) out.push(`登顶奖励一本试炼塔秘诀`);
       out.push(`其余每 ${T.EVERY || 10} 层奖励${DATA.HX} / 耀石 / 功德随机一种`);

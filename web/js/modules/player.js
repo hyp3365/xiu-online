@@ -39,7 +39,7 @@ G.module({
     layer() { return this.s.L % DATA.LAYERS; },
     // 境界够不够：req = -1 凡人即可，否则需要（非凡人且）大境界 ≥ req
     realmOK(req) { return req < 0 || (!this.s.mortal && this.r() >= req); },                    // 当前层（0~9）
-    needExp() { return this.s.mortal ? DATA.MORTAL_EXP : DATA.needExp(this.s.L); },
+    needExp() { return this.s.mortal ? DATA.needExp(-1) : DATA.needExp(this.s.L); },   // needExp(-1) = 凡人 → 练气一层
     realmName(L) {
       if (L === undefined) { if (this.s.mortal) return "凡人"; L = this.s.L; }
       return DATA.realmLabel(Math.floor(L / 10)) + DATA.layerNames[L % 10];
@@ -76,7 +76,7 @@ G.module({
       return !!((x && !x.rest) || (s.trib && !s.trib.result));
     },
     computeStats() {
-      const L = this.s.mortal ? -1 : this.s.L, F = DATA.playerFixed, R = k => DATA.realmStat(L, k);   // 修为突破属性（config/realm.js 的 GAIN）
+      const L = this.s.mortal ? -1 : this.s.L, F = DATA.playerFixed, R = k => DATA.plRealmStat(L, k);   // 修为突破属性（config/realm.js 的 GAIN）
       const eq = this.equipTotal(), gf = this.gongfaBonus(), dn0 = this.danBonus();
       const dn = {}; for (const k of ["hp", "atk", "def", "mana", "hit", "dodge", "crit"]) dn[k] = dn0[k] || 0; // 属性丹；gongfaBonus 见 gongfa.js，danBonus（属性丹）见 craft.js
       const bd = this.bodyBonus ? this.bodyBonus() : {}; for (const k of ["hp", "atk", "def", "mana", "hit", "dodge", "crit"]) dn[k] += bd[k] || 0;   // 肉身突破加成（body.js）

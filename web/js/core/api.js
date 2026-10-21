@@ -364,6 +364,8 @@ const API = {
     if (typeof G !== "undefined" && G.s) {
       // 炼法宝还没选类型 / 属性：在本地打开选择窗口，选好后再发给服务器
       if (name === "craftFurnace" && args[2] === "fabao" && !(DATA.fabaoTypes[args[3]] && DATA.elById[args[4]])) { G.openFabaoPick(args[1]); return false; }
+      // 突破要渡劫（如练气十层 → 筑基）：渡劫准备页只在本地打开，点「开始突破」才发 startTrib 给服务器
+      if (name === "breakthrough" && (G.s.trib || (G.canBreak() && G.needTrib()))) { G.openTrib(); return false; }
       // 悟道：读条动画在本地播放，结束时让服务器结算
       if (name === "wudao") {
         const dao = args[0];
