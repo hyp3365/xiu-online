@@ -247,6 +247,7 @@ G.module({
     /* ---------- 炼器室：炉子 / 装备 / 空间石 ---------- */
     // 炼制时间（炼器炉缩短）
     forgePer(kind, g) {
+      if (kind === "rf") return ((CFG.forge.refine || {}).TIME || [])[g] * 1000 || (g + 1) * 10000;   // 精炼：固定时间，不受炉子、炼器师缩短
       const base = kind === "eq" ? DATA.forgeEqTime(g) : kind === "ss" ? DATA.stoneTime(g) : kind === "ring" ? DATA.ringTime(g) : DATA.furnaceTime(kind, g);
       const xf = (kind === "xdan" || kind === "xqi") && this.s.furnaceUse.xqi >= 0;   // 仙炉：装有炼器仙炉时按炼器仙炉缩短
       const ck = this.forgeCraft(kind), tc = (CFG.craftsman[ck].TIME_CUT || [])[this.craftLv(ck) - 1] || 0;   // 炉子% + 炼器师/炼器仙师% + 器火秘法% 相加
@@ -265,8 +266,8 @@ G.module({
     },
     smHave(list) { return list.every(x => this.smCount(x.k, x.ft) >= x.n); },
     smText(list) { return list.map(x => `<span class="${this.smCount(x.k, x.ft) >= x.n ? "" : "q5"}">${DATA.li(DATA.smIcon(x.k, x.ft))}${DATA.smName(x.k, x.ft)} ${U.fmt(this.smCount(x.k, x.ft))}/${U.fmt(x.n)}</span>`).join("、"); },
-    jobMats(q) { return q.kind === "eq" ? DATA.forgeEqMats(q.g) : q.kind === "ss" ? DATA.stoneMats(q.g) : q.kind === "ring" ? DATA.ringMats(q.g) : DATA.furnaceMats(q.kind, q.g); },
-    jobName(q) { return q.kind === "eq" ? (q.slot === "fabao" && q.ft !== undefined ? DATA.XING[q.g] + "·" + (DATA.elById[q.el] ? DATA.elById[q.el].name + "·" : "") + DATA.fabaoName(q.ft, q.g) : DATA.forgeEqName(q.slot, q.g)) : q.kind === "ss" ? DATA.stoneName(q.g) : q.kind === "ring" ? DATA.ringName(q.r, q.g) : DATA.furnaceName(q.kind, q.g); },
+    jobMats(q) { return q.kind === "rf" ? DATA.refineMats(q.item) : q.kind === "eq" ? DATA.forgeEqMats(q.g) : q.kind === "ss" ? DATA.stoneMats(q.g) : q.kind === "ring" ? DATA.ringMats(q.g) : DATA.furnaceMats(q.kind, q.g); },
+    jobName(q) { return q.kind === "rf" ? "精炼" + this.itemName({ t: "eq", e: q.item }) : q.kind === "eq" ? (q.slot === "fabao" && q.ft !== undefined ? DATA.XING[q.g] + "·" + (DATA.elById[q.el] ? DATA.elById[q.el].name + "·" : "") + DATA.fabaoName(q.ft, q.g) : DATA.forgeEqName(q.slot, q.g)) : q.kind === "ss" ? DATA.stoneName(q.g) : q.kind === "ring" ? DATA.ringName(q.r, q.g) : DATA.furnaceName(q.kind, q.g); },
     // 炼好：放进背包，背包满返回 false（等有空位再出炉）
     forgeCraft() { return "qi"; },   // 炼器统一按炼器师 1~20 阶
     // 炼器：仙炉（炼丹仙炉 / 炼器仙炉）算 11~20 阶；炉子：仙炉装了炼器仙炉算 11~20 阶，否则用炼器炉 1~10 阶。可跨阶，成功率每差一阶 ±5%
@@ -281,6 +282,13 @@ G.module({
       if (j.ok === undefined) {
         j.ok = Math.random() < this.forgeRate(j.kind, j.g);
         this.addCraftExp("qi", this.itemExp("qi", this.forgeTotal(j.kind, j.g), j.ok));
+      }
+      if (j.kind === "rf") {   // 精炼：成功 +1 阶；失败只扣材料（同类那件 + 矿石），被精炼的那件原样退回
+        if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; }
+        const e = j.item; if (j.ok) e.rj = DATA.rjOf(e) + 1;
+        this.addEquip(e); this.dirty();
+        this.log(j.ok ? `精炼成功：<span class="q${e.q}">${this.itemName({ t: "eq", e })}</span> 升到${DATA.rjName(e)}。` : `精炼${this.itemName({ t: "eq", e })}失败，材料已耗尽，装备仍是${DATA.rjName(e)}。`, j.ok ? "gold" : "bad");
+        return true;
       }
       if (!j.ok) {
         if (j.prev) { if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; } this.addEquip(j.prev); }
@@ -406,7 +414,7 @@ G.module({
     // 背包里有没有能炼这一阶法宝的底子：一阶不需要，二阶起 = 任意一件上一阶法宝
     fabaoAnyBase(g) { return g === 0 || this.prevEquipIndex("fabao", g) >= 0; },
     // 退回：按开始时实际扣的专用材料 q.sm
-    refundJob(q) { this.giveBack(this.jobMats(q)); (q.sm || []).forEach(x => this.addSm(x.k, x.n, x.ft)); if (q.prev) this.addEquip(q.prev); },
+    refundJob(q) { this.giveBack(this.jobMats(q)); (q.sm || []).forEach(x => this.addSm(x.k, x.n, x.ft)); if (q.prev) this.addEquip(q.prev); if (q.item) this.addEquip(q.item); if (q.mat) this.addEquip(q.mat); },
     // 取消队列中的一项，退回材料
     cancelForgeQ(i) {
       const q = this.s.forgeQueue[i]; if (!q) return;
@@ -431,31 +439,34 @@ G.module({
       this.s.bag.forEach((it, i) => { if (it.t === "eq" && this.refineSame(e, it.e) && (best < 0 || score(it.e) < score(this.s.bag[best].e))) best = i; });
       return best;
     },
-    refineEq(src) {
-      const s = this.s, e = this.resetTarget(String(src || "")); if (!e || !e.attrs) return;
+    refineEq(i) {
+      const s = this.s, it = s.bag[+i]; if (!it || it.t !== "eq" || !it.e.attrs) return;
+      const e = it.e;
       if (DATA.rjTop(e)) return this.log("已精炼到" + DATA.JIE[DATA.RJ_MAX - 1] + "。", "sys");
+      if (s.furnaceUse.qi < 0) return this.log("炼器必须装有炼器炉（宗门宝库 · 杂物可兑换一星炼器炉）。", "sys");
+      if (s.forgeJob && s.forgeQueue.length >= CFG.furnace.QUEUE) return this.log(`队列已满（最多 ${CFG.furnace.QUEUE} 个）。`, "sys");
       const mats = DATA.refineMats(e), mi = this.refineMatIndex(e);
-      if (mi < 0) return this.log("缺少一件同星同类的" + (e.slot === "fabao" ? "法宝（同形状同属性）" : e.slot === "ring" ? "戒指（同种）" : DATA.slots[e.slot]) + "作精炼材料。", "sys");
+      if (mi < 0) return this.log("背包里缺少一件同星同类的" + (e.slot === "fabao" ? "法宝（同形状同属性）" : e.slot === "ring" ? "戒指（同种）" : DATA.slots[e.slot]) + "作精炼材料。", "sys");
       if (!this.hasMats(mats)) return this.log("矿石不足。", "sys");
       mats.forEach(m => this.takeMat(m.kind, m.g, m.n));
-      s.bag.splice(mi, 1);
-      e.rj = DATA.rjOf(e) + 1;
-      this.log(`精炼成功：<span class="q${e.q}">${this.itemName({ t: "eq", e })}</span> 升到${DATA.rjName(e)}。`, "gold");
-      this.dirty(); this.after();
+      const mat = s.bag[mi].e;
+      for (const k of [Math.max(+i, mi), Math.min(+i, mi)]) s.bag.splice(k, 1);
+      const job = { kind: "rf", g: e.g, item: e, mat };
+      if (s.forgeJob) { s.forgeQueue.push(job); this.log(`${this.jobName(job)}加入队列。`, "sys"); }
+      else { s.forgeJob = Object.assign(job, { end: this.now() + this.forgePer("rf", e.g) }); this.log(`开始${this.jobName(job)}。`, "good"); }
+      this.after();
     },
-    // 精炼页：这一星所有装备 / 法宝 / 戒指（身上的、法宝栏、背包）
-    refineRows(g) {
+    // 精炼页：背包里所有装备 / 法宝 / 戒指
+    refineRows() {
       const s = this.s, list = [];
-      for (const k of DATA.equipSlots) if (s.equip[k] && s.equip[k].attrs && s.equip[k].g === g) list.push([k, s.equip[k], "已装备"]);
-      (s.fabao || []).forEach((e, i) => { if (e && e.attrs && e.g === g) list.push(["fb" + i, e, "法宝栏"]); });
-      s.bag.forEach((it, i) => { if (it.t === "eq" && it.e.attrs && it.e.g === g) list.push(["b" + i, it.e, ""]); });
-      if (!list.length) return `<p class="desc">${DATA.XING[g]}没有可精炼的装备、法宝、戒指。</p>`;
-      return list.map(([src, e, where]) => {
-        const top = DATA.rjTop(e), mats = DATA.refineMats(e), has = this.refineMatIndex(e) >= 0, ok = !top && has && this.hasMats(mats);
-        const img = DATA.eqIcon(e);
-        return `<div class="line"><div>${img ? DATA.eqTierIco(img, e.g) : ""}<span class="q${e.q}">${this.itemName({ t: "eq", e })}</span><span class="tag">${DATA.rjName(e)}</span>${where ? `<span class="tag">${where}</span>` : ""}
-          <small>${top ? "已满阶" : `<span class="${has ? "" : "q5"}">同星同类 ×1</span>、${this.matsText(mats)}`}</small></div>
-          <button class="sm" onclick="G.refineEq('${src}')" ${ok ? "" : "disabled"}>精炼</button></div>`;
+      s.bag.forEach((it, i) => { if (it.t === "eq" && it.e.attrs) list.push([i, it.e]); });
+      if (!list.length) return `<p class="desc">背包里没有装备、法宝、戒指。</p>`;
+      const full = s.forgeJob && s.forgeQueue.length >= CFG.furnace.QUEUE, has = s.furnaceUse.qi >= 0;
+      return list.map(([i, e]) => {
+        const top = DATA.rjTop(e), mats = DATA.refineMats(e), img = DATA.eqIcon(e);
+        return `<div class="line"><div>${img ? DATA.eqTierIco(img, e.g) : ""}<span class="q${e.q}">${this.itemName({ t: "eq", e })}</span><span class="tag">${DATA.rjName(e)}</span>
+          <small>${top ? "已满阶" : `${this.matsText(mats)} · ${U.dur(this.forgePer("rf", e.g) / 1000)} · 成功率 ${this.ratePct(this.forgeRate("eq", e.g))}`}</small></div>
+          <button class="sm" onclick="G.refineEq(${i})" ${top || full || !has ? "disabled" : ""}>精炼</button></div>`;
       }).join("");
     },
 
@@ -732,9 +743,9 @@ G.caveViews.forge = function () {
       ${btn(tierOK && this.hasMats(mats) && this.smHave(sm), `G.craftFurnace('ss',${g})`)}</div>`;
   }
   const mode = this.forgeMode === "refine" ? "refine" : "make";
-  const modeTabs = `<div class="room-grid">${[["make", "炼制"], ["refine", "精炼"]].map(([k, n]) => `<button class="${mode === k ? "active" : ""}" style="grid-column:span 3" onclick="G.setForgeMode('${k}')">${n}</button>`).join("")}</div>`;
+  const modeTabs = `<div class="room-grid" style="grid-template-columns:1fr 1fr">${[["make", "炼制"], ["refine", "精炼"]].map(([k, n]) => `<button class="${mode === k ? "active" : ""}" onclick="G.setForgeMode('${k}')">${n}</button>`).join("")}</div>`;
   const tierTabs = `<div class="room-grid five">${DATA.XING.map((n, i) => `<button class="${g === i ? "active" : ""}" onclick="G.setForgeTier(${i})">${n}</button>`).join("")}</div>`;
-  if (mode === "refine") return h + `<div class="card"><h3>精炼</h3>${modeTabs}${tierTabs}${this.refineRows(g)}</div>`;
+  if (mode === "refine") return h + `<div class="card"><h3>精炼</h3>${modeTabs}${this.refineRows()}</div>`;
   h += `<div class="card"><h3>炼器</h3>${modeTabs}${tierTabs}` +
     (rows || `<p class="desc">${DATA.XING[g]}还没有可炼制的东西：炉子图纸在门派宝库兑换，装备图谱、空间石在门派炼器室学习。</p>`) +
     `</div>`;

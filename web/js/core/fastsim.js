@@ -60,7 +60,7 @@
       if (s.forgeStudy) ev.push(s.forgeStudy.end);
       const j = s.forgeJob;
       if (j) {
-        const waits = last >= j.end && j.ok !== undefined && this.bagFull() && ((!j.ok && j.prev) || (j.ok && (j.kind === "eq" || j.kind === "ring")));   // 背包满等待出炉：每次结算都不变
+        const waits = last >= j.end && j.ok !== undefined && this.bagFull() && ((!j.ok && j.prev) || j.kind === "rf" || (j.ok && (j.kind === "eq" || j.kind === "ring")));   // 背包满等待出炉：每次结算都不变
         if (!waits) ev.push(j.end);
       }
       const al = s.alchJob;
