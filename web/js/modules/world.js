@@ -391,7 +391,7 @@ G.module({
       if (TEST) s.mana = tMp;
       // 战斗说明（显示在探索信息里）
       const why = `你出战时生命 ${U.fmt(hp0)}，共造成 ${U.fmt(dealt)} 伤害（对方剩余生命 ${U.fmt(Math.max(0, mhp))}/${U.fmt(m.hp)}），承受 ${U.fmt(taken)} 伤害；对方攻击 ${U.fmt(m.atk)} 防御 ${U.fmt(m.def)}${m.el ? `，${DATA.elById[m.el].name}属性，施法术 ${mSp} 次、法宝 ${mFb} 次` : ""}`;
-      const detail = { name: m.name, el: m.el || "", a: m.a, sp: spNames, spEl: spells.map(sp => sp.el.name), first: meFirst ? 0 : 1, log, mf: m.mf.slice(), tf: m.tf.slice(),
+      const detail = { name: m.name, el: m.el || "", a: m.a, sp: spNames, spEl: spells.map(sp => sp.el.name), vfx: [...spells.map(sp => sp.el.id), ...fabaos.map(fb => [fb.el, fb.ft])], first: meFirst ? 0 : 1, log, mf: m.mf.slice(), tf: m.tf.slice(),
         me: [R(hp0), R(st.hp), R(mana0), R(st.mana)], mob: [R(m.hp), R(m.hp), R(m.maxMana || 0), R(m.maxMana || 0)],
         // v181 这场战斗怪物的准确属性（战斗画面点怪物查看）
         ms: { hp: m.hp, atk: m.atk, def: m.def, speed: m.speed, hit: m.hit, dodge: m.dodge, mana: m.maxMana || 0, crit: m.crit || 0, res: Object.assign({}, m.res || {}),
@@ -554,11 +554,39 @@ G.module({
         re(me, c); if (k !== 0 && (k === 1 || k === 2)) me.classList.add("btv-cast"); };
       if (k === 1 || k === 2) { if (w) mv(Math.random() < 0.5 ? "btv-mpounce" : "btv-mwave"); }
       if (k === 0) { if (w) mv(["btv-pounce-r", "btv-claw-r", "btv-wave-r"][Math.floor(Math.random() * 3)]); else re(me, "btv-hact"); setTimeout(hit, 430 * SL); }
-      else if (k === 1) { if (!w) { re(me, "btv-hact"); me.classList.add("btv-cast"); } add("btv-orb " + (w ? "go-l" : "go-r") + (el ? " el-" + el : ""), "", w, 700); setTimeout(hit, 520 * SL); }
-      else if (k === 2) { if (!w) { re(me, "btv-hact"); me.classList.add("btv-cast"); } add("btv-fb " + (w ? "go-l" : "go-r"), "", w, 800); setTimeout(hit, 600 * SL); }
+      else if (k === 1 || k === 2) { if (!w) { re(me, "btv-hact"); me.classList.add("btv-cast"); }
+        // v246 法术按属性、法宝按形状各有特效（见 btVfx）；怪物法宝随机一种形状
+        const v = !w && b.vfx ? b.vfx[sp] : null, sEl = (k === 1 ? (w ? b.el : v) : (w ? b.el : v && v[0])) || "huo";
+        const ft = k === 2 ? (w ? Math.floor(Math.random() * 7) : v ? v[1] : 0) : -1;
+        setTimeout(hit, this.btVfx(fxEl, w, k, sEl, ft, SL, tg) * SL); }
       else if (k === 3) { this.btRing(w, true); this.btHp(); }
       else if (k === 4) { add("btv-pop gray", "眩晕", w); this.btHp(); }
       else { add("btv-shield gold", "", w, 1000); this.btHp(); }
+    },
+    // v246 法术 / 法宝特效：法术按属性（金剑气、木藤叶、水浪冰锥、火流星、土落石、雷劈），法宝按形状（剑、刀、锤、环、盾、鼎、印），颜色跟属性；返回命中时刻（毫秒，未乘放慢倍数）
+    btVfx(fxEl, w, k, el, ft, SL, tg) {
+      const X0 = w ? 76 : 24, X1 = w ? 24 : 76, dir = w ? -1 : 1;
+      const mk = (cls, ms, css, html) => { const n = document.createElement("div"); n.className = "vx " + cls + " vx-" + el;
+        n.style.cssText = `--x0:${X0}%;--x1:${X1}%;--d:${dir};` + (css || ""); if (html) n.innerHTML = html; fxEl.appendChild(n); setTimeout(() => n.remove(), ms * SL); return n; };
+      const later = (ms, f) => setTimeout(f, ms * SL);
+      const boom = (big, t) => later(t, () => { mk("vx-boom" + (big ? " big" : ""), 700); for (let i = 0; i < (big ? 10 : 7); i++) mk("vx-spark", 650, `--a:${Math.round(Math.random() * 360)}deg;--r:${30 + Math.random() * (big ? 60 : 36)}px`); });
+      const shake = t => later(t, () => { const st = fxEl.parentNode; st.classList.remove("vx-shake"); void st.offsetWidth; st.classList.add("vx-shake"); });
+      if (k === 1) {
+        if (el === "jin") { for (let i = 0; i < 3; i++) mk("vx-qi", 800, `animation-delay:${i * 90 * SL}ms;--y:${44 + i * 7}%`); boom(false, 520); return 560; }
+        if (el === "mu") { mk("vx-vine", 900); for (let i = 0; i < 8; i++) mk("vx-leaf", 900, `animation-delay:${i * 40 * SL}ms;--y:${40 + Math.random() * 24}%;--s:${Math.random() * 2 - 1}`); boom(false, 560); return 600; }
+        if (el === "shui") { mk("vx-wave", 900); for (let i = 0; i < 3; i++) later(380 + i * 70, () => mk("vx-ice", 600, `--o:${(i - 1) * 6}%`)); boom(false, 540); return 580; }
+        if (el === "tu") { for (let i = 0; i < 3; i++) mk("vx-rock", 800, `animation-delay:${i * 110 * SL}ms;--o:${(i - 1) * 7}%;--s:${0.8 + i * 0.2}`); boom(true, 600); shake(600); return 620; }
+        if (el === "lei") { mk("vx-cloud", 900); later(320, () => { mk("vx-bolt", 500, "", '<svg viewBox="0 0 40 200" preserveAspectRatio="none"><path d="M24 0 L10 80 L22 84 L6 200 L34 70 L20 66 L30 0Z"/></svg>'); mk("vx-flash", 400); }); boom(true, 360); shake(360); return 380; }
+        mk("vx-meteor", 700); boom(true, 560); return 560;   // 火
+      }
+      const T = (DATA.fabaoTypes[ft] || {});
+      if (T.shield) { mk("vx-fbshield", 700); later(250, () => mk("vx-shbash", 500)); boom(false, 520); shake(520); return 540; }   // 盾：撞过去
+      if (ft === 0) { for (let i = 0; i < 3; i++) mk("vx-sword", 900, `animation-delay:${i * 80 * SL}ms;--y:${42 + i * 8}%`, `<img src="img/bt_sword.webp?v=${DATA.IMG_V || 1}" alt="">`); boom(false, 600); return 640; }
+      if (ft === 1) { mk("vx-crescent", 750); later(480, () => mk("vx-cut", 450)); boom(false, 500); return 520; }
+      if (ft === 2) { mk("vx-hammer", 900); boom(true, 600); shake(600); later(600, () => mk("vx-ringwave", 600)); return 620; }
+      if (ft === 3) { mk("vx-hoop", 900); later(560, () => mk("vx-bind", 500)); boom(false, 560); return 580; }
+      if (ft === 5) { mk("vx-ding", 1000); later(620, () => mk("vx-ringwave", 600)); boom(true, 620); shake(620); return 640; }
+      mk("vx-yin", 1000); later(620, () => mk("vx-seal", 650)); boom(true, 620); shake(620); return 640;   // 印
     },
     // v165 护盾光圈：护盾在的时候一直显示，套住人物 / 怪物（比人物大一点），破碎时消失
     btRing(w, on) {
