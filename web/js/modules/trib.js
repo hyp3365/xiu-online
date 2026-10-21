@@ -6,7 +6,7 @@
  *       → 「开始渡劫」→ 渡劫页（上方劫云，下方人物）
  * 劫云只有攻击，每 HIT_SEC 秒劈一次（金木水火土雷六种属性轮流，属性伤害 = 攻击 − 防御 × RES_RATE − 该系抗性），人物不还手；撑过 TIME 秒没倒 = 突破成功。
  * 按 G.now() 计时：关掉页面、关掉游戏，劫云照样劈，回来时一次算完。
- * 点「开始突破」先倒计时 PRE_SEC 秒，再开始劈；渡劫中点格子使用法宝 / 法术（得护盾）、丹药（回生命法力），数值见 CFG.trib.USE。
+ * 点「开始突破」先倒计时 PRE_SEC 秒，再开始劈；渡劫中点格子使用盾类法宝（得护盾）、丹药（回生命法力）；攻击类法宝、法术不能用，数值见 CFG.trib.USE。
  *
  * 存档：
  *   s.tribSlots  [格子]：{ k: "fb", uid } 法宝 / { k: "sp", id } 法术 / { k: "it", name } 丹药；空格 null
@@ -28,15 +28,23 @@ G.module({
       const ri = Math.floor(L / DATA.LAYERS), o = CFG.trib.TIME;
       return Math.max(1, o[DATA.realms[ri]] !== undefined ? o[DATA.realms[ri]] : o[DATA.NM_DEF.realm[ri]]);
     },
-    // 劫云（v226）：属性 = 突破后那一层（境界、层）的修为 + 肉身 + 三类功法（学% 按层平均递增）× 当层倍率 × 随机 CFG.trib.RAND
+    // 劫云：属性 = 突破后那一层（境界、层）的修为 + 肉身 + 三类功法 × 当层倍率 × 随机 CFG.trib.RAND
+    //   行 [境界, [层起, 层止], 宗门组, 坊市组, 功德司组, 每层倍率]，每组同怪物 [类别, 前星学%, 前星层, 星级, 本星学%, 本星层]
+    //   组里写 [起, 止] 的数从层起到层止平均递增（学% 不取整，功法层、星级取整）；旧格式 [类别, 学%, 功法层]（全部星级同一个学%）仍能读
     tribRow(L) {
       const T = CFG.trib, ri = Math.floor(L / DATA.LAYERS), lay = L % DATA.LAYERS + 1;
-      const R = DATA.mobRange, r = T.MOB.find(r => r[0] === ri && lay >= R(r[1])[0] && lay <= R(r[1])[1]);
-      const ly = R(r[1]), p = ly[1] > ly[0] ? (lay - ly[0]) / (ly[1] - ly[0]) : 0;   // 这一层在分段里的位置 0 ~ 1
+      const R = DATA.mobRange, r = T.MOB.find(r => r[0] === ri && lay >= R(r[1])[0] && lay <= R(r[1])[1]) || T.MOB.filter(r => r[0] <= ri).pop() || [ri, [1, 10], 0];
+      const ly = R(r[1]), p = ly[1] > ly[0] ? Math.max(0, Math.min(1, (lay - ly[0]) / (ly[1] - ly[0]))) : 0;   // 这一层在分段里的位置 0 ~ 1
       const lerp = (v, round) => { const a = R(v), x = a[0] + (a[1] - a[0]) * p; return round ? Math.round(x) : x; };
-      const cat = c => { const x = r.slice(2, -1).find(y => y[0] === c) || [c, 0, 0]; return [c, lerp(x[1]), lerp(x[2], true)]; };   // 没写的类别 = 不学
-      const k = 1 + (lay - ly[0]) * r[r.length - 1];   // 最后一个数 = 每层倍率
-      return [ri, lay, 0, cat(1), cat(2), cat(3), k];   // 怪物 7 个数格式，功法星级 0 = 该境界能学到的全部星级
+      const gs = r.slice(2, -1).filter(Array.isArray);
+      const cat = c => {
+        const x = gs.find(y => y[0] === c);
+        if (!x) return [c, 0, 0, 0, 0, 0];   // 没写的类别 = 不学
+        if (x.length <= 3) { const pc = lerp(x[1]), g = lerp(x[2], true); return [c, pc, g, 0, pc, g]; }   // 旧格式
+        return [c, lerp(x[1]), lerp(x[2], true), lerp(x[3], true), lerp(x[4]), lerp(x[5], true)];
+      };
+      const k = 1 + (lay - ly[0]) * (+r[r.length - 1] || 0);   // 最后一个数 = 每层倍率
+      return [ri, lay, cat(1), cat(2), cat(3), k];   // 怪物 6 个数格式；星级 0 = 该境界能学到的最高星
     },
     makeTrib(L) {
       const T = CFG.trib, st = DATA.mobStats(this.tribRow(L));
@@ -56,14 +64,16 @@ G.module({
 
     /* ---------- 准备页的格子 ---------- */
     tribSlotN() { return CFG.trib.SLOTS; },
-    // 找格子里的东西；找不到（卖了、用了、遗忘了）返回 null
+    // 盾类法宝（有护盾值）才能在渡劫里用
+    tribShieldFb(e) { try { return !!(e && e.attrs && DATA.fabaoInfo(e).shield); } catch (_) { return false; } },
+    // 找格子里的东西；找不到（卖了、用了、遗忘了）或不能用（攻击类法宝、法术）返回 null，显示「已失效」
     tribFind(c) {
       const s = this.s; if (!c) return null;
       if (c.k === "fb") {
         const e = (s.fabao || []).find(e => e && e.uid === c.uid) || ((s.bag.find(it => it.t === "eq" && it.e.uid === c.uid) || {}).e);
-        return e ? { name: this.itemName({ t: "eq", e }), img: DATA.eqIcon(e), tag: "法宝" } : null;
+        return e && this.tribShieldFb(e) ? { name: this.itemName({ t: "eq", e }), img: DATA.eqIcon(e), tag: "法宝" } : null;
       }
-      if (c.k === "sp") { const g = s.gongfa[c.id] && DATA.spellInfo(c.id, s.gongfa[c.id]); return g ? { name: `《${g.name}》`, img: "", tag: "法术" } : null; }
+      if (c.k === "sp") return null;
       if (c.k === "it") {
         const it = s.bag.find(it => (it.t === "pill" || it.t === "dan") && this.itemName(it) === c.name);
         return it ? { name: c.name, img: this.itemIcon(it), tag: "丹药" } : null;
@@ -78,15 +88,15 @@ G.module({
       let h = "";
       const fbs = [...(s.fabao || []).filter(Boolean), ...s.bag.filter(it => it.t === "eq" && it.e.slot === "fabao").map(it => it.e)];
       fbs.forEach(e => { if (!e.uid) e.uid = "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); });
-      const fb = fbs.filter(e => !used({ k: "fb", uid: e.uid }));
-      const sp = Object.keys(s.gongfa).filter(id => DATA.isSpell(id) && !used({ k: "sp", id }));
+      const fb = fbs.filter(e => !used({ k: "fb", uid: e.uid }) && this.tribShieldFb(e));   // 只有盾类法宝能放（攻击类法宝、法术渡劫时没有护盾）
+      const sp = [];
       const names = [...new Set(s.bag.filter(it => it.t === "pill" || it.t === "dan").map(it => this.itemName(it)))];
       const pills = names.map(n => ({ n, it: s.bag.find(it => (it.t === "pill" || it.t === "dan") && this.itemName(it) === n) }))
         .filter(p => (this.bagCount()[p.n] || 0) > this.tribPillUsed(p.n));
-      if (fb.length) h += `<p class="desc">法宝</p>` + fb.map(e => row(DATA.eqIcon(e), this.itemName({ t: "eq", e }), "法宝", `G.tribPut(${i},'fb','${e.uid}')`)).join("");
+      if (fb.length) h += `<p class="desc">盾类法宝</p>` + fb.map(e => row(DATA.eqIcon(e), this.itemName({ t: "eq", e }), "法宝", `G.tribPut(${i},'fb','${e.uid}')`)).join("");
       if (sp.length) h += `<p class="desc">法术</p>` + sp.map(id => { const g = DATA.spellInfo(id, s.gongfa[id]); return row("", `《${g.name}》`, `${g.star}星`, `G.tribPut(${i},'sp','${id}')`); }).join("");
       if (pills.length) h += `<p class="desc">丹药（每格 1 颗）</p>` + pills.map(p => row(this.itemIcon(p.it), p.n, `剩 ${U.fmt((this.bagCount()[p.n] || 0) - this.tribPillUsed(p.n))} 颗可放`, `G.tribPut(${i},'it','${p.n}')`)).join("");
-      this.modal(`<h2>第 ${i + 1} 格</h2>${h || `<p class="desc">没有可放入的法宝、法术、丹药。</p>`}
+      this.modal(`<h2>第 ${i + 1} 格</h2>${h || `<p class="desc">没有可放入的盾类法宝、丹药。</p>`}
         <div class="btns">${s.tribSlots[i] ? `<button onclick="G.tribPut(${i})">清空这格</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
     },
     tribPut(i, k, v) {
@@ -318,21 +328,13 @@ G.module({
       let msg;
       if (c.k === "fb") {
         const e = (s.fabao || []).find(e => e && e.uid === c.uid) || ((s.bag.find(it => it.t === "eq" && it.e.uid === c.uid) || {}).e);
-        if (!e || !e.attrs) return this.tribToast("这件法宝无法祭出");
+        if (!e || !this.tribShieldFb(e)) return this.tribToast("只有盾类法宝能在渡劫时使用");
         const fb = DATA.fabaoInfo(e);
         if ((s.mana || 0) < fb.mana) return this.tribToast("法力不足");
         s.mana -= fb.mana;
-        const o = fb.shield ? { hp: fb.shield.hp, def: fb.shield.def, red: fb.shield.red }
-          : { hp: (Math.max(0, fb.atk * fb.pct / 100) + (fb.addDmg || 0)) * U0.FB_SHIELD };
+        const o = { hp: fb.shield.hp, def: fb.shield.def, red: fb.shield.red };
         addSh(o); x.cd[i] = this.now() + U0.FB_CD * 1000;
         msg = `祭出${fb.name}，护盾 +${U.fmt(o.hp)}`;
-      } else if (c.k === "sp") {
-        const sp = DATA.spellInfo(c.id, s.gongfa[c.id]);
-        if ((s.mana || 0) < sp.mana) return this.tribToast("法力不足");
-        s.mana -= sp.mana;
-        const hp = Math.max(0, sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id)) * U0.SP_SHIELD;
-        addSh({ hp }); x.cd[i] = this.now() + U0.SP_CD * 1000;
-        msg = `施展《${sp.name}》，护盾 +${U.fmt(hp)}`;
       } else if (c.k === "it") {
         const bi = s.bag.findIndex(it => (it.t === "pill" || it.t === "dan") && this.itemName(it) === c.name); if (bi < 0) return;
         const it = s.bag[bi];

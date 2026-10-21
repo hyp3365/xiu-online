@@ -65,7 +65,7 @@ G.module({
     },
     /* ---------- 顶部快捷修改：总倍率（config/rates.js；突破属性倍率在 config/realm.js） ---------- */
     CFG_QUICK: [
-      ["地图收益", [["MAP_GAIN.ALL", "总倍率"], ["MAP_GAIN.fan", "凡界地图"], ["MAP_GAIN.mijing", "秘境"], ["MAP_GAIN.sijie", "四界地图"], ["MAP_GAIN.lingdi", "灵地"]]],
+      ["地图收益", [["MAP_GAIN.fan", "凡界地图"], ["MAP_GAIN.mijing", "秘境"], ["MAP_GAIN.sijie", "四界地图"], ["MAP_GAIN.lingdi", "灵地"]]],
       ["怪物属性", [["MOB", "总倍率（所有怪物，雷劫除外）"]]],
       ["雷劫强度", [["TRIB", "总倍率"]]],
       ["突破需要", [["BREAK", "总倍率（修为突破的修为、肉身突破的气血）"]]],

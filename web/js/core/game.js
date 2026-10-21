@@ -237,7 +237,7 @@ const G = {
       el.onclick = e => { const b = e.target.closest ? e.target.closest("button[data-a]") : null; if (b) { e.stopPropagation(); done(b.dataset.a === "1"); } else if (e.target === el) done(false); };
     });
   },
-  closeModal() { $("#modal").classList.add("hidden"); },
+  closeModal() { $("#modal").classList.add("hidden"); if (this._lockModal && this._bp && !this._cfgOpen && !this._restoring && !this._stopped && !this._restartLock && !document.body.classList.contains("nologin")) this._lockModal = false; },
 
   /* ---------- 启动 ---------- */
   start() {
@@ -281,7 +281,12 @@ const G = {
     document.addEventListener("focusout", () => setTimeout(() => {
       if (this._renderDeferred && !this._pressing && !this.editing($("#view"))) { this._renderDeferred = false; this.render(); }
     }, 0), true);
-    $("#modal").onclick = e => { if (e.target.id === "modal" && this.s && !this._lockModal) this.closeModal(); };
+    // 点弹窗外面关闭；锁定只在真正需要时生效（登录、数据修改、恢复存档、战斗画面），别的弹窗盖掉战斗画面后不再被旧的锁卡住
+    $("#modal").onclick = e => {
+      if (e.target.id !== "modal" || !this.s) return;
+      const lock = this._lockModal && (document.body.classList.contains("nologin") || this._cfgOpen || this._restoring || this._stopped || !!document.querySelector("#modal-box .btv"));
+      if (!lock) { this._lockModal = false; this.closeModal(); }
+    };
     this.showLogin(); // 见 modules/account.js
   },
 };

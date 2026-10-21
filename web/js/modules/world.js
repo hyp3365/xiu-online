@@ -655,11 +655,11 @@ G.module({
         x.rs = Math.max(0, this.zoneStone(x.map, x.kuang ? 0 : x.reg || 0, x.mj, x.mk) * K + U.rand(-RD, RD)) * this.incMul(x); }
       return x.rs;
     },
-    // config/rates.js 地图收益倍率：总倍率 × 分类（凡界地图 / 四界地图 / 秘境 / 灵地）
+    // config/rates.js 地图收益倍率：按分类（凡界地图 / 四界地图 / 秘境 / 灵地）
     incMul(x) {
       const G0 = (CFG.rates || {}).MAP_GAIN || {}, n = v => (v === undefined ? 1 : Math.max(0, +v || 0));
       const k = x.mj !== undefined ? (x.mk === "ld" ? "lingdi" : "mijing") : ((DATA.maps[x.map] || {}).w || "fan") === "fan" ? "fan" : "sijie";
-      return n(G0.ALL) * n(G0[k]);
+      return n(G0[k]);
     },
     // 击败怪物的掉落，写进 loot，返回描述文字
     //   灵石：本次总收益分摊到本次的怪：首领合计 BOSS_SHARE%，其余普通怪、精英怪平分
