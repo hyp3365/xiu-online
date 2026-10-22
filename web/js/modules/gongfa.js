@@ -324,7 +324,7 @@ G.module({
       groups.filter(gr => gr.key === filter).map(gr => {
       if (!gr.items.length) return filter === "all" ? "" : `<div class="card"><p class="desc">${hide ? "没有未满级的" : "尚未学会任何"}${gr.title}。</p></div>`;
       gr.items.sort(sortFn);
-      return `<div class="card"><h3>${gr.title}<small>${gr.sub}</small></h3>${gr.items.map(g => this.skillLine(g)).join("")}</div>`;
+      return `<div class="card"><h3>${gr.title}<small>${gr.items.length} 部</small></h3>${gr.items.map(g => this.skillLine(g)).join("")}</div>`;
     }).join("");
     return tabs + tools + (body || `<div class="card"><p class="desc">没有可显示的功法。</p></div>`);
   },
