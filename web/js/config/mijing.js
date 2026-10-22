@@ -49,7 +49,7 @@ CFG.mijing = {
     { name: "苍梧原", find: { map: 1, chance: 5 }, drops: 1,
       bossName: "苍梧石精", monsters: ["石傀儡", "山魈", "石甲蜥", "噬灵鼠"],
       extra: {
-        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [0, 1] }],
+        boss: [{ item: "耀石", chance: 100, n: [10, 20] }, { item: "灵晶", chance: 100, n: [2, 5] }, { item: "火髓", chance: 100, n: [6, 16] }, { item: "空间晶核", chance: 100, n: [1, 1] }],
       } },
     { name: "赤炎火窟", find: { map: 2, chance: 5 }, drops: 2,
       bossName: "赤鳞火蜥", monsters: ["火灵", "火鼠", "赤炎蜥", "熔岩怪"],
