@@ -134,7 +134,7 @@ CFG.forge.ring = {
  * 攻击类伤害 = 法宝攻击 × pct% × mul × DMG_MUL × DMG_REALM[人物大境界] − max(0, 对方该系抗 − 无视抗) × DEF_RATE，再加 主伤害 × elDmg%
  *   法宝攻击 = 使用者修为 + 肉身突破攻击（≤ 参考攻击）+ 功法攻击；DEF_RATE、保底伤害见 config/battle.js
  * 盾：护盾值 = 参考生命 × SHIELD_MULT × shHpMain%，防御同理；受击先减 盾防御 × DEF_RATE，再 × (1 − dmgRed%)，先扣护盾
- * 每次祭出法力 = REF 境界修为突破法力 × MANA_PCT[第一条主属性颜色]% × (1 − 法力消耗减少%) × 境界倍率（config/mobs.js magic.MANA_REALM，按人物当前大境界，与怪物共用）；elDmg / ignRes 须与法宝同属性才生效 */
+ * 每次祭出法力 = REF 境界修为突破法力 × MANA_PCT[第一条主属性颜色]% × (1 − 法力消耗减少%) × 灵根倍率（1 + 法宝那一系灵根等级 × config/gongfa.js MANA_LINGEN，与法术共用）× 境界倍率（config/mobs.js magic.MANA_REALM，按人物当前大境界，与怪物共用）；elDmg / ignRes 须与法宝同属性才生效 */
 CFG.forge.fabao = {
   REF: [   // 每阶参考境界 [境界序号, 层]（0 练气 1 筑基 … 23 大道圣人）
     [1, 10],
