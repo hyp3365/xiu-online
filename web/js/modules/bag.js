@@ -41,7 +41,7 @@ G.module({
       const sub = it => it.t === "pill" || it.t === "dan" ? it.type : it.t === "eq" ? it.e.slot : it.kind || "";
       this.s.bag.sort((a, b) => order(a) - order(b) || grade(a) - grade(b) || (sub(a) < sub(b) ? -1 : sub(a) > sub(b) ? 1 : 0));
     },
-    slotCount() { return Math.min(DATA.SLOT_MAX, Math.floor(this.r() / DATA.SLOT_EVERY) + 1); },
+    slotCount() { return Math.min(DATA.SLOT_MAX, Math.floor(this.r() / DATA.SLOT_EVERY) + DATA.SLOT_START); },
 
     /* ---------- 装备属性 ---------- */
     equipStats(e) {

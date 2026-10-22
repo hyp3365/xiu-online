@@ -13,7 +13,8 @@ DATA.equipSlots = ["helmet", "armor", "weapon", "legs", "boots", "pendant", "rin
 DATA.slotOf = key => key.startsWith("ring") ? "ring" : key; // 栏位 → 部位
 DATA.SLOT_MAX = CFG.equip.SLOT_MAX;
 DATA.SLOT_EVERY = CFG.equip.SLOT_EVERY || 1;   // 每隔几个大境界开 1 格
-DATA.slotRealm = i => i * DATA.SLOT_EVERY;     // 第 i 格（0 起）开启的大境界 // 法宝栏、法术栏最多格数（config/equip.js）
+DATA.SLOT_START = CFG.equip.SLOT_START || 1;   // 初始开几格
+DATA.slotRealm = i => Math.max(0, i - DATA.SLOT_START + 1) * DATA.SLOT_EVERY;     // 第 i 格（0 起）开启的大境界 // 法宝栏、法术栏最多格数（config/equip.js）
 
 // 背包
 DATA.BAG_START = CFG.bag.START; // 储物格初始数量（config/items.js 的 bag.START）
