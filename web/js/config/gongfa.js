@@ -79,8 +79,8 @@ CFG.gongfa.sect = {
   EFFECT_PCT: 1,     // 法术伤害总倍率
 
   learn: 100,        // 学习贡献基础值
-  LEARN_TYPE: { xinfa: 2, gongjue: 2, zhenjing: 2, mijue: 3, shenfa: 2, dunshu: 2, fajue: 2, zhenjue: 2, spell: 2, tijue: 3 },   // 学习贡献类别倍率
-  LEARN_STAR: [0.5, 5, 10, 20, 40, 60, 80, 110, 150, 200, 260, 330],   // 学习贡献星级倍率：1 星 ~ 12 星
+  LEARN_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1.5, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1.5 },   // 学习贡献类别倍率
+  LEARN_STAR: [1, 5, 10, 20, 40, 60, 80, 110, 150, 200, 250, 300],   // 学习贡献星级倍率：1 星 ~ 12 星
   EFFECT_LEARN: 1,   // 学习贡献总倍率
 };
 
@@ -88,10 +88,10 @@ CFG.gongfa.sect = {
  * 售价 = price × PRICE_TYPE[类别] × PRICE_STAR[星级-1] × EFFECT_PRICE（取整） */
 CFG.gongfa.shop = {
   PCT: 90,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
-  // BOOKS: { mijue: 2 },   // 每类几本（没写 1 本，最多同宗门第 5 阶段本数），加了本数每本效果不变
-  price: 2000,       // 售价基础值（灵石）
+  BOOKS: { mijue: 2 },   // 每类几本（没写 1 本，最多同宗门第 5 阶段本数），加了本数每本效果不变
+  price: 5000,       // 售价基础值（灵石）
   PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 2, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1 },   // 售价类别倍率
-  PRICE_STAR: [1, 5, 20, 50, 150],   // 售价星级倍率：1 星 ~ 5 星
+  PRICE_STAR: [1, 8, 20, 40, 80],   // 售价星级倍率：1 星 ~ 5 星
   EFFECT_PRICE: 1,   // 售价总倍率
 };
 
@@ -103,17 +103,17 @@ CFG.gongfa.tianwai = {
 
 // 四界坊市功法（data/jiegf.js；每界第 1、2 张图 6 星，每 2 张 +1 星）：学习 = 灵石 STONE[星级-6] × TYPE[类别] + 本图贡献 GX[星级-6] × TYPE[类别]
 CFG.gongfa.jshop = {
-  PCT: 90,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
-  // BOOKS: { mijue: 2 },   // 每类几本（没写 1 本），加了本数每本效果不变
+  PCT: 120,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
+  BOOKS: { mijue: 2 },   // 每类几本（没写 1 本），加了本数每本效果不变
   STONE: [600000, 1000000, 1500000, 2200000, 100000000],   // 6 星 ~ 10 星
-  GX: [6000, 6000, 6000, 6000, 6000],                        // 6 星 ~ 10 星
+  GX: [6000, 8000, 10000, 12000, 15000],                        // 6 星 ~ 10 星
   TYPE: { tijue: 1.1 },   // 类别倍率（没写 = 1）
 };
 
 // 四界功德司功法（data/jiegf.js；6~10 星）：学习功德 = MERIT[星级-6] × TYPE[类别]
 CFG.gongfa.gd = {
-  PCT: 150,          // 每本效果 = 宗门同星级每本 × %（跟功德司有几本无关）
-  // BOOKS: { mijue: 2 },   // 每类几本（没写 1 本），加了本数每本效果不变
+  PCT: 140,          // 每本效果 = 宗门同星级每本 × %（跟功德司有几本无关）
+  BOOKS: { mijue: 2 },   // 每类几本（没写 1 本），加了本数每本效果不变
   MERIT: [6000, 7000, 8000, 9000, 10000],   // 6 星 ~ 10 星
   TYPE: { tijue: 1.1 },   // 类别倍率（没写 = 1）
 };
