@@ -327,21 +327,22 @@ const API = {
       this.showActionFeedback(error, "bad");
       pending.reject(new Error(error)); return;
     }
-    this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result, pending.exStart, message.logs || []);
+    this.afterRemoteAction(pending.name, pending.args, pending.refresh, message.result, pending.exStart, message.logs || [], pending.cqStart);
     const bt = Array.isArray(message.battles) && message.battles[message.battles.length - 1];
     if (bt && bt.b && G.playBattle) { G.playBattle(bt.b, bt.title, bt.txt, bt.win, bt.logs || undefined, bt.replay, bt.opt || {}); }   // 服务器打完的战斗在这里播放
     else if (pending.name !== "wudaoDone") this.toastLogs(message.logs, true, failed);
     pending.resolve(message);
   },
 
-  afterRemoteAction(name, args, refresh, result, exStart, logs = []) {
+  afterRemoteAction(name, args, refresh, result, exStart, logs = [], cqStart) {
     // 悟道结果窗口：服务器结算后用它写的日志在本地弹出
     if (name === "wudaoDone") {
       const D0 = ((CFG.wudaoRoom || {}).daos || []).find(d => d.id === args[0]), log = logs.find(l => l.c === "gold");
       if (D0 && log && G.wdModal) G.wdModal(D0, String(log.m).replace(/。$/, "").split("，").slice(1).map(x => `<div class="line"><div>${x.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</div></div>`).join(""));
     }
     // 开始探索 / 挖矿 / 秘境后展开探索信息（单机版在操作里设置 exploreOpen，服务器上设置不到客户端）
-    if (["toggleExplore", "toggleKuang", "toggleMj", "mjAll"].includes(name) && G.s.explore && G.s.explore.start !== exStart) { G.exploreOpen = true; G.render(); }
+    if (["toggleExplore", "toggleKuang", "toggleMj", "mjAll"].includes(name) && G.s.explore && G.s.explore.start !== exStart) { G.exploreOpen = true; G.exInfo = "ex"; G.render(); }
+    if (name === "startChuqiao" && G.s.cq && G.s.cq.start !== cqStart) { G.exploreOpen = true; G.exInfo = "cq"; G.render(); }
     // These actions combine a server state change with a purely visual transition.
     if (name === "startTrib") { G.tribOpen = true; if (G.tribRender) G.tribRender(true); }
     if (name === "tribPut") { G.closeModal(); if (G.tribOpen && G.tribRender) G.tribRender(true); }
@@ -416,8 +417,8 @@ const API = {
         const error = new Error("服务器响应超时，请稍后查看状态");
         this.showActionFeedback(error.message, "bad"); reject(error);
       }, 15_000);
-      const exStart = typeof G !== "undefined" && G.s && G.s.explore ? G.s.explore.start : undefined;
-      this._pending.set(id, { resolve, reject, timer, name, args, refresh, exStart, ...buttonPending });
+      const exStart = typeof G !== "undefined" && G.s && G.s.explore ? G.s.explore.start : undefined, cqStart = typeof G !== "undefined" && G.s && G.s.cq ? G.s.cq.start : undefined;
+      this._pending.set(id, { resolve, reject, timer, name, args, refresh, exStart, cqStart, ...buttonPending });
       try { socket.send(JSON.stringify({ type: "action", id, action: name, args })); }
       catch (error) {
         clearTimeout(timer); this._pending.delete(id); this.finishButtonPending(buttonPending);

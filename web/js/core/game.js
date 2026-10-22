@@ -101,7 +101,7 @@ const G = {
     const dExp = s.exp - b.exp, dStone = s.stone - b.stone, dContrib = (s.contrib || 0) - b.contrib, dLing = s.ling - b.ling;
     rows.push(`<b>总计</b>`);
     rows.push(`修为 ${sign(dExp)}　灵石 ${sign(dStone)}　灵气 ${sign(dLing)}${s.sect || dContrib ? `　贡献 ${sign(dContrib)}` : ""}`);
-    const items = m => Object.keys(m).map(k => `${k}×${f(m[k])}`).join("、"), kills = (s.kills || 0) - b.kills, cqOn = s.explore && s.explore.cq;
+    const items = m => Object.keys(m).map(k => `${k}×${f(m[k])}`).join("、"), kills = (s.kills || 0) - b.kills, cqOn = !!s.cq;
     if (o.learn.length) { rows.push(`<b>学会</b>`); rows.push(o.learn.join("、")); }   // v173 学了什么
     const ups = Object.keys(o.gfUp); if (ups.length) { rows.push(`<b>功法升层</b>`); rows.push(ups.map(k => `${k} 第 ${o.gfUp[k]} 层`).join("、")); }
     if (o.exRuns || (s.explore && !cqOn)) {
@@ -114,8 +114,10 @@ const G = {
     }
     if (o.exRuns && o.cq.runs) rows.push(`探索和出窍共击败 ${f(kills)} 只`);
     if (o.exLost) rows.push(`<span class="bad">背包已满，遗失 ${o.exLost} 件</span>`);
-    if (s.explore && s.explore.step) rows.push(`当前这次已走 ${s.explore.step} 步，收获在走完后结算`);
-    if (!s.explore && (o.exRuns || o.cq.runs)) rows.push(`<span class="bad">离线期间${o.cq.runs && !o.exRuns ? "出窍" : "自动探索"}已结束（次数用完、生命不足或战败）</span>`);
+    if (s.explore && s.explore.step) rows.push(`当前这次探索已走 ${s.explore.step} 步，收获在走完后结算`);
+    if (s.cq && s.cq.step) rows.push(`当前这次出窍已走 ${s.cq.step} 步，收获在走完后结算`);
+    if (!s.explore && o.exRuns) rows.push(`<span class="bad">离线期间自动探索已结束（生命不足或战败）</span>`);
+    if (!s.cq && o.cq.runs) rows.push(`<span class="bad">离线期间出窍已结束（次数用完、生命不足或战败）</span>`);
     if (o.afN) { rows.push(`<b>事务堂</b>`); rows.push(`完成 ${f(o.afN)} 轮，灵石 +${f(o.afStone)}，贡献 +${f(o.afContrib)}`); }
     const other = dStone - o.exStone - o.cq.stone - o.afStone;
     if (other) rows.push(`<b>其他灵石</b>`, `${sign(other)}（自动补充灵气、种田、炼制等收支）`);
@@ -149,7 +151,7 @@ const G = {
     for (const k in now) { const d = now[k] - ((b.bag || {})[k] || 0); if (d > 0) gain.push(`${k}×${f(d)}`); }
     if (!dExp && !dStone && !dLing && !dContrib && !kills && !gain.length) return;
     rows.push(`<b>总计</b>`, `修为 ${sign(dExp)}　灵石 ${sign(dStone)}　灵气 ${sign(dLing)}${s.sect || dContrib ? `　贡献 ${sign(dContrib)}` : ""}`);
-    if (kills > 0) rows.push(`<b>探索</b>`, `击败 ${f(kills)} 只${s.explore ? "，自动探索仍在继续" : ""}`);
+    if (kills > 0) rows.push(`<b>探索</b>`, `击败 ${f(kills)} 只${s.explore ? "，自动探索仍在继续" : ""}${s.cq ? "，出窍仍在继续" : ""}`);
     if (s.explore && s.explore.step) rows.push(`当前这次已走 ${s.explore.step} 步，收获在走完后结算`);
     if (gain.length) rows.push(`<b>新增物品</b>`, gain.join("、"));
     this.log(`你离开了 ${U.dur(sec)}，期间收益：修为 ${sign(dExp)}，灵石 ${sign(dStone)}${kills > 0 ? `，击败 ${f(kills)} 只` : ""}。`, "gold");

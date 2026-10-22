@@ -338,11 +338,11 @@ G.module({
       try { for (const d of ["xiulian", "shenhun", "zhandou"]) if (A[d] && this.wdCheck(d)) this.wudaoDone(d); } finally { this._autoQuiet = false; }
       const go = (tgt, cq) => { const p = (tgt || "").split(":").map(Number); if (!tgt) return log("没有选择地图。");
         if (cq) { const r = tgt[0] === "k" ? -1 : p[2];
-          if (s.explore) return log("正在探索 / 出窍，跳过自动出窍。");
+          if (s.cq || (s.explore && s.explore.cq)) return log("正在出窍，跳过自动出窍。");
           if (!s.cqLearn || this.cqLeftToday() <= 0 || !this.realmOK(CFG.chuqiao.REALM)) return log("出窍条件不足或今天次数已用完。");
           if (r < 0 ? !this.mapOpen(p[1]) : !this.isTrained(p[1], r)) return log("所选地方还不能出窍。");
           this.startChuqiao(p[1], r, this.cqLeftToday());
-        } else { if (s.explore) return log("正在探索 / 出窍，跳过自动探索。");
+        } else { if (s.explore) return log("正在探索，跳过自动探索。");
           if (!this.isTrained(p[1], p[2])) return log("所选区域还没历练通过。");
           this.toggleExplore(p[1], p[2], false); }
       };

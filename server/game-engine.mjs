@@ -236,7 +236,7 @@ export class GameEngine {
       this.G._lastTick = s.last;
     }
     this.G._simNow = this.clock.now;
-    if (typeof this.G.advanceExplore === "function" && s.explore) this.G.advanceExplore();
+    if (typeof this.G.advanceExplore === "function" && (s.explore || s.cq)) this.G.advanceExplore();
     if (typeof this.G.advanceTrib === "function" && s.trib) this.G.advanceTrib();
     // Preserve the partial 10-second interval; the server owns this timestamp.
     if (due < MAX_TICKS_PER_ADVANCE) s.last = this.clock.now - ((this.clock.now - last) % TICK_MS);
@@ -250,8 +250,7 @@ export class GameEngine {
     const last = Number(s && s.last);
     if (Number.isFinite(last)) times.push(last + TICK_MS);
     try {
-      const x = s && s.explore;
-      if (x && !x.rest && x.ms > 0) {
+      for (const x of [s && s.explore, s && s.cq]) if (x && !x.rest && x.ms > 0) {   // 探索、出窍各自的下一步
         const T = this.G.exCfg(x).TIME, W = (this.CFG.explore.END_WAIT || 0) * 1000;
         times.push(x.lostWait ? x.start + (x.step + 1) * x.ms : x.step >= T ? x.start + T * x.ms + W : x.start + (x.step + 1) * x.ms);
       }

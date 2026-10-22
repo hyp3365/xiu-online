@@ -72,8 +72,8 @@ G.module({
     },
     // 战斗进行中：历练 / 探索 / 出窍 / 秘境 / 灵地（休养等待时不算），或正在渡劫
     inFight() {
-      const s = this.s, x = s.explore;
-      return !!((x && !x.rest) || (s.trib && !s.trib.result));
+      const s = this.s, x = s.explore, q = s.cq;
+      return !!((x && !x.rest) || (q && !q.rest) || (s.trib && !s.trib.result));
     },
     computeStats() {
       const L = this.s.mortal ? -1 : this.s.L, F = DATA.playerFixed, R = k => DATA.plRealmStat(L, k);   // 修为突破属性（config/realm.js 的 GAIN）

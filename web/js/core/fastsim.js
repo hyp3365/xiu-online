@@ -36,7 +36,7 @@
       // 只在这些模块有 tick 时加速
       const ids = this.modules.filter(m => m.tick).map(m => m.id);
       if (ids.length !== FAST_MODULES.length || ids.some((id, k) => id !== FAST_MODULES[k])) return -Infinity;
-      if (s.explore || s.trib) return -Infinity;               // 探索 / 渡劫：逐个结算
+      if (s.explore || s.cq || s.trib) return -Infinity;               // 探索 / 渡劫：逐个结算
       const cs = s.cultSet;                                       // 修炼设置：快要自动去探索时逐个结算
       if (cs && cs.on && cs.tgt && s.auto && s.stone < cs.low) return -Infinity;
       if (!s.gfStudy && s.gfQueue && s.gfQueue.length) return -Infinity;
