@@ -4,15 +4,15 @@
 window.CFG = window.CFG || {};
 
 CFG.start = {
-  stone: 10000,              // 开局灵石
-  ling: 10000,               // 开局灵气（洞府储存，修炼消耗）
+  stone: 30000,              // 开局灵石
+  ling: 30000,               // 开局灵气（洞府储存，修炼消耗）
   // 开局丹药 [丹药 id（config/alchemy.js）, 品质 = 大境界序号（0 = 练气）, 数量]
   pills: [["juqi", 0, 3]],  // 练气品质聚气丹 ×3
   // 开局功法书（秘诀）：背包里点「学习」学会第 1 层，之后在功法页修炼升层
   book: {
     name: "练气诀",         // 名字
     MAX: 3,                 // 最多几层
-    SPEED: 20,               // 每层加修炼速度（第 n 层合计 = SPEED × n）
+    SPEED: 50,               // 每层加修炼速度（第 n 层合计 = SPEED × n）
     STUDY_MIN: [1, 2],      // 升层时间（分钟）：第 1 个 = 1→2 层，第 2 个 = 2→3 层
     STUDY_PER: 5,           // 修炼时每 5 秒消耗灵气 = STUDY_PER × config/gongfa.js 的 STUDY_LING
   },
