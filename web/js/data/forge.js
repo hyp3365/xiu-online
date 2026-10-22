@@ -51,7 +51,10 @@ DATA.fabaoName = (ft, g, def) => { const L = (CFG.names.fabaoName || {})[ft]; re
 //   ft = -1 表示「任意一种耀石」（装备、戒指炼制和强化用；扣的时候先扣最多的那种）
 //   lj 灵晶、lz 灵珠也分属性（ft = 0~4 金木水火土）；灵珠的设置在 config/array.js 的 CFG.lingzhu
 if (CFG.lingzhu) CFG.mijing.items.lz = { name: "灵珠", names: CFG.lingzhu.NAMES, sell: CFG.lingzhu.SELL, desc: CFG.lingzhu.DESC };
-DATA.SM_GRADED = ["ys", "lj", "lz"];
+if (!CFG.mijing.items.ly) CFG.mijing.items.ly = { name: "灵元", names: ["金灵元", "木灵元", "水灵元", "火灵元", "土灵元"], sell: 5, desc: "升级道童、灵根的材料（要对应属性），凡界秘境怪物掉落。" };   // 管理员改过 mijing.js 也有
+DATA.SM_GRADED = ["ys", "lj", "lz", "ly"];
+// 等比数列：第 i 次（0 起，共 n 次）= first × (last / first)^(i / (n − 1))，每次涨的倍率相同（道童、灵根升级用）
+DATA.geoStep = (first, last, i, n) => n <= 1 || first <= 0 ? last : Math.round(first * Math.pow(last / first, Math.min(Math.max(i, 0), n - 1) / (n - 1)));
 DATA.smName = (k, ft) => {
   const I = CFG.mijing.items;
   if (DATA.SM_GRADED.includes(k) && I[k]) return ft >= 0 ? ((I[k].names || [])[ft] || DATA.elements[ft].name + I[k].name) : I[k].name;
@@ -283,7 +286,7 @@ DATA.fabaoInfo = (e, own) => {
  *   img/icons/pill_丹药id.png 修炼丹、dan_类型.png 属性丹、fu_dan / fu_qi.png 炉子、ss.png 空间石
  *   fbs形状_属性.png 法宝（7 种形状 × 6 种属性）、sm_ys属性.png 耀石、mifa.png 秘法、seed.png 种子、stone.png 灵石、cu_misc.png 自定义物品
  *   hx.png 火髓、bp.png 图纸 */
-DATA.IMG_V = 23;
+DATA.IMG_V = 24;
 DATA.matImg = (kind, g) => `img/mats/${kind}${g}.png?v=${DATA.IMG_V}`;
 DATA.iconImg = n => `img/icons/${n}.png?v=${DATA.IMG_V}`;
 DATA.ICON_EQ = ["helmet", "armor", "weapon", "legs", "boots", "pendant", "ring"];

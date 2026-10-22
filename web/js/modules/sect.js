@@ -510,17 +510,31 @@ G.module({
       const ft = U.rand(0, 5), name = DATA.smName("ys", ft);
       return this.addSm("ys", n, ft) ? `${name} ×${U.fmt(n)}` : "（背包已满）";
     },
+    // 第 f 层首通的药材 / 矿石个数（各）和火髓个数：按段数，见 config/sect.js trial.floor
+    towerMatFire(star, f) {
+      const T = CFG.sect.trial, F = T.floor, tot = T.FLOORS[star - 1] || 100;
+      const seg = n => Math.min(n, Math.max(1, Math.ceil(f / (tot / n))));
+      const MS = F.MAT_SEG || 20, FS = F.FIRE_SEG || 10;
+      return { mat: Math.round((F.MAT_BASE ?? 3) * star * seg(MS)), fire: Math.round((F.FIRE_BASE ?? 1) * star * seg(FS)) };
+    },
+    // 药材 / 矿石的序号池：1~FAN_STAR 星凡界 6 种（0~5），以上四界通用（6 起，不含各界特色）
+    towerMatPool(star, kind) {
+      const fan = Object.keys(CFG.mats[kind]).length, sp = (CFG.matsOther || {}).SPECIAL || [], all = kind === "herb" ? DATA.herbs : DATA.ores;
+      if (star <= (CFG.sect.trial.floor.FAN_STAR ?? 5)) return [...Array(fan).keys()];
+      const L = []; for (let g = fan; g < all.length; g++) if (!sp.includes(all[g])) L.push(g);
+      return L.length ? L : [...Array(fan).keys()];
+    },
     // 首通第 f 层的奖励，返回文字
     towerReward(f) {
       const s = this.s, star = this.sectInfo().star, T = CFG.sect.trial, F = T.floor, i = star - 1, out = [];
       const c = DATA.towerReward(f, star); s.contrib += c; out.push(`贡献 +${U.fmt(c)}`);
-      const fire = F.fire[i] || 0; if (fire && this.addFire(fire)) out.push(`${DATA.HX} ×${fire}`);
+      const R = this.towerMatFire(star, f);
+      if (R.fire && this.addFire(R.fire)) out.push(`${DATA.HX} ×${R.fire}`);
       const st = Math.floor((F.stone || 0) * this.starMul() * f); if (st) { s.stone += st; out.push(`灵石 +${U.fmt(st)}`); }
-      const mx = Math.min(5, F.MAT_MAX[i] === undefined ? 5 : F.MAT_MAX[i]);
       for (const kind of ["herb", "ore"]) {
-        const n = F[kind][i] || 0; if (!n) continue;
-        const g = U.rand(0, mx), name = DATA.matName(kind, g);
-        if (this.addMat(kind, name, g, n)) out.push(`${name} ×${n}`);
+        if (!R.mat) continue;
+        const pool = this.towerMatPool(star, kind), g = pool[U.rand(0, pool.length - 1)], name = DATA.matName(kind, g);
+        if (this.addMat(kind, name, g, R.mat)) out.push(`${name} ×${R.mat}`);
       }
       const b = this.towerBonus(star, f);
       if (b && b.kind === "ring") { const e = DATA.rollForged("ring", 0, b.r); if (this.addEquip(e)) out.push(`<span class="q${e.q}">${DATA.ringName(b.r, 0)}</span>`); }
@@ -813,7 +827,7 @@ G.module({
       // 下一个每 10 层的奖励
       const E = T.EVERY || 10, nb = Math.ceil(f / E) * E, bonus = nb <= max ? this.towerBonus(star, nb) : null;
       h += `<div class="card"><h3>${star}星试炼塔<small>已通关 ${cur} / ${max} 层</small></h3>
-        ${done ? `<p class="desc">你已登顶试炼塔！</p>` : `<div class="line"><div>第 ${f} 层守关者<small>首通：贡献 +${U.fmt(DATA.towerReward(f, star))}、${DATA.HX} ×${F.fire[star - 1] || 0}、灵石 +${U.fmt(Math.floor((F.stone || 0) * this.starMul() * f))}、药材 ×${F.herb[star - 1] || 0}、矿石 ×${F.ore[star - 1] || 0}</small></div>
+        ${done ? `<p class="desc">你已登顶试炼塔！</p>` : `<div class="line"><div>第 ${f} 层守关者<small>首通：贡献 +${U.fmt(DATA.towerReward(f, star))}、${DATA.HX} ×${this.towerMatFire(star, f).fire}、灵石 +${U.fmt(Math.floor((F.stone || 0) * this.starMul() * f))}、药材 ×${this.towerMatFire(star, f).mat}、矿石 ×${this.towerMatFire(star, f).mat}</small></div>
         <button class="sm" onclick="G.challengeTower()">挑战</button></div>`}
         ${bonus ? `<p class="desc">第 ${nb} 层额外奖励：${this.towerBonusText(bonus)}</p>` : ""}
         <p class="desc">进度按门派星级记录，换门派不会重置。${this.towerDesc(star)}</p></div>`;

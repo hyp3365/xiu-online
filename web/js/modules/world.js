@@ -1139,6 +1139,8 @@ G.module({
     rollMj(loot, ev, i, k) {
       const d = this.mjDef(i, k);
       const got = [];   // v236 随机药材矿石改按 CFG.dropTotal 总量（stepMats）；这里只掉必掉的 extra
+      const LY = CFG.mijing.LINGYUAN || { MIN: 30, MAX: 50, ADD: 5 };   // 凡界秘境每只怪都掉灵元（config/mijing.js LINGYUAN）
+      if (k !== "ld" && ["monster", "elite", "boss"].includes(ev) && LY.MAX > 0) { const add = i * (LY.ADD || 0), t = this.lootAdd(loot, DATA.smName("ly"), U.rand(LY.MIN + add, LY.MAX + add)); if (t) got.push(t); }
       if (ev === "boss" && k !== "ld" && d.realm === CFG.chuqiao.LU_MJ_REALM && CFG.chuqiao.LU_DROP > 0) { const t = this.lootAdd(loot, DATA.smName("lu"), CFG.chuqiao.LU_DROP); if (t) got.push(t); }   // 元婴期秘境首领必掉养神露
       for (const x of (d.extra || {})[ev] || []) {
         if (Math.random() * 100 >= (x.chance || 0)) continue;

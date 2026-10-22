@@ -31,7 +31,7 @@ G.module({
     caveViews: {},
     arrayFactor() { return DATA.array.factor(this.s.array.lv); },
     // 每 10 秒聚灵量（只由等级决定，开关不影响）
-    gatherAmount() { return DATA.array.gather(this.s.array.lv) + this.gatherLz() + this.gatherServant() + DATA.array.flat(this.s.array.lv); },   // 固定聚灵最后加，不吃道童等加成
+    gatherAmount() { return DATA.array.gather(this.s.array.lv) + this.gatherLz() + this.gatherServant() + DATA.array.flat(this.s.array.lv) + (this.servantFlat ? this.servantFlat() : 0); },   // 固定聚灵最后加，不吃道童等加成
     gatherServant() { return (DATA.array.gather(this.s.array.lv) + this.gatherLz()) * (this.servantPct ? this.servantPct("zhen") : 0) / 100; },   // 道童阵法辅助：聚灵 +%
     gatherLz() { return (this.s.lzSlot || []).reduce((t, z) => t + (z ? z.v : 0), 0); },   // 灵珠格聚灵
     lingCap() { const sp = this.speed(); return Math.max(100, sp.gather * DATA.LING_CAP_GATHER + sp.total * DATA.LING_CAP_SPEED); },
@@ -143,7 +143,7 @@ G.module({
       <div class="bar tick"><div id="gather-bar"></div></div>
       <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
       <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
-      <div class="line"><div>每 10 秒聚灵</div><b>+${U.num(this.gatherAmount())}${this.gatherServant() > 0 ? `<small>道童 +${U.num(this.gatherServant())}</small>` : ""}${this.gatherLz() > 0 ? `<small>灵珠 +${U.num(this.gatherLz())}</small>` : ""}</b></div>
+      <div class="line"><div>每 10 秒聚灵</div><b>+${U.num(this.gatherAmount())}${this.gatherServant() > 0 ? `<small>道童 +${U.num(this.gatherServant())}</small>` : ""}${this.servantFlat && this.servantFlat() > 0 ? `<small>道童固定 +${U.num(this.servantFlat())}</small>` : ""}${this.gatherLz() > 0 ? `<small>灵珠 +${U.num(this.gatherLz())}</small>` : ""}</b></div>
       <div class="line"><div>修炼速度加成</div><b>+${U.num((f - 1) * 100)}%</b></div>
       <div class="line"><div>下一级<small>加成 +${U.num((DATA.array.factor(a.lv + 1) - 1) * 100)}%，聚灵 +${U.num(DATA.array.gather(a.lv + 1) + DATA.array.flat(a.lv + 1))}</small></div><b>${max ? "满级" : U.fmt(DATA.array.cost(a.lv)) + " 灵石"}</b></div>
       <div class="btns">
