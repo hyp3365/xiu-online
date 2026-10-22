@@ -451,45 +451,39 @@ G.module({
     // 宝库材料互换：mode "two" 二换一（宝库可换的同类材料）；"four" 四界换凡界（SWAP_FOUR_STAR 星起）
     matSwapRate(mode) { const C = CFG.sect; return Math.max(1, mode === "four" ? C.SWAP_FOUR_RATE ?? 1 : C.SWAP_RATE ?? 2); },
     matSwapFourOK() { return this.sectInfo().star >= (CFG.sect.SWAP_FOUR_STAR ?? 6); },
-    matSwapFrom(kind, mode) {   // 可拿去换的材料 g 列表（背包里有的）
+    // 可拿去换 to 的材料：二换一 = 同一界的其他（凡界换凡界，四界通用换四界通用）；四界换凡界 = 所有四界（含特色），to 须是凡界
+    matSwapFrom(kind, mode, to) {
       const fanN = kind === "herb" ? DATA.FAN_HERB_N : DATA.FAN_ORE_N, names = kind === "herb" ? DATA.herbs : DATA.ores;
-      const list = mode === "four" ? names.map((n, g) => g).filter(g => g >= fanN) : this.treasuryMatList(kind).map(x => x.g);
-      return list.filter(g => this.countMat(kind, g) > 0);
-    },
-    matSwapTo(kind, mode, from) {
-      const fanN = kind === "herb" ? DATA.FAN_HERB_N : DATA.FAN_ORE_N;
-      return this.treasuryMatList(kind).map(x => x.g).filter(g => g !== from && (mode !== "four" || g < fanN));
+      if (!this.treasuryMatOK(kind, to)) return [];
+      if (mode === "four") return to < fanN && this.matSwapFourOK() ? names.map((n, g) => g).filter(g => g >= fanN) : [];
+      return this.treasuryMatList(kind).map(x => x.g).filter(g => g !== to && (g < fanN) === (to < fanN));
     },
     matSwap(kind, mode, from, to, n) {
       if (!this.s.sect || !["herb", "ore"].includes(kind) || !["two", "four"].includes(mode)) return;
-      if (mode === "four" && !this.matSwapFourOK()) return this.log(`门派 ${CFG.sect.SWAP_FOUR_STAR ?? 6} 星起才能四界换凡界。`, "sys");
       from = +from; to = +to; n = Math.floor(+n || 0);
-      if (n <= 0 || !this.matSwapFrom(kind, mode).includes(from) || !this.matSwapTo(kind, mode, from).includes(to)) return this.log("请选择要换的材料。", "sys");
+      if (n <= 0 || !this.matSwapFrom(kind, mode, to).includes(from)) return this.log("请选择要换的材料。", "sys");
       const r = this.matSwapRate(mode), need = r * n;
       if (this.countMat(kind, from) < need) return this.log(`${DATA.matName(kind, from)}不足，需要 ${U.fmt(need)} 个。`, "sys");
       this.takeMat(kind, from, need);
       if (!this.addMat(kind, DATA.matName(kind, to), to, n)) { this.addMat(kind, DATA.matName(kind, from), from, need); return; }
       this.log(`${DATA.matName(kind, from)} ×${U.fmt(need)} 换得 ${DATA.matName(kind, to)} ×${U.fmt(n)}。`, "good"); this.after();
     },
-    // 互换窗口（界面选择存在 G.msw，不走服务器）
-    openMatSwap(kind) {
-      const w = this.msw = this.msw && this.msw.kind === kind ? this.msw : { kind, mode: "two", from: -1, to: -1, n: 1 };
-      const four = this.matSwapFourOK(); if (!four) w.mode = "two";
-      const froms = this.matSwapFrom(kind, w.mode); if (!froms.includes(w.from)) w.from = froms.length ? froms[0] : -1;
-      const tos = this.matSwapTo(kind, w.mode, w.from); if (!tos.includes(w.to)) w.to = tos.length ? tos[0] : -1;
-      const r = this.matSwapRate(w.mode), have = w.from >= 0 ? this.countMat(kind, w.from) : 0, max = Math.floor(have / r);
-      if (w.n > max) w.n = Math.max(1, max);
-      const opt = (gs, cur, cnt) => gs.map(g => `<option value="${g}" ${g === cur ? "selected" : ""}>${DATA.matName(kind, g)}${cnt ? `（有 ${U.fmt(this.countMat(kind, g))}）` : ""}</option>`).join("");
-      const kn = DATA.matKinds[kind], re = `G.openMatSwap('${kind}')`;
-      this.modal(`<h2>${kn}兑换</h2>
-        ${four ? `<div class="sub-tabs"><button class="${w.mode === "two" ? "active" : ""}" onclick="G.msw.mode='two';${re}">${this.matSwapRate("two")} 换 1</button><button class="${w.mode === "four" ? "active" : ""}" onclick="G.msw.mode='four';${re}">四界换凡界</button></div>` : ""}
-        <p class="desc">${w.mode === "four" ? `四界${kn}（含特色）${r} 个换 1 个凡界${kn}` : `${r} 个相同${kn}换 1 个其他${kn}`}</p>
-        ${froms.length ? `<div class="line"><div>拿出</div></div><select onchange="G.msw.from=+this.value;${re}">${opt(froms, w.from, true)}</select>
-        <div class="line"><div>换成</div></div><select onchange="G.msw.to=+this.value">${opt(tos, w.to)}</select>
-        <div class="line"><div>换得数量<small>最多 ${U.fmt(max)} · 消耗 ${DATA.matName(kind, w.from)} ×${U.fmt(w.n * r)}</small></div></div>
+    // 互换窗口：上面是可拿出的材料（跟背包一样显示数量，点选），下面输入换得数量；选择存在 G.msw，不走服务器
+    openMatSwap(kind, mode, to) {
+      const w = this.msw = this.msw && this.msw.kind === kind && this.msw.mode === mode && this.msw.to === to ? this.msw : { kind, mode, to, from: -1, n: 1 };
+      const froms = this.matSwapFrom(kind, mode, to), r = this.matSwapRate(mode), kn = DATA.matKinds[kind];
+      if (!froms.includes(w.from) || this.countMat(kind, w.from) < r) w.from = froms.find(g => this.countMat(kind, g) >= r) ?? -1;
+      const max = w.from >= 0 ? Math.floor(this.countMat(kind, w.from) / r) : 0;
+      w.n = Math.max(1, Math.min(Math.floor(w.n) || 1, max || 1));
+      const re = `G.openMatSwap('${kind}','${mode}',${to})`;
+      const cells = froms.map(g => { const c = this.countMat(kind, g);
+        return `<div class="cell q${Math.min(5, Math.floor(g / 2))}${g === w.from ? " sel" : ""}${c < r ? " off" : ""}" ${c >= r ? `onclick="G.msw.from=${g};${re}"` : ""}><img class="mi" src="${DATA.matImg(kind, g)}" alt="">${DATA.matName(kind, g)}<span class="n">${U.fmt(c)}</span></div>`; }).join("");
+      this.modal(`<h2>兑换${DATA.matName(kind, to)}</h2>
+        <p class="desc">${mode === "four" ? `${r} 个四界${kn}换 1 个${DATA.matName(kind, to)}` : `${r} 个相同的其他${kn}换 1 个${DATA.matName(kind, to)}`}，点选要拿出的${kn}</p>
+        <div class="grid">${cells}</div>
+        <div class="line"><div>兑换数量<small>${w.from >= 0 ? `消耗 ${DATA.matName(kind, w.from)} ×${U.fmt(w.n * r)} · 最多 ${U.fmt(max)}` : `没有足够的${kn}`}</small></div></div>
         <input type="number" min="1" max="${max}" value="${w.n}" oninput="G.msw.n=+this.value" onchange="${re}">
-        <div class="btns"><button class="primary" onclick="G.matSwap('${kind}',G.msw.mode,G.msw.from,G.msw.to,G.msw.n)" ${max < 1 ? "disabled" : ""}>兑换</button><button onclick="G.closeModal()">关闭</button></div>`
-        : `<p class="desc">背包里没有可以换的${kn}。</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`}`);
+        <div class="btns"><button class="primary" onclick="G.matSwap('${kind}','${mode}',G.msw.from,${to},G.msw.n)" ${max < 1 ? "disabled" : ""}>兑换</button><button onclick="G.closeModal()">关闭</button></div>`);
     },
     // 兑换种子（每种一次，永久可种）
     exchangeSeed(g) {
@@ -854,11 +848,12 @@ G.module({
             <button class="sm" onclick="G.exchangeBlueprint('${k}',${g})" ${has || lock || s.contrib < c ? "disabled" : ""}>${has ? (s.blueprints[k].includes(g) ? "已学会" : "在背包") : lock ? `${need}星宗门可兑换` : "兑换"}</button></div>`]; }) })));
       } else {
         h += `<div class="card"><h3>${DATA.matKinds[tt]}<small>贡献 ${U.fmt(s.contrib)}</small></h3>
-          <div class="line"><div>材料互换<small>${this.matSwapRate("two")} 个相同${DATA.matKinds[tt]}换 1 个其他${this.matSwapFourOK() ? ` · 四界换凡界 ${this.matSwapRate("four")} 换 1` : ""}</small></div><button class="sm" onclick="G.openMatSwap('${tt}')">兑换</button></div>
           <div class="line"><div>兑换数量</div><input id="tr-n" type="number" min="1" value="${this.trN || 1}" oninput="G.trN=+this.value" style="width:110px"></div>` +
           this.treasuryMatList(tt).map(({ g, lock }) => { const c = DATA.matContrib(tt, g);
           return `<div class="line"><div>${DATA.li(DATA.matImg(tt, g))}${DATA.matFull(tt, g)}<small>${U.fmt(c)} 贡献/个 · 已有 ${U.fmt(this.countMat(tt, g))}</small></div>
-            <button class="sm" onclick="G.exchangeMat('${tt}',${g})" ${lock || s.contrib < c ? "disabled" : ""}>${lock ? `${lock}星宗门可兑换` : "兑换"}</button></div>`; }).join("") + `</div>`;
+            <button class="sm" onclick="G.exchangeMat('${tt}',${g})" ${lock || s.contrib < c ? "disabled" : ""}>${lock ? `${lock}星宗门可兑换` : "兑换"}</button></div>`
+            + `<div class="line sw"><div><small>${this.matSwapRate("two")} 个其他${DATA.matKinds[tt]}兑换 1 个</small></div><button class="sm" onclick="G.openMatSwap('${tt}','two',${g})">兑换</button></div>`
+            + (this.matSwapFrom(tt, "four", g).length ? `<div class="line sw"><div><small>${this.matSwapRate("four")} 个四界${DATA.matKinds[tt]}兑换 1 个</small></div><button class="sm" onclick="G.openMatSwap('${tt}','four',${g})">兑换</button></div>` : ""); }).join("") + `</div>`;
       }
     } else if (tab === "alchemy") {
       h += this.sectAlchemyView(); // 见 craft.js

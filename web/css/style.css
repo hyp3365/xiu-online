@@ -613,3 +613,7 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 .btv-u.r.glow::before{content:"";position:absolute;left:50%;bottom:6%;width:120%;height:70%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,#fff4cf88,#ffd27a44 55%,transparent);animation:btv-glow 2.6s ease-in-out infinite;pointer-events:none;z-index:-1}
 .btv-u.r.glow img{max-height:70%}
 @keyframes btv-glow{0%,100%{opacity:.55;transform:translateX(-50%) scale(.94)}50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
+.cell.sel{border-color:#c9a45c;box-shadow:inset 0 0 0 1px #c9a45c}
+.cell.off{opacity:.4}
+.line.sw{padding:0 0 4px 34px}
+.line:has(+ .line.sw){border-bottom:none}
