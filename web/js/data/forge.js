@@ -275,7 +275,7 @@ DATA.fabaoInfo = (e, own) => {
   o.pct *= rv(F.DMG_REALM);
   // 法力 = 该阶对应境界的修为突破法力 × MANA_PCT[主属性颜色]%；颜色只看第一条主属性
   const main = e.attrs.find(a => a.m === 1) || {};
-  o.mana = Math.max(0, ref.manaBr * (((F.MANA_PCT || [])[main.c || 0] || 0) + DATA.fbRj("mana", e)) / 100 * (1 - o.cutPct / 100));
+  o.mana = Math.max(0, ref.manaBr * (((F.MANA_PCT || [])[main.c || 0] || 0) + DATA.fbRj("mana", e)) / 100 * (1 - o.cutPct / 100) * DATA.manaRealmK(R * DATA.LAYERS));   // × 法力境界倍率（config/mobs.js magic.MANA_REALM，按人物当前大境界，与怪物共用）
   return o;
 };
 

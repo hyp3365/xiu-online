@@ -77,3 +77,12 @@ DATA.TICK = 10;
 
 // v171 保底伤害：练气一层 MIN_BASE，每层 + MIN_STEP（L = 总层序，0 = 练气一层）
 DATA.minDmg = L => (CFG.battle.MIN_BASE === undefined ? 1 : CFG.battle.MIN_BASE) + (CFG.battle.MIN_STEP === undefined ? 3 : CFG.battle.MIN_STEP) * Math.max(0, L || 0);
+
+/* 法力消耗境界倍率：L = 层序（大境界 = floor(L / LAYERS)），取 CFG.mobs.magic.MANA_REALM[大境界]，没配 / 少写沿用最后一项 / 不写 = 1
+ * 怪物法术法宝、人物法术法宝共用 */
+DATA.manaRealmK = L => {
+  const A = (((typeof CFG !== "undefined" && CFG.mobs) || {}).magic || {}).MANA_REALM || [];
+  if (!A.length) return 1;
+  const x = +A[Math.min(Math.max(0, Math.floor((L || 0) / DATA.LAYERS)), A.length - 1)];
+  return isFinite(x) && x >= 0 ? x : 1;
+};

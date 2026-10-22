@@ -288,7 +288,8 @@ DATA.spellInfo = (id, lv = 1, own) => {
     // 法力消耗 = 该星级对应境界的修为突破法力（REF）× MANA_PCT% × 灵根倍率（灵根倍率 = 1 + 该系灵根等级 × MANA_LINGEN）
     mana: Math.max(1, Math.round(DATA.spellManaBase(sect.star) * v(_GF.MANA_PCT, 0) / 100
       * (1 + (typeof G !== "undefined" && G.s && G.s.lingen ? G.s.lingen[el.id] || 0 : 0) * v(_GF.MANA_LINGEN, 0))
-      * (1 + (Math.max(1, lv) - 1) * v(_GF.MANA_LV, 0)))),   // 层消耗倍率
+      * (1 + (Math.max(1, lv) - 1) * v(_GF.MANA_LV, 0))   // 层消耗倍率
+      * DATA.manaRealmK(typeof G !== "undefined" && G.s && !G.s.mortal ? G.s.L : 0))),   // 法力境界倍率（config/mobs.js magic.MANA_REALM，按人物当前大境界，与怪物共用）
     cost: DATA.gfLearnCost(sect, "spell"),
     // v239 精研：jy 次数，jyDmg 属性伤害（加在法术伤害上）
     jy: DATA.spellJy(id), jyDmg: DATA.spellJy(id) * DATA.jyStep(sect.star, "JY_DMG"),
