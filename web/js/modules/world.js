@@ -862,16 +862,32 @@ G.module({
         if (!idx.length) idx.push(plan.length - 1);
         for (let k = 0; k < n; k++) { const i = U.pick(idx); (mp[i] = mp[i] || [0, 0])[j]++; } };
       pick(t.herb, "hmeb", 0); pick(t.ore, "omeb", 1);
+      // 本次探索只出几种：药材、矿石各从池里抽 KINDS 种（config/drops.js dropTotal.KINDS）；耀石 / 灵晶 / 灵元各抽 EL_KINDS 种属性（config/mijing.js）
+      const kn = r => Array.isArray(r) ? U.rand(r[0], r[1]) : (r || 0), few = (L, r) => { const a = L.slice(), n = kn(r); if (!n || n >= a.length) return a; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
+      const pool = DATA.mapPool(this.matPoolMap(x));
+      x.mpK = { herb: few(pool.herb || [], T.KINDS), ore: few(pool.ore || [], T.KINDS), el: {} };
+      for (const k of DATA.SM_GRADED) { const nk = ((CFG.mijing.items[k] || {}).names || DATA.elements).length; x.mpK.el[k] = few([...Array(nk).keys()], CFG.mijing.EL_KINDS); }
+      // 灵元：凡界秘境一次合计 LINGYUAN.N 个，随机分到各怪物步（普通、精英、首领）
+      x.lyp = {};
+      if (x.mj !== undefined && x.mk !== "ld") {
+        const LY = CFG.mijing.LINGYUAN || {}, N = LY.N || [LY.MIN || 0, LY.MAX || 0], n = kn(N), idx = [];
+        for (let i = 0; i < plan.length; i++) if ("meb".includes(plan[i])) idx.push(i);
+        if (idx.length) for (let k = 0; k < n; k++) { const i = U.pick(idx); x.lyp[i] = (x.lyp[i] || 0) + 1; }
+      }
       return mp;
     },
     // 本次探索用哪张地图的药材矿石池：地图 / 秘境 drops / 灵地发现地图
     matPoolMap(x) { if (x.mj === undefined) return x.map; const d = this.mjDef(x.mj, x.mk); return x.mk === "ld" ? d._map : d.drops; },
     // 第 i 步分到的药材矿石：每个从池里等权重随机，写进 loot，返回描述
     stepMats(x, i) {
-      const c = (x.mp || {})[i]; if (!c) return "";
-      const pool = DATA.mapPool(this.matPoolMap(x)), cnt = {};
-      ["herb", "ore"].forEach((k, j) => { const L = pool[k]; if (!L.length) return; for (let n = 0; n < c[j]; n++) { const name = U.pick(L); cnt[name] = (cnt[name] || 0) + 1; } });
-      return Object.keys(cnt).map(n => this.lootAdd(x.loot, n, cnt[n])).filter(Boolean).join("、");
+      const c = (x.mp || {})[i], ly = (x.lyp || {})[i], out = [];
+      if (c) {
+        const pool = DATA.mapPool(this.matPoolMap(x)), K = x.mpK || {}, cnt = {};
+        ["herb", "ore"].forEach((k, j) => { const L = (K[k] || []).length ? K[k] : pool[k]; if (!L.length) return; for (let n = 0; n < c[j]; n++) { const name = U.pick(L); cnt[name] = (cnt[name] || 0) + 1; } });
+        out.push(...Object.keys(cnt).map(n => this.lootAdd(x.loot, n, cnt[n])));
+      }
+      if (ly) out.push(this.lootAdd(x.loot, DATA.smName("ly"), ly, ((x.mpK || {}).el || {}).ly));   // 灵元（秘境一次合计，见 matPlan）
+      return out.filter(Boolean).join("、");
     },
     // 击败怪物的掉落，写进 loot，返回描述文字
     //   mj = 秘境序号（秘境：灵石倍率、掉落按 config/mijing.js）
@@ -912,7 +928,7 @@ G.module({
       const share = m.boss ? (w ? bs : 1) / Math.max(1, nb) : (nb ? 1 - bs : 1) / Math.max(1, w);
       const stone = Math.floor(tot * share + Math.random());   // 随机取整，平均值不被向下取整吃掉
       loot.stone += stone;
-      const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk) : this.rollEvent(loot, ev, a);
+      const mats = mj !== undefined ? this.rollMj(loot, ev, mj, mk, x) : this.rollEvent(loot, ev, a);
       return `灵石${U.fmt(stone)}${mats ? "、" + mats : ""}`; // 怪物不掉丹药、装备
     },
     // 把收获放进背包，返回简短描述
@@ -1021,7 +1037,7 @@ G.module({
       const st = this.stats(), H = this._inCq && this._cqOther ? { hp: 0, mana: 0 } : this.regenStep();
       this.s.hp = Math.min(st.hp, this.s.hp + st.hp * H.hp / 100 + (H.hpFlat || 0)); this.s.mana = Math.min(st.mana, this.s.mana + st.mana * H.mana / 100 + (H.manaFlat || 0));
       let t = "", c = "", bd = null;
-      const roll = ev => mj !== undefined ? this.rollMj(x.loot, ev, mj, mk) : this.rollEvent(x.loot, ev, a);
+      const roll = ev => mj !== undefined ? this.rollMj(x.loot, ev, mj, mk, x) : this.rollEvent(x.loot, ev, a);
       if (type === "kuang") { const g = this.kuangStone(a); x.loot.stone += g; t = `挖掘灵石矿，获得灵石 ${U.fmt(g)}`; c = "good"; }
       else if (type === "herb" || type === "ore") {   // v199 什么都没得到时不显示「发现灵药 / 矿脉，获得 无」，当作普通一步
         const g = [roll(type === "herb" ? "herbEvent" : "oreEvent"), sm()].filter(Boolean).join("、");
@@ -1175,22 +1191,20 @@ G.module({
     },
     // 秘境 / 灵地掉落：extra 必掉 / 几率掉落（药材矿石总量见 CFG.dropTotal，按步分配，stepMats）
     //   秘境借用 drops 那张凡界地图；灵地借用发现地图（这一界的药材矿石表）
-    rollMj(loot, ev, i, k) {
-      const d = this.mjDef(i, k);
-      const got = [];   // v236 随机药材矿石改按 CFG.dropTotal 总量（stepMats）；这里只掉必掉的 extra
-      const LY = CFG.mijing.LINGYUAN || { MIN: 30, MAX: 50, ADD: 5 };   // 凡界秘境每只怪都掉灵元（config/mijing.js LINGYUAN）
-      if (k !== "ld" && ["monster", "elite", "boss"].includes(ev) && LY.MAX > 0) { const add = i * (LY.ADD || 0), t = this.lootAdd(loot, DATA.smName("ly"), U.rand(LY.MIN + add, LY.MAX + add)); if (t) got.push(t); }
+    rollMj(loot, ev, i, k, x) {
+      const d = this.mjDef(i, k), EL = ((x || {}).mpK || {}).el || {};
+      const got = [];   // v236 随机药材矿石改按 CFG.dropTotal 总量（stepMats）；灵元也在 stepMats（一次合计）；这里只掉 extra
       if (ev === "boss" && k !== "ld" && d.realm === CFG.chuqiao.LU_MJ_REALM && CFG.chuqiao.LU_DROP > 0) { const t = this.lootAdd(loot, DATA.smName("lu"), CFG.chuqiao.LU_DROP); if (t) got.push(t); }   // 元婴期秘境首领必掉养神露
-      for (const x of (d.extra || {})[ev] || []) {
-        if (Math.random() * 100 >= (x.chance || 0)) continue;
-        const nn = x.n || [1, 1], n = U.rand(nn[0], nn[1]); if (n <= 0) continue;
-        const t = this.lootAdd(loot, x.item, n); if (t) got.push(t);
+      for (const it of (d.extra || {})[ev] || []) {
+        if (Math.random() * 100 >= (it.chance || 0)) continue;
+        const nn = it.n || [1, 1], n = U.rand(nn[0], nn[1]); if (n <= 0) continue;
+        const sm = DATA.smByName(it.item), t = this.lootAdd(loot, it.item, n, sm ? EL[sm.k] : undefined); if (t) got.push(t);   // 耀石 / 灵晶：只出本次抽中的几种属性
       }
       return got.filter(Boolean).join("、");
     },
     // 按名字把东西记进 loot：火髓 / 专用材料 / 药材矿石 / 自定义物品
     //   耀石 / 灵晶：名字是「耀石」「灵晶」（没写属性）每个随机一种属性
-    lootAdd(loot, name, n) {
+    lootAdd(loot, name, n, fts) {   // fts：耀石 / 灵晶 / 灵元 没写属性时只从这几种属性里随机（属性序号数组）
       if (loot.k !== undefined && loot.k !== 1) { n = Math.floor(n * loot.k + Math.random()); if (n <= 0) return ""; }   // 地图收益倍率（incMul，exploreStep 写进 loot.k）
       if (name === DATA.HX) { loot.hx = (loot.hx || 0) + n; return `${DATA.HX}×${n}`; }
       const sm = DATA.smByName(name);
@@ -1199,7 +1213,7 @@ G.module({
         if (!(DATA.SM_GRADED.includes(sm.k) && sm.ft === undefined)) { const key = DATA.smKey(sm.k, sm.ft); loot.sm[key] = (loot.sm[key] || 0) + n; return `${DATA.smName(sm.k, sm.ft)}×${n}`; }
         const cnt = {};
         const nk = ((CFG.mijing.items[sm.k] || {}).names || DATA.elements).length;
-        for (let j = 0; j < n; j++) { const key = DATA.smKey(sm.k, Math.floor(Math.random() * nk)); loot.sm[key] = (loot.sm[key] || 0) + 1; cnt[key] = (cnt[key] || 0) + 1; }
+        for (let j = 0; j < n; j++) { const key = DATA.smKey(sm.k, fts && fts.length ? U.pick(fts) : Math.floor(Math.random() * nk)); loot.sm[key] = (loot.sm[key] || 0) + 1; cnt[key] = (cnt[key] || 0) + 1; }
         return Object.keys(cnt).map(key => `${DATA.smName(sm.k, DATA.smParse(key).ft)}×${cnt[key]}`).join("、");
       }
       const m = DATA.matByName[name];
