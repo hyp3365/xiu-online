@@ -37,7 +37,13 @@ const U = {
   },
   // 会随时间变化的数值：放进固定宽度的框里，防止界面跟着跳动（只用于 HTML）
   // v155：框宽按当前文字算（每组数字按 2 位预留），文字占满框，只在单位变化时（如小时→分钟）才变宽窄
-  cd(sec) { const t = U.dur(sec), w = t.replace(/\d+/g, m => "0".repeat(Math.max(2, m.length))).split("").reduce((n, c) => n + (/\d/.test(c) ? 0.6 : 1), 0); return `<span class="cd" style="min-width:${w.toFixed(1)}em">${t}</span>`; },
+  // 精确到秒：1小时2分钟3秒 / 3分钟33秒 / 45秒
+  durS(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), x = sec % 60;
+    return (h ? h + "小时" : "") + (m ? m + "分钟" : "") + (x || (!h && !m) ? x + "秒" : "");
+  },
+  cd(sec, bySec) { const t = bySec ? U.durS(sec) : U.dur(sec), w = t.replace(/\d+/g, m => "0".repeat(Math.max(2, m.length))).split("").reduce((n, c) => n + (/\d/.test(c) ? 0.6 : 1), 0); return `<span class="cd" style="min-width:${w.toFixed(1)}em">${t}</span>`; },
   fix(text) { return `<span class="cdn">${text}</span>`; },
   // v193 学习列表：list = [[已学会?, 一行 html], ...]，已学会的排到最后并变灰（.line.ld）
   doneLast(list) {
