@@ -37,7 +37,7 @@ G.module({
       if (c === "gf") {
         const srcs = [...DATA.sects, ...DATA.shopSources, ...DATA.jieGf.jshop, ...DATA.jieGf.gd, ...DATA.towerBooks, ...DATA.twSources].sort((x, y) => x.star - y.star);
         const o = DATA.gfSrcById[a.src] || srcs[0];
-        const types = o.src === "tower" ? DATA.gongfaTypes.filter(t => DATA.TOWER_TYPES.includes(t.id)) : o.src === "shop" || o.src === "tianwai" ? DATA.gfTypesOf(o.src).filter(t => !t.sectOnly) : DATA.gfTypesOf(o.src);
+        const types = o.src === "tower" ? DATA.gongfaTypes.filter(t => DATA.TOWER_TYPES.includes(t.id)) : o.src === "shop" || o.src === "tianwai" ? DATA.gfTypesOf(o.src, o.star).filter(t => !t.sectOnly) : DATA.gfTypesOf(o.src, o.star);
         return [{ k: "src", label: "来源", opts: srcs.map(x => [x.id, srcName(x)]) }, { k: "type", label: "种类", opts: types.map(t => [t.id, t.name]) }];
       }
       if (c === "sp") return [{ k: "src", label: "门派", opts: [...DATA.sects, ...DATA.twSources].map(x => [x.id, srcName(x)]) }];

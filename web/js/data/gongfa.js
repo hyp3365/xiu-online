@@ -42,12 +42,22 @@ DATA.gongfaTypes = [
 DATA.gongfaTypes.forEach(t => { const n = (_NM.gfType || {})[t.id]; if (n) { t.name = DATA.nmPick(n, 0, t.name); t.suffix = DATA.nmPick(n, 1, t.suffix); } });
 // v121：宗门每类功法几本（config/gongfa.js 的 BOOKS，只有宗门有）；第 2、3 本是新类别 id「xinfa2」「xinfa3」，排在同类后面，倍率、价格按原类别
 //   ni = 原来的序号（起名用，不影响原有功法的名字）
-DATA.gongfaTypes = DATA.gongfaTypes.flatMap((t, i) => { t.ni = i; const r = [t];
-  for (let b = 2; b <= ((_GF.BOOKS || {})[t.id] || 1); b++) r.push(Object.assign({}, t, { id: t.id + b, base: t.id, book: b }));
-  if (t.id === "shenfa") r.push(Object.assign({}, t, { id: "sufa", base: "shenfa", book: 2, allSrc: true, stat: "speed", label: "速度", catLabel: undefined }));   // v240：另一本身法只加速度（同属身法类，宗门、坊市、功德司都有）
+//   功法分阶段（BOOK_STAGE）：fam = 本数按哪一类算（sufa 单独一类），bk = 这一类的第几本；第 4 本起 id「mijue4」…，sufa 第 2 本起「sufa2」…
+DATA.GF_STAGE_SRC = ["sect"];   // 分阶段加书、新星级倍率的来源（只有宗门；坊市、功德司按旧算法不变）
+DATA.gfStage = star => { const n = (_GF.BOOK_STAGE || [1]).length; return Math.max(1, Math.min(n, Math.ceil((star || 1) / (_GF.BOOK_STAGE_STARS || 2)))); };
+DATA.gfBookN = (src, star, fam) => {   // 某来源、某星级、某一类有几本
+  src = src || "sect"; const b1 = src === "sect" ? (_GF.BOOKS || {})[fam] || 1 : 1;
+  if (!DATA.GF_STAGE_SRC.includes(src)) return b1;
+  return b1 * ((_GF.BOOK_STAGE || [1])[DATA.gfStage(star) - 1] || 1);
+};
+DATA.gfBookMax = fam => ((_GF.BOOKS || {})[fam] || 1) * Math.max(1, ...(_GF.BOOK_STAGE || [1]));
+DATA.gongfaTypes = DATA.gongfaTypes.flatMap((t, i) => { t.ni = i; t.fam = t.id; t.bk = 1; const r = [t];
+  for (let b = 2; b <= DATA.gfBookMax(t.id); b++) r.push(Object.assign({}, t, { id: t.id + b, base: t.id, book: b, bk: b }));
+  if (t.id === "shenfa") { const sf = Object.assign({}, t, { id: "sufa", base: "shenfa", book: 2, allSrc: true, stat: "speed", label: "速度", catLabel: undefined, fam: "sufa", bk: 1 });   // v240：另一本身法只加速度（同属身法类，宗门、坊市、功德司都有）
+    r.push(sf); for (let b = 2; b <= DATA.gfBookMax("sufa"); b++) r.push(Object.assign({}, sf, { id: "sufa" + b, allSrc: false, bk: b })); }
   return r; });
-// 某来源有哪些功法类别：宗门全部；其他来源没有第 2、3 本
-DATA.gfTypesOf = src => DATA.gongfaTypes.filter(t => (src || "sect") === "sect" || !t.base || t.allSrc);
+// 某来源、某星级有哪些功法类别（星级不写 = 第 1 阶段）
+DATA.gfTypesOf = (src, star) => DATA.gongfaTypes.filter(t => t.bk <= DATA.gfBookN(src, star, t.fam));
 DATA.gfTypeKey = id => { const t = DATA.gongfaTypes.find(x => x.id === id); return t && t.base || id; };   // 倍率、价格表用的类别 id
 
 /* 功法来源类型（内部标记）：sect 宗门功法、shop 凡界坊市功法；以后加新类型在这里加一行 + config 加一组 */
@@ -96,10 +106,14 @@ DATA.sectWords = sect => {
   return (DATA._words[sect.id] = list);
 };
 // 功法名：门派前缀 + 随机词 + 类别后缀（每个类别 / 第几本用不同的词）
+DATA.gfCn = n => { const d = "零一二三四五六七八九"; return n < 10 ? d[n] : n < 20 ? "十" + (n % 10 ? d[n % 10] : "") : d[Math.floor(n / 10)] + "十" + (n % 10 ? d[n % 10] : ""); };
 DATA.gongfaName = (sect, type) => {
   if (sect.src === "cc") { const C = CFG.sect.chuancheng; return sect.name + C.WORD + (C.NAME[type.id] || type.suffix); }   // 宗门传承
   if (sect.src === "wdroom") return `${CFG.wudaoRoom.xiulian.NAME[type.id] || type.suffix}·第${DATA.cnNum(sect.juan)}卷`;   // 悟道室秘诀
   if (sect.book) return `${sect.prefix}${type.suffix}·第${sect.book}卷`;   // 试炼塔秘诀
+  // 分阶段多出来的书：同类第 1 本的名字 + 「·第N卷」（宗门原来就有的第 2、3 本不变）
+  const T1 = DATA.gongfaTypes.find(x => x.id === type.fam), old = type.bk === 1 || ((sect.src || "sect") === "sect" && type.bk <= ((_GF.BOOKS || {})[type.fam] || 1));
+  if (!old && T1) return DATA.gongfaName(sect, T1) + "·第" + DATA.gfCn(type.bk) + "卷";
   if (sect.plain) return sect.prefix + DATA.nmPick(_NM.jieGfSuffix, type.id, type.suffix);   // 仙魔冥神坊市、功德司：地图名 + 后缀（config/names.js 的 jieGfSuffix）
   const w = DATA.sectWords(sect);
   return sect.prefix + w[(type.ni * 4 + (type.book ? type.book - 1 : 0)) % w.length] + type.suffix;   // 第 2、3 本用同类别后面的词
@@ -166,11 +180,20 @@ DATA.srcCfg = o => DATA.gfSources[DATA.srcType(o)].cfg();
  *   o 来源、typeId 类别 id、key = TOTAL 里的属性 */
 // v121：战斗属性每单位（sect.TOTAL ÷ 1~10 星全部宗门功法练满的 STAT_STAR 合计）
 DATA._gfUnit = {};
+//   分阶段：每星每个宗门这一属性的本数按 gfBookN 算（各阶段书越多，每本越少，总数不变）
 DATA.gfUnit = key => {
   if (DATA._gfUnit[key] !== undefined) return DATA._gfUnit[key];
-  const S = _GF.sect, nT = DATA.gongfaTypes.filter(t => t.stat === key || t.stat2 === key).length;
-  let d = 0; for (let st = 1; st <= 10; st++) d += (S.STAT_STAR[st - 1] || 0) * DATA.sects.filter(x => x.star === st).length;
-  return DATA._gfUnit[key] = d && nT ? ((S.TOTAL || {})[key] || 0) / (d * nT * DATA.lvMul(_GF.MAX)) : 0;
+  const S = _GF.sect, fams = DATA.gongfaTypes.filter(t => t.bk === 1 && (t.stat === key || t.stat2 === key)).map(t => t.fam);
+  let d = 0; for (let st = 1; st <= 10; st++) { let nb = 0; for (const f of fams) nb += DATA.gfBookN("sect", st, f); d += (S.STAT_STAR[st - 1] || 0) * DATA.sects.filter(x => x.star === st).length * nb; }
+  return DATA._gfUnit[key] = d ? ((S.TOTAL || {})[key] || 0) / (d * DATA.lvMul(_GF.MAX)) : 0;
+};
+// 旧算法（坊市、功德司、宗门传承、悟道室、试炼塔秘诀、天外天用，不受分阶段影响）：宗门每类按 BOOKS 本、STAT_STAR_OTHER
+DATA._gfUnitOld = {};
+DATA.gfUnitOld = key => {
+  if (DATA._gfUnitOld[key] !== undefined) return DATA._gfUnitOld[key];
+  const S = _GF.sect, SS = S.STAT_STAR_OTHER || S.STAT_STAR, nT = DATA.gongfaTypes.filter(t => (t.stat === key || t.stat2 === key) && t.bk <= ((_GF.BOOKS || {})[t.fam] || 1)).length;
+  let d = 0; for (let st = 1; st <= 10; st++) d += (SS[st - 1] || 0) * DATA.sects.filter(x => x.star === st).length;
+  return DATA._gfUnitOld[key] = d && nT ? ((S.TOTAL || {})[key] || 0) / (d * nT * DATA.lvMul(_GF.MAX)) : 0;
 };
 // 每本功法固定的随机倍率 1 ± RAND
 DATA.gfRand = id => { const R = _GF.sect.RAND || 0; let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return 1 + R * ((h % 20001) / 10000 - 1); };
@@ -178,7 +201,8 @@ DATA.gfCalc = (o, typeId, key) => {
   const C = DATA.srcCfg(o), tm = (C.TYPE_MULT || {})[DATA.gfTypeKey(typeId)];
   if (!C.TOTAL || C.TOTAL[key] === undefined || typeId === "spell") return 0;   // v121：只按 TOTAL 分配（v125 起秘诀、肉身秘诀也是）
   const ek = o.floor ? 1 : C.GF_K === undefined ? 1 : C.GF_K;   // v223 新版试炼塔秘诀：只看每本 mult   // 坊市 / 功德司 = 宗门 × PCT%
-  return DATA.gfUnit(key) * (C.STAT_STAR[o.star - 1] || 0) * (tm === undefined ? 1 : tm) * ek * (o.mult || DATA.gfRand((o.src === "cc" ? o.sectId : o.id) + ":" + typeId));   // 宗门传承：随机倍率同本门同类功法 → 正好 PCT%   // 悟道秘诀：固定倍率 o.mult
+  const nw = DATA.GF_STAGE_SRC.includes(DATA.srcType(o)) && !o.floor;   // 宗门、坊市、功德司按分阶段新算法；其他按旧算法
+  return (nw ? DATA.gfUnit(key) : DATA.gfUnitOld(key)) * ((nw ? C.STAT_STAR : C.STAT_STAR_OTHER || C.STAT_STAR)[o.star - 1] || 0) * (tm === undefined ? 1 : tm) * ek * (o.mult || DATA.gfRand((o.src === "cc" ? o.sectId : o.id) + ":" + typeId));   // 宗门传承：随机倍率同本门同类功法 → 正好 PCT%   // 悟道秘诀：固定倍率 o.mult
 };
 
 // 层数倍率：第 lv 层效果 = 每层效果 × LV_MULT[lv-1]（没写就是 lv）
@@ -217,7 +241,7 @@ DATA.startGfInfo = (lv = 1) => {
 DATA.gongfaInfo = (id, lv = 1) => {
   if (id === DATA.START_GF) return DATA.startGfInfo(lv);
   const p = id.split(":"), sect = DATA.gfSrc(p[0]), type = DATA.gongfaTypes.find(x => x.id === p[1]);
-  if (p.length !== 2 || !sect || !type || (type.base && !type.allSrc && (sect.src || "sect") !== "sect")) return null;
+  if (p.length !== 2 || !sect || !type || type.bk > DATA.gfBookN(sect.src, sect.star, type.fam)) return null;
   const per = DATA.gfCalc(sect, type.id, type.stat), per2 = type.stat2 ? DATA.gfCalc(sect, type.id, type.stat2) : 0;
   const el = DATA.elById[(sect.els || {})[type.id] || sect.el];   // 仙魔冥神坊市、功德司：每本单独的属性
   const J = sect.src === "jshop" ? _GF.jshop || {} : null;

@@ -607,7 +607,7 @@ G.module({
       const R = DATA.mobRow(t), out = [];
       for (const C of R.cats) { const ps = DATA.mobParts(C); if (!ps.length) continue;
         for (const sc of DATA.mobCatSrcs(C.c)) { const P = ps.find(([lo, hi]) => sc.star >= lo && sc.star <= hi); if (!P) continue; const l = [];
-          for (const ty of DATA.gfTypesOf(sc.src)) { if (sc.src === "shop" && ty.sectOnly) continue;
+          for (const ty of DATA.gfTypesOf(sc.src, sc.star)) { if (sc.src === "shop" && ty.sectOnly) continue;
             const g = DATA.gongfaInfo(DATA.gongfaId(sc.id, ty.id), P[2].gf[1]); if (g) l.push(g.name); }
           if (l.length) out.push([sc.name, l, C.c, P[2].pct]); } }
       return out;
@@ -763,7 +763,7 @@ G.module({
       h += this.lqCard("gf") + `<div class="room-grid six">${DATA.elements.map(e => [e.id, e.name]).map(([k, n]) =>
           `<button class="${el === k ? "active" : ""}" onclick="G.setLibEl('${k}')">${n}</button>`).join("")}</div>` +
         U.doneCards(sects.map(o => ({ head: `<h3>${o.name}<span class="tag">${o.star}星</span><span class="tag">${DATA.elById[o.el].name}</span></h3>`, rows:
-          DATA.gongfaTypes.map(t => {
+          DATA.gfTypesOf("sect", o.star).map(t => {
             const g = DATA.gongfaInfo(DATA.gongfaId(o.id, t.id));
             return [this.hasGongfa(g.id), `<div class="line"><div>${DATA.skillIco(g)}《${g.name}》<span class="tag">${g.star}星</span><span class="tag">${t.name}</span><small>每层${g.label} +${this.gfValue(g, g.perLv)}${g.label2 ? ` · ${g.label2} +${this.gfValue(g, g.perLv2)}` : ""} · ${U.fmt(g.cost)} 贡献 · 学习 ${U.dur(DATA.gfLearnMin(g.star) * 60)}</small></div>${btn(g)}</div>`];
           }).concat([(() => {
