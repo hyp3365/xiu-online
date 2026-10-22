@@ -448,6 +448,16 @@ G.module({
       this.s.contrib -= c; this.trN = n;
       this.log(`兑换${DATA.matFull(kind, g)} ×${U.fmt(n)}，贡献 -${U.fmt(c)}。`, "good"); this.after();
     },
+    // 贡献兑换窗口：输入数量（数量记在 G.trN）
+    openExchangeMat(kind, g) {
+      if (!this.treasuryMatOK(kind, g)) return;
+      const c = DATA.matContrib(kind, g), max = Math.floor(this.s.contrib / Math.max(1, c)), n = Math.max(1, Math.min(Math.floor(this.trN) || 1, max || 1)); this.trN = n;
+      this.modal(`<h2>兑换${DATA.matName(kind, g)}</h2>
+        <div class="line"><div>${DATA.li(DATA.matImg(kind, g))}${DATA.matFull(kind, g)}<small>${U.fmt(c)} 贡献/个 · 已有 ${U.fmt(this.countMat(kind, g))}</small></div></div>
+        <div class="line"><div>兑换数量<small>需要贡献 ${U.fmt(c * n)} · 现有 ${U.fmt(this.s.contrib)} · 最多 ${U.fmt(max)}</small></div></div>
+        <input type="number" min="1" max="${max}" value="${n}" oninput="G.trN=+this.value" onchange="G.openExchangeMat('${kind}',${g})">
+        <div class="btns"><button class="primary" onclick="G.exchangeMat('${kind}',${g},G.trN)" ${max < 1 ? "disabled" : ""}>兑换</button><button onclick="G.closeModal()">关闭</button></div>`);
+    },
     // 宝库材料互换：mode "two" 二换一（宝库可换的同类材料）；"four" 四界换凡界（SWAP_FOUR_STAR 星起）
     matSwapRate(mode) { const C = CFG.sect; return Math.max(1, mode === "four" ? C.SWAP_FOUR_RATE ?? 1 : C.SWAP_RATE ?? 2); },
     matSwapFourOK() { return this.sectInfo().star >= (CFG.sect.SWAP_FOUR_STAR ?? 6); },
@@ -847,13 +857,14 @@ G.module({
           return [s.blueprints[k].includes(g), `<div class="line"><div>${DATA.li(DATA.iconImg("bp"))}${DATA.furnaceName(k, g)}图纸<small>${U.fmt(c)} 贡献</small></div>
             <button class="sm" onclick="G.exchangeBlueprint('${k}',${g})" ${has || lock || s.contrib < c ? "disabled" : ""}>${has ? (s.blueprints[k].includes(g) ? "已学会" : "在背包") : lock ? `${need}星宗门可兑换` : "兑换"}</button></div>`]; }) })));
       } else {
-        h += `<div class="card"><h3>${DATA.matKinds[tt]}<small>贡献 ${U.fmt(s.contrib)}</small></h3>
-          <div class="line"><div>兑换数量</div><input id="tr-n" type="number" min="1" value="${this.trN || 1}" oninput="G.trN=+this.value" style="width:110px"></div>` +
-          this.treasuryMatList(tt).map(({ g, lock }) => { const c = DATA.matContrib(tt, g);
-          return `<div class="line"><div>${DATA.li(DATA.matImg(tt, g))}${DATA.matFull(tt, g)}<small>${U.fmt(c)} 贡献/个 · 已有 ${U.fmt(this.countMat(tt, g))}</small></div>
-            <button class="sm" onclick="G.exchangeMat('${tt}',${g})" ${lock || s.contrib < c ? "disabled" : ""}>${lock ? `${lock}星宗门可兑换` : "兑换"}</button></div>`
-            + `<div class="line sw"><div><small>${this.matSwapRate("two")} 个其他${DATA.matKinds[tt]}兑换 1 个</small></div><button class="sm" onclick="G.openMatSwap('${tt}','two',${g})">兑换</button></div>`
-            + (this.matSwapFrom(tt, "four", g).length ? `<div class="line sw"><div><small>${this.matSwapRate("four")} 个四界${DATA.matKinds[tt]}兑换 1 个</small></div><button class="sm" onclick="G.openMatSwap('${tt}','four',${g})">兑换</button></div>` : ""); }).join("") + `</div>`;
+        const kn = DATA.matKinds[tt], ml = this.treasuryMatList(tt), fanN = tt === "herb" ? DATA.FAN_HERB_N : DATA.FAN_ORE_N;
+        const row = (g, sub, btn) => `<div class="line"><div>${DATA.li(DATA.matImg(tt, g))}${DATA.matFull(tt, g)}<small>${sub} · 已有 ${U.fmt(this.countMat(tt, g))}</small></div>${btn}</div>`;
+        h += `<div class="card"><h3>贡献兑换<small>贡献 ${U.fmt(s.contrib)}</small></h3>` + ml.map(({ g, lock }) => { const c = DATA.matContrib(tt, g);
+          return row(g, `${U.fmt(c)} 贡献/个`, `<button class="sm" onclick="G.openExchangeMat('${tt}',${g})" ${lock || s.contrib < c ? "disabled" : ""}>${lock ? `${lock}星宗门可兑换` : "兑换"}</button>`); }).join("") + `</div>`;
+        h += `<div class="card"><h3>二换一<small>${this.matSwapRate("two")} 个相同的其他${kn}换 1 个</small></h3>` + ml.map(({ g }) =>
+          row(g, `${this.matSwapRate("two")} 个其他${g < fanN ? "凡界" : "四界"}${kn}换 1 个`, `<button class="sm" onclick="G.openMatSwap('${tt}','two',${g})">兑换</button>`)).join("") + `</div>`;
+        if (this.matSwapFourOK()) h += `<div class="card"><h3>四界换凡界<small>${this.matSwapRate("four")} 个四界${kn}换 1 个凡界${kn}</small></h3>` + ml.filter(({ g }) => g < fanN).map(({ g }) =>
+          row(g, `${this.matSwapRate("four")} 个四界${kn}换 1 个`, `<button class="sm" onclick="G.openMatSwap('${tt}','four',${g})">兑换</button>`)).join("") + `</div>`;
       }
     } else if (tab === "alchemy") {
       h += this.sectAlchemyView(); // 见 craft.js
