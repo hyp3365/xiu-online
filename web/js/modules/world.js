@@ -71,6 +71,7 @@ G.module({
     toggleKuang(a) {
       const s = this.s;
       if (s.explore && s.explore.kuang && !s.explore.cq && s.explore.map === a) { this.stopExplore("停止挖矿"); return this.after(); }
+      if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");   // 渡劫中只能停止，不能新开 / 更换
       if (!this.mapOpen(a)) return;
       if (s.explore) this.stopExplore("更换");
       if (s.cultSet) s.cultSet.went = false;   // 手动开始的不算修炼设置自动去的（自动去时 cultSetCheck 会再标记）
@@ -939,6 +940,7 @@ G.module({
     toggleExplore(a, r, once) {
       const s = this.s;
       if (s.explore && !s.explore.cq && s.explore.map === a && s.explore.reg === r && !!s.explore.once === !!once) { this.stopExplore(once ? "放弃历练" : "停止自动探索"); return this.after(); }
+      if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");   // 渡劫中只能停止，不能新开 / 更换
       if (!this.regionOpen(a, r)) return;
       if (!once && !this.isTrained(a, r)) return this.log("需先在此区域历练通过，才能自动探索。", "sys");
       if (s.explore) this.stopExplore("更换");
@@ -968,7 +970,8 @@ G.module({
         <div class="line"><div>出窍次数<small>1 ~ ${max}</small></div><input id="cq-n" type="number" min="1" max="${max}" value="${max}" style="width:110px"></div>
         <div class="btns"><button class="primary" onclick="G.startChuqiao(${a},${r})">出窍</button><button onclick="G.closeModal()">取消</button></div>`);
     },
-    startChuqiao(a, r, nAuto) {   // nAuto：自动任务直接给次数（不弹窗）
+    startChuqiao(a, r, nAuto) {
+      if (this.s.trib && !this.s.trib.result) return this.log("渡劫中，不能外出。", "sys");   // nAuto：自动任务直接给次数（不弹窗）
       const s = this.s, max = this.cqLeftToday(), n = Math.min(max, Math.floor(nAuto || +($("#cq-n") && $("#cq-n").value) || 0));
       if (n < 1) return;
       if (!nAuto) this.closeModal();
@@ -1060,11 +1063,20 @@ G.module({
     // 推进到当前时间：探索（s.explore）和出窍（s.cq）按时间先后一件一件交替结算，生命、法力顺序正确
     advanceExplore() {
       const s = this.s; this.cqMigrate();
+      // 渡劫中探索、出窍暂停（只结算到点开始渡劫那一刻），渡劫结束后整体顺延，不会在劫雷前就打怪掉血
+      const tb = s.trib && !s.trib.result, pz = tb ? (s.trib.t0 || s.trib.start - CFG.trib.PRE_SEC * 1000) : null;
+      if (!tb) this.exResume();
       for (let n = 0; n < 200000 && (s.explore || s.cq); n++) {
-        const now = this.now(), dE = this.exDueAt(s.explore), dC = this.exDueAt(s.cq);
+        const now = pz === null ? this.now() : Math.min(this.now(), pz), dE = s.explore && s.explore._pz != null ? Infinity : this.exDueAt(s.explore), dC = s.cq && s.cq._pz != null ? Infinity : this.exDueAt(s.cq);
         if (Math.min(dE, dC) > now) break;
         if (dE <= dC) this.exAdvance1(dE); else this.cqRun(() => this.exAdvance1(dC));
       }
+      if (tb) for (const x of [s.explore, s.cq]) if (x && x._pz == null) x._pz = Math.min(this.now(), pz);
+    },
+    // 渡劫结束：暂停的探索 / 出窍按暂停时长顺延
+    exResume() {
+      const s = this.s, now = this.now();
+      for (const x of [s.explore, s.cq]) if (x && x._pz != null) { x.start += Math.max(0, now - x._pz); delete x._pz; }
     },
     // 结算 s.explore 的一件事（休养恢复 / 走一步 / 结算一次），只处理到 limit 为止
     exAdvance1(limit) {
@@ -1211,6 +1223,7 @@ G.module({
       if (!once && !m.trained.includes(i)) return this.log(`需先历练通过这处${L}，才能自动探索。`, "sys");
       if (this.mjLeft(i, k) <= 0) return this.log(`这处${L}今天已经进过了，明天再来。`, "sys");
       if (s.hp < this.stats().hp * DATA.EXPLORE_STOP) return this.log("生命不足三成，先休养片刻。", "sys");
+      if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");
       if (x) this.stopExplore("更换");
       this.mjStart(i, once, null, null, k); this.exploreOpen = true; this.exInfo = "ex"; this.after();
     },
@@ -1219,6 +1232,7 @@ G.module({
       const s = this.s, m = this.mjState(k), list = m.found.filter(i => m.trained.includes(i) && this.mjCanEnter(i, k)).sort((a, b) => a - b);
       if (!list.length) return this.log(`没有可以探索的${this.mjLabel(k)}（要已发现、已历练通过、今天还没进过）。`, "sys");
       if (s.hp < this.stats().hp * DATA.EXPLORE_STOP) return this.log("生命不足三成，先休养片刻。", "sys");
+      if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");
       if (s.explore) this.stopExplore("更换");
       this.mjStart(list[0], false, list.slice(1), null, k); this.exploreOpen = true; this.exInfo = "ex"; this.after();
     },

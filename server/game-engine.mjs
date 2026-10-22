@@ -250,7 +250,7 @@ export class GameEngine {
     const last = Number(s && s.last);
     if (Number.isFinite(last)) times.push(last + TICK_MS);
     try {
-      for (const x of [s && s.explore, s && s.cq]) if (x && !x.rest && x.ms > 0) {   // 探索、出窍各自的下一步
+      for (const x of [s && s.explore, s && s.cq]) if (x && !x.rest && x.ms > 0 && x._pz == null) {   // 探索、出窍各自的下一步
         const T = this.G.exCfg(x).TIME, W = (this.CFG.explore.END_WAIT || 0) * 1000;
         times.push(x.lostWait ? x.start + (x.step + 1) * x.ms : x.step >= T ? x.start + T * x.ms + W : x.start + (x.step + 1) * x.ms);
       }

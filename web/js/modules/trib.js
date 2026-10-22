@@ -108,9 +108,10 @@ G.module({
     },
     startTrib() {
       const s = this.s; if (s.trib || !this.canBreak() || !this.needTrib()) return;
+      if (this.advanceExplore) this.advanceExplore();   // 探索 / 出窍先结算到现在，渡劫期间暂停
       const L = s.L + 1, t = this.makeTrib(L), st = this.stats();
       s.hp = st.hp; s.mana = st.mana;   // 开始时生命法力回满
-      s.trib = { L, start: this.now() + CFG.trib.PRE_SEC * 1000, time: this.tribTime(L), sec: 0, atk: t.atk, crit: t.crit, taken: 0, hits: 0, log: [], result: "", shield: null, cd: {}, used: {} };
+      s.trib = { L, t0: this.now(), start: this.now() + CFG.trib.PRE_SEC * 1000, time: this.tribTime(L), sec: 0, atk: t.atk, crit: t.crit, taken: 0, hits: 0, log: [], result: "", shield: null, cd: {}, used: {} };
       this.log(`劫云压顶，${this.realmName(L)}天劫降临！`, "gold");
       this.tribOpen = true; this.save && this.save(); this.tribRender(true);
     },
@@ -155,6 +156,7 @@ G.module({
         x.result = `渡劫失败：被劫雷劈倒，修为 -${U.fmt(loss)}。`;
         this.log(x.result, "bad");
       }
+      if (this.exResume) this.exResume();   // 暂停的探索 / 出窍从现在继续
       // 全部信息：记下这次天劫的全过程（服务器存最近 100 条）
       (s.histQ || (s.histQ = [])).push({ at: this.now(), k: "天劫", title: `渡劫 · ${this.realmName(x.L)}：${x.result}`, bad: !win, ev: x.log.slice().reverse().map(t => ({ t, c: "" })).concat([{ t: x.result, c: win ? "gold" : "bad" }]) });
       this.dirty(); if (!this.silent) { this.save(); this.render(); }
