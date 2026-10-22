@@ -12,8 +12,8 @@ CFG.battle = {
   MIN_BASE: 1,       // 保底伤害：练气一层的值
   MIN_STEP: 3,       // 保底伤害：每多一层 +
   DEF_RATE: 0.9,     // 普攻：对方防御抵消比例
-  RAND_MIN: 0.9,     // 伤害随机下限（倍）
-  RAND_MAX: 1.1,     // 伤害随机上限（倍）
+  RAND_MIN: 0.95,     // 伤害随机下限（倍）
+  RAND_MAX: 1.05,     // 伤害随机上限（倍）
   CRIT_MULT: 2,      // 暴击伤害倍率
   MAX_ROUNDS: 100,   // 一场最多回合，打满未击败对方算失败（雷劫不受限）
   TEST_ROUNDS: 200,  // 宗门「实力测试」最多回合
@@ -27,8 +27,8 @@ CFG.battle = {
 };
 
 // 属性抗性（法术 / 法宝减免，双方相同）
-CFG.battle.RES_RATE = 0.581;      // 对方防御 × 此值
-CFG.battle.RES_EL_RATE = 0.662;   // 对方该系抗性 × 此值
+CFG.battle.RES_RATE = 0.531;      // 对方防御 × 此值
+CFG.battle.RES_EL_RATE = 0.892;   // 对方该系抗性 × 此值
 
 // 战斗画面播放（结果已算好，只是播放）
 CFG.battle.ACT_SEC = 1.5;   // 每次出手播放间隔（秒）
