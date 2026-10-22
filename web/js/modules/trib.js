@@ -164,6 +164,12 @@ G.module({
 
     /* ---------- 画面 ---------- */
     // 每秒调用：full = 整页重画，否则只更新数字、血条、闪电
+    // 渡劫画面用的时间：联网时 = 服务器最近一次报的时间 + 本地经过的时间（不做平滑）
+    tribNow() {
+      const A = typeof API !== "undefined" ? API : null;
+      if (A && A.serverNow && typeof performance !== "undefined") return A.serverNow + Math.max(0, performance.now() - (A._clockPerf || 0));
+      return this.now();
+    },
     showTrib() { if (this.tribOpen) this.tribRender(false); },
     tribRender(full) {
       const el = $("#trib"); if (!this.tribOpen || !el) return;
@@ -199,7 +205,8 @@ G.module({
       const shv = x.shield && x.shield.hp > 0 ? x.shield.hp : 0;
       set("tj-sh", U.fmt(shv));
       const ring = document.getElementById("tj-shield"); if (ring) ring.classList.toggle("on", shv > 0 && !x.result);
-      const pre = Math.ceil((x.start - this.now()) / 1000), cd = document.getElementById("tj-cd");
+      // 倒计时按服务器时钟算（不用平滑后的显示时钟，那个可能比服务器慢几秒，导致倒计时还没完劫雷已经劈下）；已经劈过就不再显示
+      const pre = x.hits > 0 || x.sec > 0 ? 0 : Math.ceil((x.start - this.tribNow()) / 1000), cd = document.getElementById("tj-cd");
       if (cd) { cd.textContent = pre > 0 && !x.result ? pre : ""; cd.classList.toggle("on", pre > 0 && !x.result); }
       const sl = document.getElementById("tj-run-slots"); if (sl) sl.innerHTML = this.tribRunSlots();
       if (this._tribHit) { this.tribBolt(this._tribHit); this._tribHit = null; }
