@@ -27,6 +27,7 @@ for (const name of ACTIONS) if (typeof validationEngine.G[name] !== "function") 
 fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o750 });
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
+db.pragma("synchronous = NORMAL");   // WAL 下每次提交不再强制刷盘（断电最多丢最后几次提交，不会损坏数据库），写存档快很多
 db.pragma("foreign_keys = ON");
 db.exec(`
   CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, password_hash TEXT NOT NULL, is_admin INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
@@ -375,7 +376,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && route === "/api/gift") {
       const body = await readBody(req), code = String(body.code || "").trim();
       const redeem = db.transaction(() => {
-        const gift = db.prepare("SELECT * FROM gifts WHERE code=?").get(code), state = getState(user.id);
+        const gift = db.prepare("SELECT * FROM gifts WHERE code=?").get(code), on0 = clients.get(user.id), state = on0 ? structuredClone(on0.state) : getState(user.id);   // 在线就用内存里的最新进度
         if (!gift || !state || (gift.expires_at && gift.expires_at < Date.now()) || gift.used_count >= gift.max_uses) return false;
         if (db.prepare("SELECT 1 FROM gift_uses WHERE code=? AND user_id=?").get(code, user.id)) return false;
         const items = JSON.parse(gift.payload).items || [], playerEngine = getEngine(user.id);
@@ -387,7 +388,7 @@ const server = http.createServer(async (req, res) => {
         persist(user.id, updatedState);
         db.prepare("INSERT INTO gift_uses(code,user_id,used_at) VALUES(?,?,?)").run(code, user.id, Date.now());
         db.prepare("UPDATE gifts SET used_count=used_count+1 WHERE code=?").run(code);
-        const online = clients.get(user.id); if (online) { online.state = JSON.parse(JSON.stringify(updatedState)); pushState(online, Date.now(), [], true, true); }
+        const online = clients.get(user.id); if (online) { online.state = structuredClone(updatedState); pushState(online, Date.now(), [], true, true); }
         return { items, got, lost, state: updatedState };
       });
       const result = redeem();
@@ -452,17 +453,20 @@ function diffState(a, b) {
   return a === b ? undefined : b;
 }
 // 生成发给某个连接的状态消息：首次或要求重同步时发完整状态，之后只发补丁，并带上序号供客户端校验。
-function statePayload(client, full = false) {
+// snap：和 client.state 内容相同、之后不会再被改的副本（引擎改完原对象后另返回一份副本，原对象正好拿来当 lastSent，省掉一次复制）
+// pre：已经算好的补丁（pushState 先 diff 判断有没有变化，避免算两次）
+function statePayload(client, full = false, snap = null, pre) {
   drainHist(client.userId, client.state);
-  const json = JSON.stringify(client.state), prevSeq = client.seq || 0;
+  if (snap) { delete snap.histQ; delete snap.exHist; }
+  const prevSeq = client.seq || 0;
   client.seq = prevSeq + 1;
   let payload;
   if (full || !client.lastSent) payload = { state: client.state };
   else {
-    const patch = diffState(client.lastSent, client.state);
+    const patch = pre !== undefined ? pre : diffState(client.lastSent, client.state);
     payload = { patch: patch || null, base: prevSeq };
   }
-  client.lastSent = JSON.parse(json); client.lastSentJson = json;
+  client.lastSent = snap || structuredClone(client.state);
   return { ...payload, seq: client.seq };
 }
 server.on("upgrade", (req, socket, head) => {
@@ -488,15 +492,18 @@ wss.on("connection", (socket, session) => {
   const playerEngine = getEngine(user.id);
   const advanced = playerEngine.advance(state, Date.now()); persist(user.id, advanced.state);
   const saved = q.save.get(user.id);
-  const client = { socket, userId: user.id, engine: playerEngine, state: advanced.state, revision: saved?.revision || 1, lastPersist: Date.now(), rateWindow: Date.now(), rateCount: 0, nextCheck: Math.min(Date.now() + CHECK_MS, (advanced.nextDue || 0) + DUE_MARGIN_MS), lastPush: 0, lastSentJson: "", lastSent: null, seq: 0 };
+  const client = { socket, userId: user.id, engine: playerEngine, state: advanced.state, revision: saved?.revision || 1, lastPersist: Date.now(), rateWindow: Date.now(), rateCount: 0, nextCheck: Math.min(Date.now() + CHECK_MS, (advanced.nextDue || 0) + DUE_MARGIN_MS), lastPush: 0, lastSent: null, seq: 0 };
   clients.set(user.id, client); receipts.set(socket, new Map());
   pushState(client, Date.now(), advanced.logs, true, true);
 
   socket.on("message", raw => {
     const now = Date.now();
     if (now - client.rateWindow >= 1000) { client.rateWindow = now; client.rateCount = 0; }
-    if (++client.rateCount > 12) { send(socket, { type: "error", error: "操作过于频繁，请稍后重试" }); return; }
     let msg; try { msg = JSON.parse(raw.toString("utf8")); } catch { send(socket, { type: "error", error: "消息格式错误" }); return; }
+    if (++client.rateCount > 12) {   // 带上操作编号，客户端马上提示，不用等 15 秒超时
+      const rid = msg && msg.type === "action" ? String(msg.id || "") : "";
+      send(socket, rid ? { type: "result", id: rid, ok: false, error: "操作过于频繁，请稍后重试", serverNow: now, revision: client.revision } : { type: "error", error: "操作过于频繁，请稍后重试" }); return;
+    }
     if (msg && msg.type === "resync") {
       // 客户端从后台切回来会发 resync：先把到现在为止的进度结算完，再推完整状态
       let logs = [];
@@ -513,16 +520,26 @@ wss.on("connection", (socket, session) => {
       if (!ACTIONS.has(action)) throw new Error("此操作未授权");
       if (!Array.isArray(args) || args.length > 20) throw new Error("操作参数无效");
       validateValue(args);
-      const working = JSON.parse(JSON.stringify(client.state));
-      const outcome = client.engine.act(working, action, args, Date.now());
+      const t0 = performance.now();
+      const working = structuredClone(client.state);   // 出错时 client.state 保持原样
+      const t1 = performance.now();
+      const outcome = client.engine.act(working, action, args, Date.now());   // 引擎直接改 working，另返回一份副本
+      const t2 = performance.now();
       client.state = outcome.state;
-      client.revision = (q.revision.get(user.id)?.revision || 0) + 1;
-      persist(user.id, client.state); client.lastPersist = Date.now();
-      const reply = { type: "result", id, ok: true, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result, battles: outcome.battles || [], ...statePayload(client) };
+      client.revision += 1;
+      const reply = { type: "result", id, ok: true, serverNow: outcome.serverNow, revision: client.revision, logs: outcome.logs, result: outcome.result, battles: outcome.battles || [], ...statePayload(client, false, working) };
       client.lastPush = Date.now(); client.nextCheck = Date.now();
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
+      const t3 = performance.now();
+      // 先回复玩家，再存档（存档在同一轮事件里马上做，服务器重启不会丢进度）
+      setImmediate(() => {
+        const t4 = performance.now();
+        try { persist(user.id, client.state); client.lastPersist = Date.now(); } catch (err) { console.error("save failed", err?.message || err); }
+        const t5 = performance.now(), total = t3 - t0 + t5 - t4;
+        if (total >= SLOW_MS) console.warn(`[慢操作] ${action} 共${total.toFixed(0)}ms：复制${(t1 - t0).toFixed(0)} 执行${(t2 - t1).toFixed(0)} 补丁+发送${(t3 - t2).toFixed(0)} 存档${(t5 - t4).toFixed(0)}`);
+      });
     } catch (err) {
-      const reply = { type: "result", id, ok: false, error: err.message || "操作失败", serverNow: Date.now(), revision: client.revision, ...statePayload(client) };
+      const reply = { type: "result", id, ok: false, error: err.message || "操作失败", serverNow: Date.now(), revision: client.revision, ...statePayload(client) };   // 出错：client.state 没变，补丁为空
       seen.set(id, reply); if (seen.size > 256) seen.delete(seen.keys().next().value); send(socket, reply);
     }
   });
@@ -539,11 +556,16 @@ wss.on("connection", (socket, session) => {
 // 服务器推送：只在状态变化时推，最多 10 秒一次心跳。
 // 每 100ms 检查一次是否到了下一个结算点（修炼周期 / 探索步 / 劫雷），到点立刻结算推送，
 // 进度条走满就能马上看到结算；其它计时系统每秒检查一次。
-const PUSH_IDLE_MS = 10_000, CHECK_MS = 1_000, DUE_MARGIN_MS = 15;
-function pushState(client, now, logs = [], force = false, full = false) {
-  if (!force && !logs.length && JSON.stringify(client.state) === client.lastSentJson && now - client.lastPush < PUSH_IDLE_MS) return;
+const PUSH_IDLE_MS = 10_000, CHECK_MS = 1_000, DUE_MARGIN_MS = 15, SLOW_MS = Number(process.env.XIU_SLOW_MS) || 80;   // 操作超过 SLOW_MS 毫秒在日志里打印各步耗时
+function pushState(client, now, logs = [], force = false, full = false, snap = null) {
+  let pre;
+  if (!full && client.lastSent) {
+    drainHist(client.userId, client.state);
+    pre = diffState(client.lastSent, client.state);   // 只比较，不再整份序列化
+    if (!force && !logs.length && !pre && now - client.lastPush < PUSH_IDLE_MS) { if (snap) { delete snap.histQ; delete snap.exHist; client.lastSent = snap; } return; }
+  }
   client.lastPush = now;
-  send(client.socket, { type: "snapshot", serverNow: now, revision: client.revision, logs, ...statePayload(client, full) });
+  send(client.socket, { type: "snapshot", serverNow: now, revision: client.revision, logs, ...statePayload(client, full, snap, pre) });
 }
 // ---- 每小时自动备份数据库（存档、账号、礼包码），保留最近 48 份 ----
 // 备份在 数据目录/backup/xiu-年月日-时分.sqlite3（北京时间）；最新一份按管理员设置的间隔上传到 GitHub 私有仓库（见下面 ghUpload）
@@ -723,13 +745,13 @@ const timer = setInterval(() => {
     if (client.socket.readyState !== WebSocket.OPEN) continue;
     try {
       if (now >= client.nextCheck) {
-        const outcome = client.engine.advance(client.state, now); client.state = outcome.state;
+        const old = client.state, outcome = client.engine.advance(old, now); client.state = outcome.state;   // old 已被引擎改成和新状态一样，拿来当 lastSent
         client.nextCheck = Math.min(now + CHECK_MS, Math.max(now + 50, (outcome.nextDue || 0) + DUE_MARGIN_MS));
+        pushState(client, now, outcome.logs, false, false, old);
         if (now - client.lastPersist >= 30_000) {
           persist(userId, client.state); client.lastPersist = now;
-          client.revision = (q.revision.get(userId)?.revision || client.revision) + 1;
+          client.revision += 1;
         }
-        pushState(client, now, outcome.logs);
       } else if (now - client.lastPush >= PUSH_IDLE_MS) pushState(client, now, [], true);
     } catch (err) { console.error("game tick failed:", err?.stack || err); client.socket.close(1011, "游戏结算失败"); }
   }

@@ -95,6 +95,7 @@ const API = {
 
   applyState(message) {
     if (!message) return;
+    let viaPatch = false;
     if (message.state) this.serverState = message.state;
     else if ("patch" in message) {
       // 序号对不上（漏了消息）就请服务器重发完整状态
@@ -103,13 +104,16 @@ const API = {
         return;
       }
       if (message.patch) this.serverState = this.patchState(this.serverState, message.patch);
+      viaPatch = true;
     } else return;
     if (message.seq) this._seq = message.seq;
     this.syncClock(message.serverNow);
     if (typeof G !== "undefined") {
       const tab = G.tab;
-      // 界面用副本：本地先显示的改动不会污染服务器基准状态
-      G.s = JSON.parse(JSON.stringify(this.serverState));
+      // 界面用副本：本地先显示的改动不会污染服务器基准状态。
+      // 没有本地先显示的改动时，只把补丁（复制一份，小）打到 G.s 上，不再整份深拷贝；否则整份复制一次，把本地改动冲掉
+      if (viaPatch && G.s && !this._localEdit && message.ok !== false) { if (message.patch) G.s = this.patchState(G.s, structuredClone(message.patch)); }
+      else { G.s = structuredClone(this.serverState); this._localEdit = false; }
       const state = G.s;
       if (Number.isFinite(Number(state.last))) G._lastTick = Number(state.last);
       if (tab) G.tab = tab;
@@ -318,10 +322,12 @@ const API = {
     if (!pending) return;
     clearTimeout(pending.timer); this._pending.delete(message.id);
     this.finishButtonPending(pending);
+    // 除了日志什么都没变 = 条件不足没执行（有补丁就看补丁改了哪些键，不再把整个状态序列化两次）
+    const onlyLog = p => !p || (p.$p === 1 && !(p.d || []).length && Object.keys(p.s || {}).every(k => k === "log"));
     const noLog = st => st ? JSON.stringify({ ...st, log: 0 }) : "";
-    const before = noLog(this.serverState);
+    const before = "patch" in message ? "" : noLog(this.serverState);
     this.applyState(message);
-    const failed = message.ok && before === noLog(this.serverState);   // 除了日志什么都没变 = 条件不足没执行
+    const failed = message.ok && ("patch" in message ? onlyLog(message.patch) : before === noLog(this.serverState));
     if (!message.ok) {
       const error = message.error || "操作失败";
       this.showActionFeedback(error, "bad");
@@ -407,7 +413,7 @@ const API = {
       throw error;
     }
     if (this.OPTIMISTIC.has(name) && typeof G !== "undefined" && G.s) {
-      try { this._originalActions.get(name).apply(G, args); G.dirty(); G.render(); G.bars(); this.refreshOpenModal(); } catch {}
+      try { this._localEdit = true; this._originalActions.get(name).apply(G, args); G.dirty(); G.render(); G.bars(); this.refreshOpenModal(); } catch {}
     }
     const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now().toString(36)}-${(++this._actionCounter).toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return new Promise((resolve, reject) => {
