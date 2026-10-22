@@ -467,7 +467,8 @@ G.module({
       if (el.style.display !== "none") { el.style.display = "none"; return; }
       const m = b.ms; if (!m) { el.innerHTML = "<p>没有这场战斗的怪物属性</p>"; el.style.display = ""; return; }
       const f = U.fmt, rs = DATA.elements.map(e => `${e.name}${U.fmt(m.res[e.id] || 0)}`).join("　");
-      el.innerHTML = `<b>${b.name}${b.el && DATA.elById[b.el] ? `（${DATA.elById[b.el].name}属性）` : ""}</b>
+      const im = document.querySelector("#bt-u1 img"), imName = (CFG.rates || {}).MOB_IMG_NAME !== 0 && im ? `　<small style="color:#9ab">${String(im.src).split("?")[0].split("/").pop()}</small>` : "";   // config/rates.js MOB_IMG_NAME：1 显示图片文件名，0 关闭
+      el.innerHTML = `<b>${b.name}${b.el && DATA.elById[b.el] ? `（${DATA.elById[b.el].name}属性）` : ""}</b>${imName}
         <p>生命 ${f(m.hp)}　攻击 ${f(m.atk)}　防御 ${f(m.def)}</p><p>速度 ${f(m.speed)}　命中 ${f(m.hit)}　闪避 ${f(m.dodge)}</p>
         <p>法力 ${f(m.mana)}　暴击 ${U.num(m.crit)}%</p><p>抗性：${rs}</p>
         ${m.sp ? `<p>法术：每回合 ${m.sp[0]}% 几率，攻击×${m.sp[1]}%</p>` : ""}${m.fb ? `<p>法宝：每回合 ${m.fb[0]}% 几率，攻击×${m.fb[1]}%</p>` : ""}
@@ -1101,7 +1102,7 @@ G.module({
     mjCfg(k) { return k === "ld" ? CFG.lingdi : CFG.mijing; },
     mjLabel(k) { return k === "ld" ? DATA.nmPick(CFG.names.mjLabel, "ld", "灵地") : DATA.nmPick(CFG.names.mjLabel, "mj", "秘境"); },   // 名字在 config/names.js 的 mjLabel
     mjDef(i, k) { return this.mjCfg(k).list[i]; },
-    mjToday() { const d = new Date(this.now()); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; },
+    mjToday() { return this.bjDay(); },   // 秘境 / 灵地每天次数：北京时间 0 点重置
     // 秘境 / 灵地存档（换日自动清空今天的次数）
     mjState(k) {
       const s = this.s, key = k === "ld" ? "ld" : "mj", m = s[key] || (s[key] = { found: [], trained: [], day: "", used: {} }), t = this.mjToday();

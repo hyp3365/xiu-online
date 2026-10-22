@@ -69,6 +69,7 @@ G.module({
       ["怪物属性", [["MOB", "总倍率（所有怪物，雷劫除外）"]]],
       ["雷劫强度", [["TRIB", "总倍率"]]],
       ["突破需要", [["BREAK", "总倍率（修为突破的修为、肉身突破的气血）"]]],
+      ["战斗图片名字", [["MOB_IMG_NAME", "1 显示怪物图片文件名，0 关闭"]]],
       ["突破属性", [["realm:GAIN_RATE", "修为突破属性总倍率（人物、怪物、雷劫都生效）"], ["realm:BODY_GAIN_RATE", "肉身突破属性总倍率（人物、怪物、雷劫都生效）"]]],
     ],
     cfgQuickGet(key) {
@@ -87,7 +88,7 @@ G.module({
       if (bad) { this.cfgMsg = bad; this._cfgMsgOk = false; return this.cfgListView(); }
       const btn = document.getElementById("cfg-qsave"); if (btn) btn.disabled = true;
       // 只改数字，文件里其它内容（注释、管理员改过的地方）保持不变
-      const setNum = (text, re, v) => { if (!re.test(text)) throw new Error("文件里找不到要改的项：" + re); return text.replace(re, (m0, a) => a + v); };
+      const setNum = (text, re, v) => { if (!re.test(text) && /MOB_IMG_NAME/.test(re.source)) return text.replace(/(\n\s*BREAK\s*:\s*[-\d.eE]+,?[^\n]*)/, `$1\n  MOB_IMG_NAME: ${v},`); if (!re.test(text)) throw new Error("文件里找不到要改的项：" + re); return text.replace(re, (m0, a) => a + v); };
       try {
         const changed = k => Number(this.cfgQuickGet(k)) !== vals[k];
         if (Object.keys(vals).some(k => !k.startsWith("realm:") && changed(k))) {

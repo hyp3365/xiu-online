@@ -141,10 +141,10 @@ G.module({
       this.playBattle(res.detail, `晋升考验 · ${DATA.ranks[i].name}`, txt, res.win);   // 见 world.js
     },
     salary() { return Math.floor(DATA.ranks[this.s.rank].daily * this.starMul() * this.rankMul()); },
-    today() { return new Date(this.now()).toDateString(); },
+    today() { return this.bjDay(); },   // 每日次数统一按北京时间 0 点换日（服务器和手机时区不同也一致）
     bjDay() { return new Date(this.now() + 8 * 3600000).toISOString().slice(0, 10); },   // 北京时间日期：免费修炼室、免费练功房、出窍次数每天北京时间 0 点重置
     claimSalary() {
-      if (this.s.salaryDay === this.today()) return;
+      if (this.s.salaryDay === this.today()) { this.log("今天的俸禄已经领过了，北京时间 0 点后再来。"); this.after(); return; }
       const n = this.salary();
       this.s.salaryDay = this.today(); this.s.stone += n;
       this.log(`领取${DATA.ranks[this.s.rank].name}俸禄，灵石 +${U.fmt(n)}。`, "good"); this.after();
