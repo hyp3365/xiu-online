@@ -156,38 +156,32 @@ G.module({
       // 秘法、天赋也一起定死（s.mobFix { 键: { mf, tf } }）
       const F = s.mobFix || (s.mobFix = {});
       for (const c in C) for (const k of C[c]) { if (F[k]) continue;
-        const [t, a] = k.split(":"), tc = c !== "首领" ? c : t === "mj" ? "凡界首领" : t === "ld" ? "四界首领" : ((DATA.maps[+a] || {}).w === "fan" ? "凡界" : "四界") + "首领";
-        F[k] = { mf: this.rollMf(c), tf: this.rollTf(tc) }; }
+        const R = this.mobRandCfg(c); F[k] = { mf: this.rollMf(R), tf: this.rollTf(R) }; }   // config/battle.js MOB_RAND
     },
     mobElOf(k) { const M = this.s.mobEl || {}; return M[k] || ""; },
     mobFixOf(k) { return (this.s.mobFix || {})[k] || null; },
 
-    // 怪物天赋（config/battle.js 的 TALENT）：第一次战斗时随机，m.tf = ["lianji", "xishou_huo", …]；属性类天赋这时直接加到怪物属性上
+    // 怪物天赋（config/battle.js 的 TALENT）：第一次战斗时定，m.tf = ["lianji", "xishou_huo", …]；属性类天赋这时直接加到怪物属性上
+    //   首领 / 天将 / 星君 / 界主用存档定死的 m.tfFix；普通 / 精英按 MOB_RAND 每次随机（只地图上的怪）
     mobTalents(m) {
-      const T = CFG.battle.TALENT || {}, w = m.a >= 0 && DATA.maps[m.a] ? DATA.maps[m.a].w : "";
-      const cls = m.tfCls || ((m.elite || m.boss) && w ? (w === "fan" ? "凡界" : "四界") + (m.boss ? "首领" : "精英") : "");
-      m.tf = m.tfFix ? m.tfFix.slice() : this.rollTf(cls);   // 首领 / 天将 / 星君 / 界主：存档里定死的天赋（mobElInit）
+      const T = CFG.battle.TALENT || {};
+      m.tf = m.tfFix ? m.tfFix.slice() : m.a >= 0 && DATA.maps[m.a] ? this.rollTf(this.mobRandCfg(m.elite ? "精英" : m.boss ? "首领" : "普通")) : [];
       const up = 1 + (T.STAT || 0) / 100, has = k => m.tf.includes(k);
       if (has("minjie")) { m.speed *= up; m.hit *= up; }
       if (has("qiangzhuang")) m.hp *= up;
       if (has("fangyu")) m.def *= up;
       if (has("qiangli")) m.atk *= up;
     },
-    // 按类别随机天赋列表（config/battle.js TALENT.CHANCE[类别]）
-    rollTf(cls) {
-      const T = CFG.battle.TALENT || {}, C = (T.CHANCE || {})[cls] || [], r = Math.random() * 100, out = [];
-      let n = 0; C.forEach((c, i) => { if (r < c) n = i + 1; });
-      const pool = Object.keys(T.NAME || {});
-      while (n-- > 0 && pool.length) { const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push(k === "xishou" ? "xishou_" + U.pick(DATA.elements).id : k); }
+    mobRandCfg(c) { return (CFG.battle.MOB_RAND || {})[c] || {}; },
+    // 从 pool 里不重复抽：几率% 有，种数 [最少, 最多]
+    randSome(pool, pct, N) {
+      const p = pool.slice(), out = []; if (Math.random() * 100 >= (pct || 0)) return out;
+      const R = Array.isArray(N) ? N : [N || 1, N || 1]; let n = R[0] + Math.floor(Math.random() * (R[1] - R[0] + 1));
+      while (n-- > 0 && p.length) out.push(p.splice(Math.floor(Math.random() * p.length), 1)[0]);
       return out;
     },
-    // 按类别随机秘法列表（config/wudao.js MOB_MIFA：首领 boss 几率 + 种数；官位必有）
-    rollMf(c) {
-      const MM = CFG.wudao.MOB_MIFA || {}, pool = (MM.POOL || []).slice(), out = [], O = (MM.官位 || {})[c];
-      let N = O; if (!O) { const T = MM.boss || {}; if (Math.random() * 100 >= (T.CHANCE || 0)) return out; N = T.N || [1, 1]; }
-      let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); while (n-- > 0 && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-      return out;
-    },
+    rollTf(c) { return this.randSome(Object.keys((CFG.battle.TALENT || {}).NAME || {}), c.天赋几率, c.天赋种数).map(k => k === "xishou" ? "xishou_" + U.pick(DATA.elements).id : k); },
+    rollMf(c) { return this.randSome((CFG.wudao.MOB_MIFA || {}).POOL || [], c.秘法几率, c.秘法种数); },
     tfName(k) { const N = (CFG.battle.TALENT || {}).NAME || {}, [a, el] = k.split("_"); return el ? `${(DATA.elById[el] || {}).name || ""}系${N[a] || a}` : N[a] || a; },
 
     // 通用战斗：速度高者先手，判闪避、暴击。返回 { win, lose, rounds, why, log }，并更新玩家生命、法力
@@ -296,8 +290,7 @@ G.module({
       const W = CFG.wudao, MB = this.mifaBonus(), LX = W.LIANXING || {}, lxMe = MB.lianxing || 0;
       // 怪物秘法：第一次战斗时随机决定有哪几种（m.mf）
       if (!m.mf) {
-        const MM = W.MOB_MIFA || {}, T = MM[m.boss ? "boss" : m.elite ? "elite" : "normal"] || {}, pool = (MM.POOL || []).slice(); m.mf = [];
-        if (Math.random() * 100 < (T.CHANCE || 0)) { const N = T.N || [1, 1]; let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); while (n-- > 0 && pool.length) m.mf.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
+        m.mf = this.rollMf(this.mobRandCfg(m.elite ? "精英" : m.boss ? "首领" : "普通"));   // 普通 / 精英每次随机（config/battle.js MOB_RAND）；首领等已在 addMagic 读存档
       }
       const hasM = k => m.mf.includes(k), lxMob = hasM("lianxing") ? LX.MOB || 0 : 0;
       // 战斗秘法（config/wudao.js）：御天 保命、破军 无视防御、血煞 低血增伤、镇魂 只能普攻、金蝉 免疫攻击

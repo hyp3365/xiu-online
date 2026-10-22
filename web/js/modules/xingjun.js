@@ -89,11 +89,9 @@ G.module({
     // NPC：属性按 config/mobs.js 的一行怪物数据（tu）生成；ck = 暴击分类（天将 / 星君 / 界主）
     xjNpc(a, name, tu, ck, seat) {
       const elKey = ck === "天将" ? `tj:${a}` : ck === "界主" ? `jz:${a}` : seat !== undefined ? `xj:${a}:${seat}` : "", b = DATA.mobRoll(tu, DATA.mobCrit(ck)), v = (x, k) => x * DATA.mobRnd(k);   // v168 功法随机
-      const m = this.addMagic({ name, a, img: this.npcImg(`${ck}${a}_${name}`, ck === "天将" ? "rn" : "rx"), glow: ck !== "天将", elKey, Lm: DATA.region(a, 3).L, kind: "boss", boss: true, tfCls: ck,
+      const m = this.addMagic({ name, a, img: this.npcImg(`${ck}${a}_${name}`, ck === "天将" ? "rn" : "rx"), glow: ck !== "天将", elKey, Lm: DATA.region(a, 3).L, kind: "boss", boss: true,
         hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.resEl || b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, ck);
-      // 战斗秘法：天将 / 星君 / 界主固定种数（config/wudao.js MOB_MIFA.官位）
-      const MM = CFG.wudao.MOB_MIFA || {}, N = (MM.官位 || {})[ck];
-      if (N && !m.mf) { const pool = (MM.POOL || []).slice(); let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); m.mf = []; while (n-- > 0 && pool.length) m.mf.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
+      if (!m.mf) m.mf = this.rollMf(this.mobRandCfg(ck));   // 秘法：一般已按存档定死（mobElInit），没有键时按 config/battle.js MOB_RAND 随机
       return m;
     },
     // 依次挑战 list（[{name, k}]），满血满法力开打，中间不回复；结束恢复原来的生命法力
