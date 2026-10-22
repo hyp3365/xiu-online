@@ -145,7 +145,7 @@ G.module({
         <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>灵气高于（%）</div><input id="cs-high" type="number" min="1" max="100" value="${c.pct === undefined ? 90 : c.pct}" style="width:130px" onchange="G.cultSetSave()"></div>
-        <div class="line"><div>前往</div><button class="sm" onclick="G.atPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
+        <div class="line"><div>前往</div><button class="sm" onclick="G.openAtPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
         <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefill ? "开" : "关"}</button></div>
         <h3 style="margin-top:14px">自动执行任务</h3>
         ${this.autoTaskHtml(T)}
@@ -156,7 +156,7 @@ G.module({
     autoTaskHtml(T) {
       const A = this.autoTask(), sw = k => `<button class="sm ${A[k] ? "on" : ""}" onclick="G.autoTaskSet('${k}')">${A[k] ? "开" : "关"}</button>`;
       // v232 选择不用系统下拉框：点按钮弹出游戏风格的选择列表（atPick）
-      const sel = (k, list, v) => { const c = list.find(([x]) => String(x) === String(v)) || list[0]; return `<button class="sm" style="margin-left:8px" onclick="G.atPick('${k}')">${c ? c[1] : "暂无"} ▾</button>`; };
+      const sel = (k, list, v) => { const c = list.find(([x]) => String(x) === String(v)) || list[0]; return `<button class="sm" style="margin-left:8px" onclick="G.openAtPick('${k}')">${c ? c[1] : "暂无"} ▾</button>`; };
       const P = this.atList("poolI"), W = ((CFG.wudaoRoom || {}).daos || []);
       const dn = id => (W.find(d => d.id === id) || {}).name || id;
       return `<div class="line"><div>${CFG.sect.freeRoom.name}</div>${sw("free")}</div>
@@ -168,11 +168,23 @@ G.module({
         <div class="line"><div>自动出窍${sel("cqT", this.atList("cqT"), A.cqT)}</div>${sw("cq")}</div>`;
     },
     atList(k) { return k === "poolI" ? CFG.sect.pool.list.map((d, i) => [i, d.name]) : this.cultTargets(); },
-    atPick(k) {
+    // 前往 / 自动出窍：「隐藏」按钮进入隐藏模式，逐个地图点隐藏 / 显示；隐藏的地图平时不列出（s.atHide[k] 存隐藏的目标）
+    openAtPick(k, mode) {
+      if (mode !== undefined) this._atHideMode = !!mode;
       const A = k === "tgt" ? this.s.cultSet : this.autoTask(), L = this.atList(k), cur = A[k] === "" || A[k] === undefined ? (L[0] || [])[0] : A[k];
-      this.modal(`<h2>${k === "poolI" ? CFG.sect.pool.name : k === "tgt" ? "前往" : "自动出窍"}</h2>
-        ${L.length ? L.map(([x, n], i) => `<div class="line"><div>${n}</div><button class="sm ${String(x) === String(cur) ? "on" : ""}" onclick="G.atPickSet('${k}',${i})">${String(x) === String(cur) ? "已选" : "选择"}</button></div>`).join("") : `<p class="desc">暂无可选</p>`}
-        <div class="btns"><button onclick="G.openCultSet()">返回</button></div>`);
+      const canHide = k !== "poolI", hm = canHide && this._atHideMode, H = canHide ? ((this.s.atHide || {})[k] || []) : [], hid = x => H.includes(String(x));
+      const rows = L.map(([x, n], i) => hm
+        ? `<div class="line"><div class="${hid(x) ? "muted" : ""}">${n}${hid(x) ? "（已隐藏）" : ""}</div><button class="sm ${hid(x) ? "on" : ""}" onclick="G.atHideSet('${k}',${i})">${hid(x) ? "显示" : "隐藏"}</button></div>`
+        : hid(x) ? "" : `<div class="line"><div>${n}</div><button class="sm ${String(x) === String(cur) ? "on" : ""}" onclick="G.atPickSet('${k}',${i})">${String(x) === String(cur) ? "已选" : "选择"}</button></div>`).join("");
+      this.modal(`<h2>${k === "poolI" ? CFG.sect.pool.name : k === "tgt" ? "前往" : "自动出窍"}${hm ? "<small>点地图右边按钮隐藏 / 显示</small>" : ""}</h2>
+        ${rows || `<p class="desc">${L.length ? "地图都已隐藏，点「隐藏」可以重新显示" : "暂无可选"}</p>`}
+        <div class="btns">${canHide ? `<button class="${hm ? "on" : ""}" onclick="G.openAtPick('${k}',${hm ? 0 : 1})">${hm ? "完成" : "隐藏"}</button>` : ""}<button onclick="G._atHideMode=false;G.openCultSet()">返回</button></div>`);
+    },
+    atHideSet(k, i) {
+      const it = this.atList(k)[i]; if (!it || k === "poolI") return;
+      const s = this.s; s.atHide = s.atHide || {}; const H = s.atHide[k] = s.atHide[k] || [], x = String(it[0]), j = H.indexOf(x);
+      if (j >= 0) H.splice(j, 1); else H.push(x);
+      this.openAtPick(k); this.after();
     },
     atPickSet(k, i) { const it = this.atList(k)[i]; if (it) (k === "tgt" ? this.s.cultSet : this.autoTask())[k] = it[0]; this.openCultSet(); this.after(); },
     autoTaskSet(k) {
