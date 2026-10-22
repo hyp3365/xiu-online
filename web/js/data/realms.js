@@ -43,7 +43,8 @@ DATA.brSum = (rows, n, tag) => {
   const c = DATA._brSum[tag] || (DATA._brSum[tag] = [{}]);
   for (let T = c.length - 1; T < n; T++) {
     const o = Object.assign({}, c[T]), g = (DATA.brRow(rows, Math.floor(T / DATA.LAYERS)) || [0, {}])[1] || {};
-    const fm = T % DATA.LAYERS === 0 ? +((tag === "rs" ? _R.BODY_FIRST_MULT : _R.FIRST_MULT) ?? 1) || 1 : 1;   // 大境界第一层 × FIRST_MULT
+    const FM = tag === "rs" ? _R.BODY_FIRST_MULT : _R.FIRST_MULT, ri = Math.floor(T / DATA.LAYERS);   // 大境界第一层 × FIRST_MULT（数组 = 每个境界单独设）
+    const fm = T % DATA.LAYERS !== 0 || FM === undefined ? 1 : Array.isArray(FM) ? (FM.length ? +(FM[Math.min(ri, FM.length - 1)] ?? 1) : 1) : +FM;
     for (const k in g) o[k] = (o[k] || 0) + (+g[k] || 0) * (k === "cultivate" ? 1 : fm);
     c[T + 1] = o;
   }
