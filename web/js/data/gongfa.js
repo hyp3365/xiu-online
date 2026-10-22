@@ -111,9 +111,18 @@ DATA.gongfaName = (sect, type) => {
   if (sect.src === "cc") { const C = CFG.sect.chuancheng; return sect.name + C.WORD + (C.NAME[type.id] || type.suffix); }   // 宗门传承
   if (sect.src === "wdroom") return `${CFG.wudaoRoom.xiulian.NAME[type.id] || type.suffix}·第${DATA.cnNum(sect.juan)}卷`;   // 悟道室秘诀
   if (sect.book) return `${sect.prefix}${type.suffix}·第${sect.book}卷`;   // 试炼塔秘诀
-  // 分阶段多出来的书：同类第 1 本的名字 + 「·第N卷」（宗门原来就有的第 2、3 本不变）
-  const T1 = DATA.gongfaTypes.find(x => x.id === type.fam), old = type.bk === 1 || ((sect.src || "sect") === "sect" && type.bk <= ((_GF.BOOKS || {})[type.fam] || 1));
-  if (!old && T1) return DATA.gongfaName(sect, T1) + "·第" + DATA.gfCn(type.bk) + "卷";
+  // 分阶段多出来的书：也用随机词起名（跳过同类原有书已用的词，同类不重名；宗门原来就有的第 2、3 本不变）
+  const nb = (_GF.BOOKS || {})[type.fam] || 1, old = !type.bk || type.bk <= nb || (sect.src || "sect") !== "sect";
+  if (!old && !sect.plain) {
+    const w = DATA.sectWords(sect), used = new Set(), extra = [];
+    for (const t of DATA.gongfaTypes) if (t.suffix === type.suffix) {   // 后缀相同的类（如身法、速法）一起排，保证不重名
+      const tb = (_GF.BOOKS || {})[t.fam || t.id] || 1;
+      if (!t.bk || t.bk <= tb) used.add((t.ni * 4 + (t.book ? t.book - 1 : 0)) % w.length); else extra.push(t.id);
+    }
+    let k = extra.indexOf(type.id) + 1, i = (type.ni * 7 + 3) % w.length;
+    for (let n = 0; n < w.length * 2; n++, i = (i + 1) % w.length) { if (used.has(i)) continue; if (--k <= 0) break; }
+    return sect.prefix + w[i] + type.suffix;
+  }
   if (sect.plain) return sect.prefix + DATA.nmPick(_NM.jieGfSuffix, type.id, type.suffix);   // 仙魔冥神坊市、功德司：地图名 + 后缀（config/names.js 的 jieGfSuffix）
   const w = DATA.sectWords(sect);
   return sect.prefix + w[(type.ni * 4 + (type.book ? type.book - 1 : 0)) % w.length] + type.suffix;   // 第 2、3 本用同类别后面的词
