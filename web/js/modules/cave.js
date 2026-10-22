@@ -130,7 +130,7 @@ G.module({
   view() {
     const s = this.s, a = s.array, cur = this.caveRoom || "array";
     const rooms = `<div class="room-grid">${DATA.caveRooms.map(r =>
-      `<button class="${cur === r.id ? "active" : ""}" onclick="G.setCaveRoom('${r.id}')">${r.name}${r.open ? "" : "<small>未开放</small>"}</button>`).join("")}</div>`;
+      `<button class="${cur === r.id ? "active" : ""}${r.open ? "" : " dim"}" onclick="G.setCaveRoom('${r.id}')">${r.name}</button>`).join("")}</div>`;
 
     const room = DATA.caveRooms.find(r => r.id === cur);
     if (this.caveViews[cur]) return rooms + this.caveViews[cur].call(this);

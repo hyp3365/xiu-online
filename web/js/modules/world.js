@@ -1448,7 +1448,7 @@ G.module({
     const s = this.s, wid = this.worldId || "fan", wt = wid === "fan" ? this.worldTab || "explore" : "explore";   // v47：仙冥魔神没有 历练/坊市/设置 页签
     // 六界选择
     const worlds = `<div class="room-grid">${DATA.worlds.map(w =>
-      `<button class="${wid === w.id ? "active" : ""}" onclick="G.setWorld('${w.id}')">${w.name}${this.worldOpen(w.id) || (CFG.worldMaps || {})[w.id] ? "" : "<small>未开放</small>"}</button>`).join("")}<button onclick="G.log('机缘暂未开放，敬请期待。','sys')">机缘<small>未开放</small></button></div>`;   // 机缘：先只有按钮
+      `<button class="${wid === w.id ? "active" : ""}${this.worldOpen(w.id) || (CFG.worldMaps || {})[w.id] ? "" : " dim"}" onclick="G.setWorld('${w.id}')">${w.name}</button>`).join("")}<button class="dim" onclick="G.log('机缘暂未开放，敬请期待。','sys')">机缘</button></div>`;   // 机缘：先只有按钮
     const W = DATA.worlds.find(w => w.id === wid);
     if (!this.worldOpen(wid)) return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>`;
     const tabs = wid !== "fan" ? worlds : worlds + `<div class="sub-tabs">

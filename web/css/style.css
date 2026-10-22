@@ -90,6 +90,7 @@ button.sel i{font-style:normal;color:#c9a45c;font-size:12px}
 .room-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
 .room-grid button{padding:8px 2px;font-size:13px;line-height:1.3}
 .room-grid button small{display:block;font-size:10px;color:var(--t-dim)}
+.room-grid button.dim{color:var(--t-dim)}
 .room-grid button.active{background:#5a4220;border-color:#c9a45c;color:#f3d48b}
 .room-grid.three{grid-template-columns:repeat(3,1fr)}
 .room-grid.five{grid-template-columns:repeat(5,1fr)}
@@ -617,3 +618,6 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 .cell.off{opacity:.4}
 .line.sw{padding:0 0 4px 34px}
 .line:has(+ .line.sw){border-bottom:none}
+.room-grid.sv-jobs{grid-auto-rows:1fr}
+.room-grid.sv-jobs button{height:100%;padding:6px 2px}
+.room-grid.sv-jobs button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
