@@ -38,6 +38,9 @@ DATA.mobRow = t => {
   const cats = gs.filter(x => x && DATA.MOB_GF_CAT[x[0]]).map(x => ({ c: x[0], star: x[3] > 0 ? x[3] : DATA.refStar(realm), pre: part(x[1], x[2]), cur: part(x[4], x[5]) }));
   return { realm, lay: DATA.mobRange(t[1]), cats, k: old ? t[6] : t[t.length - 1] };
 };
+// 怪物六系抗性：o.res（修为 + 肉身 + 不分系的）+ 各系真经 → o.resEl { jin: …, mu: … }；o.res 改成六系平均（只给显示用）
+DATA.mobResEl0 = () => Object.fromEntries(DATA.elements.map(e => [e.id, 0]));
+DATA.mobResSplit = (o, rEl, k = 1) => { const E = DATA.elements; o.resEl = {}; let s = 0; for (const e of E) s += o.resEl[e.id] = o.res + (rEl[e.id] || 0) * k; o.res = E.length ? s / E.length : o.res; return o; };
 DATA.mobOn = P => P.pct[1] > 0 && P.gf[1] > 0;
 // 某一类来源里 lo ~ hi 星的全部功法，按种类分组：{ 种类id: [{ id, stat, stat2 }] }（缓存）
 DATA._mobBooks = {};
@@ -47,7 +50,7 @@ DATA.mobBooks = (cat, lo, hi) => {
   const o = {};
   for (const sc of DATA.mobCatSrcs(cat)) { if (sc.star < lo || sc.star > hi) continue;
     for (const t of DATA.gfTypesOf(sc.src)) { if (sc.src === "shop" && t.sectOnly) continue;
-      (o[t.id] = o[t.id] || []).push({ id: DATA.gongfaId(sc.id, t.id), stat: t.stat, stat2: t.stat2 }); } }
+      (o[t.id] = o[t.id] || []).push({ id: DATA.gongfaId(sc.id, t.id), stat: t.stat, stat2: t.stat2, el: sc.el }); } }
   return DATA._mobBooks[key] = o;
 };
 // 一类来源拆成两段：[[最低星, 最高星, { pct, gf }], ...]（学 0% 或功法层 0 的段不算）
@@ -60,6 +63,7 @@ DATA.mobCalc = (t, crit, rnd) => {
   const R = DATA.mobRow(t), lay = Math.max(1, Math.min(DATA.LAYERS, rnd ? _mobRi(R.lay) : Math.round((R.lay[0] + R.lay[1]) / 2)));
   const st = DATA.refStats(R.realm, lay, 0, 0, 1), bd = DATA.mobBody(R.realm * DATA.LAYERS + lay), add = {};
   for (const x of DATA.MOB_KEYS) add[x] = 0;
+  const rEl = DATA.mobResEl0();   // 真经抗性按系分开：每本只加它自己那一系
   for (const C of R.cats) for (const [lo, hi, P] of DATA.mobParts(C)) {   // 每类来源分前星、本星两段，各按自己的学% 和功法层
     const B = DATA.mobBooks(C.c, lo, hi);
     for (const ty in B) {
@@ -68,11 +72,12 @@ DATA.mobCalc = (t, crit, rnd) => {
       const f = (rnd ? P.pct[0] + Math.random() * (P.pct[1] - P.pct[0]) : (P.pct[0] + P.pct[1]) / 2) / 100;
       for (const b of B[ty]) {
         const g0 = rnd ? _mobRi(P.gf) : P.gf[0], g1 = rnd ? g0 : P.gf[1], v0 = DATA.mobGfVal(b.id, g0), v1 = DATA.mobGfVal(b.id, g1);
-        if (add[b.stat] !== undefined) add[b.stat] += (v0[0] + v1[0]) / 2 * f; if (b.stat2 && add[b.stat2] !== undefined) add[b.stat2] += (v0[1] + v1[1]) / 2 * f; }
+        if (b.stat === "res" && b.el && b.el in rEl) rEl[b.el] += (v0[0] + v1[0]) / 2 * f; else if (add[b.stat] !== undefined) add[b.stat] += (v0[0] + v1[0]) / 2 * f; if (b.stat2 && add[b.stat2] !== undefined) add[b.stat2] += (v0[1] + v1[1]) / 2 * f; }
     }
   }
   const o = {};
   for (const x of DATA.MOB_KEYS) o[x] = (st[x] + add[x] + bd[x]) * R.k;
+  DATA.mobResSplit(o, rEl, R.k);
   o.manaBr = st.manaBr;   // 修为突破的法力（法术 / 法宝耗法力用，不乘倍率）
   o.crit = crit || 0; o.layer = lay; o.L = R.realm * DATA.LAYERS + lay - 1;   // v171 总层序（保底伤害用）
   return o;
@@ -139,15 +144,17 @@ DATA.towerPart = (star, floor, max) => {   // 返回 { total, ng: 不含功法�
     pre = DATA.refStats(pp.realm, pp.lay, 0, star - 1, 1); pbd = DATA.mobBody(Lof(pp.realm, pp.lay)); base = pp.ng;
   }
   const add = {}; for (const k of DATA.MOB_KEYS) add[k] = 0;
+  const rEl = DATA.mobResEl0();   // 真经抗性按系分开
   for (const sc of DATA.sects || []) {   // 本星：学 pct%、gf 层；前面星级：学 PRE_PCT%、PRE_GF 层（全部功法 × 学习比例，平均）
     const P = sc.star === star ? pct : sc.star < star ? (T.PRE_PCT || 0) : 0, L = sc.star === star ? gf : T.PRE_GF || 1; if (!P) continue;
     for (const t of DATA.gfTypesOf(sc.src)) { const v = DATA.mobGfVal(DATA.gongfaId(sc.id, t.id), L);
-      if (add[t.stat] !== undefined) add[t.stat] += v[0] * P / 100; if (t.stat2 && add[t.stat2] !== undefined) add[t.stat2] += v[1] * P / 100; } }
+      if (t.stat === "res" && sc.el in rEl) rEl[sc.el] += v[0] * P / 100; else if (add[t.stat] !== undefined) add[t.stat] += v[0] * P / 100; if (t.stat2 && add[t.stat2] !== undefined) add[t.stat2] += v[1] * P / 100; } }
   const ng = {}, total = {};
   for (const k of DATA.MOB_KEYS) {
     ng[k] = (base ? base[k] : 0) + (cur[k] - (pre ? pre[k] : 0) + bd[k] - (pbd ? pbd[k] : 0)) * mul;
     total[k] = ng[k] + add[k] * mul;
   }
+  DATA.mobResSplit(total, rEl, mul);
   total.manaBr = cur.manaBr;   // 修为突破法力（耗法力用，按当前境界，不叠加）
   return { ng, total, realm, lay, pct, gf, mul, L: Lof(realm, lay) - 1 };
 };
@@ -157,6 +164,7 @@ DATA.towerStage = (star, floor, max) => {
     const T = CFG.mobs.tower, P = DATA.towerPart(star, floor, max), crit = DATA.mobCrit("考官");
     const B = T.BOSS, boss = B[0] > 0 && floor % B[0] === 0 ? B[1] : 1, o = Object.assign({}, P.total);   // v222 逢 10 层 × BOSS
     for (const k of DATA.MOB_KEYS) o[k] *= boss;
+    o.resEl = Object.fromEntries(Object.entries(P.total.resEl || {}).map(([e, v]) => [e, v * boss]));
     DATA._tower[key] = Object.assign(o, { crit, L: P.L, realm: P.realm, layer: P.lay, pct: P.pct, gf: P.gf, mul: P.mul, boss });
   }
   return DATA._tower[key];
