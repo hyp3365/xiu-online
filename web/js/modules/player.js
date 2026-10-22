@@ -75,8 +75,16 @@ G.module({
       const s = this.s, x = s.explore, q = s.cq;
       return !!((x && !x.rest) || (q && !q.rest) || (s.trib && !s.trib.result));
     },
+    // 突破随机属性：kind "xw" 修为 / "rs" 肉身，T = 刚突破到的层序；每项属性 ± (RAND_BASE + RAND_STEP × 境界) 整数，累计存 s.brRand（config/realm.js）
+    brRoll(kind, T) {
+      const C = CFG.realm, k = (C.RAND_BASE || 0) + (C.RAND_STEP || 0) * Math.floor(Math.max(0, T) / DATA.LAYERS); if (k <= 0) return;
+      const g = (DATA.brRow(kind === "rs" ? C.BODY_GAIN : C.GAIN, Math.floor(Math.max(0, T) / DATA.LAYERS)) || [0, {}])[1] || {};
+      const s = this.s, o = ((s.brRand = s.brRand || {})[kind] = s.brRand[kind] || {});
+      for (const a in g) if (a !== "cultivate") o[a] = (o[a] || 0) + Math.floor(Math.random() * (2 * k + 1)) - k;
+    },
+    brRand(kind, a) { const r = this.s.brRand; return (r && r[kind] && r[kind][a]) || 0; },
     computeStats() {
-      const L = this.s.mortal ? -1 : this.s.L, F = DATA.playerFixed, R = k => DATA.plRealmStat(L, k);   // 修为突破属性（config/realm.js 的 GAIN）
+      const L = this.s.mortal ? -1 : this.s.L, F = DATA.playerFixed, R = k => DATA.plRealmStat(L, k) + (L < 0 ? 0 : this.brRand("xw", k));   // 修为突破随机加减（brRoll）   // 修为突破属性（config/realm.js 的 GAIN）
       const eq = this.equipTotal(), gf = this.gongfaBonus(), dn0 = this.danBonus();
       const dn = {}; for (const k of ["hp", "atk", "def", "mana", "hit", "dodge", "crit"]) dn[k] = dn0[k] || 0; // 属性丹；gongfaBonus 见 gongfa.js，danBonus（属性丹）见 craft.js
       const bd = this.bodyBonus ? this.bodyBonus() : {}; for (const k of ["hp", "atk", "def", "mana", "hit", "dodge", "crit"]) dn[k] += bd[k] || 0;   // 肉身突破加成（body.js）

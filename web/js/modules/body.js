@@ -80,7 +80,7 @@ G.module({
       const c = this.bodyCost();
       s.bodyExp -= this.bodyNeed(); s.stone -= c.stone;
       c.herbs.forEach(h => this.herbTake(h.name, h.n));
-      s.bodyL++; this.dirty();
+      s.bodyL++; this.brRoll("rs", s.bodyL); this.dirty();
       this.log(`肉身突破至【${this.bodyName()}】！`, s.bodyL % DATA.LAYERS === 0 ? "gold" : "good");
       this.after();
     },
@@ -88,7 +88,7 @@ G.module({
     // 肉身突破加的属性合计（config/realm.js 的 BODY_GAIN，每层固定值）+ 宗门练体池
     bodyBonus() {
       const n = (this.s.bodyL === undefined ? -1 : this.s.bodyL) + 1, out = { hp: 0, atk: 0, def: 0, mana: 0, speed: 0, hit: 0, dodge: 0, crit: 0, res: 0 };
-      const pg = this.s.poolGain || {}; for (const k in out) out[k] += (pg[k] || 0) + DATA.plBodyStat(n, k);   // 宗门练体池加的（sect.js）
+      const pg = this.s.poolGain || {}; for (const k in out) out[k] += (pg[k] || 0) + DATA.plBodyStat(n, k) + (n > 0 ? this.brRand("rs", k) : 0);   // 宗门练体池加的（sect.js）
       return out;
     },
     bodyView() {
