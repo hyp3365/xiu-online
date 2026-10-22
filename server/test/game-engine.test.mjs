@@ -49,9 +49,9 @@ test("ticks and player actions mutate only the server-owned state", () => {
   assert.equal(changed.state.auto, true);
   assert.equal(changed.state.last, start + 20_000);
 
-  const settings = engine.act(changed.state, "cultSetSave", [undefined, "125", "450"], start + 20_002);
+  const settings = engine.act(changed.state, "cultSetSave", [undefined, "125", "45"], start + 20_002);
   assert.equal(settings.state.cultSet.low, 125);
-  assert.equal(settings.state.cultSet.high, 450);
+  assert.equal(settings.state.cultSet.pct, 45);
 });
 
 test("server module ticks complete due first-time gongfa learning", () => {

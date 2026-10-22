@@ -22,8 +22,8 @@ G.module({
     autoPill: { juqi: false, juling: false, peiyuan: false }, // 自动服丹开关
     lackWarned: false,
     trib: null,       // 正在进行（或刚结束未关闭）的渡劫（modules/trib.js）
-    // 修炼设置：自动修炼中，灵石 < low 且灵气不足 → 去 tgt（"k:地图" 灵矿 / "e:地图:区域" 自动探索）；灵石 > high → 停止探索回来修炼
-    cultSet: { on: false, low: 1000, high: 10000, tgt: "", went: false },
+    // 修炼设置：自动修炼中，灵石 < low 且灵气不足 → 去 tgt（"k:地图" 灵矿 / "e:地图:区域" 自动探索）；灵气 ≥ 上限的 pct% → 停止探索回来修炼
+    cultSet: { on: false, low: 1000, pct: 90, tgt: "", went: false },
   }),
 
   tick(offline) {
@@ -119,11 +119,12 @@ G.module({
     },
     cultSetCheck() {
       const s = this.s, c = s.cultSet; if (!c || !c.on || !c.tgt || !s.auto) return;
+      if (c.pct === undefined) c.pct = 90;   // 旧存档：原来的「灵石高于」改成「灵气高于 %」
       const x = s.explore, p = c.tgt.split(":").map(Number), kuang = c.tgt[0] === "k";
       const mine = x && !x.cq && !x.once && x.map === p[1] && (kuang ? x.kuang : !x.kuang && x.reg === p[2]);
       if (mine && c.went) {
-        if (s.stone + ((x.loot || {}).stone || 0) > c.high) {
-          c.went = false; this.stopExplore("灵石已够，停止探索");
+        if (s.ling >= this.lingCap() * Math.min(100, c.pct) / 100) {
+          c.went = false; this.stopExplore("灵气已恢复，停止探索");
           this.log("开始修炼。", "sys"); this.dirty();   // v208 不再重置结算计时（会丢聚灵）
         }
         return;
@@ -140,10 +141,10 @@ G.module({
     openCultSet() {
       const s = this.s, c = s.cultSet, T = this.cultTargets(), a = s.array;
       this.modal(`<h2>修炼设置</h2>
-        <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵石高于上限，停止探索回来修炼。</p>
+        <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵气恢复到上限的百分比以上，停止探索回来修炼。</p>
         <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
-        <div class="line"><div>灵石高于</div><input id="cs-high" type="number" min="0" value="${c.high}" style="width:130px" onchange="G.cultSetSave()"></div>
+        <div class="line"><div>灵气高于（%）</div><input id="cs-high" type="number" min="1" max="100" value="${c.pct === undefined ? 90 : c.pct}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>前往</div><button class="sm" onclick="G.atPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
         <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefill ? "开" : "关"}</button></div>
         <h3 style="margin-top:14px">自动执行任务</h3>
@@ -182,7 +183,7 @@ G.module({
     },
     cultSetSave(k, low, high) {
       const c = this.s.cultSet, v = id => $(id) && $(id).value;
-      c.low = Math.max(0, Math.floor(+(low === undefined ? v("#cs-low") : low) || 0)); c.high = Math.max(0, Math.floor(+(high === undefined ? v("#cs-high") : high) || 0));
+      c.low = Math.max(0, Math.floor(+(low === undefined ? v("#cs-low") : low) || 0)); c.pct = Math.min(100, Math.max(1, Math.floor(+(high === undefined ? v("#cs-high") : high) || 90))); delete c.high;
       if (k === "on") { c.on = !c.on; c.went = false; this.openCultSet(); }
       this.after();
     },
