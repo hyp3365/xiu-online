@@ -88,7 +88,8 @@ G.module({
     // 肉身突破加的属性合计（config/realm.js 的 BODY_GAIN，每层固定值）+ 宗门练体池
     bodyBonus() {
       const n = (this.s.bodyL === undefined ? -1 : this.s.bodyL) + 1, out = { hp: 0, atk: 0, def: 0, mana: 0, speed: 0, hit: 0, dodge: 0, crit: 0, res: 0 };
-      const pg = this.s.poolGain || {}; for (const k in out) out[k] += (pg[k] || 0) + DATA.plBodyStat(n, k) + (n > 0 ? this.brRand("rs", k) : 0);   // 宗门练体池加的（sect.js）
+      const pg = this.s.poolGain || {}; for (const k in out) out[k] += (pg[k] || 0) + DATA.plBodyStat(n, k) + (n > 0 ? this.brRand("rs", k) : 0);   // 宗门练体池加的（sect.js）；brRand 突破随机
+      out.resEl = Object.fromEntries(DATA.elements.map(e => [e.id, n > 0 ? this.brRand("rs", "res:" + e.id) : 0]));   // 抗性随机六系各不同
       return out;
     },
     bodyView() {
@@ -98,7 +99,7 @@ G.module({
       const names = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", speed: "速度", hit: "命中", dodge: "闪避", crit: "暴击%" };
       // 抗性：每系（金木水火土雷）单独一行
       const bonus = Object.keys(names).filter(k => bb[k]).map(k => `<div><span>${names[k]}</span>+${k === "crit" ? U.num(bb[k]) : U.fmt(bb[k])}</div>`).join("")
-        + (bb.res ? DATA.elements.map(e => `<div><span>${e.name}抗性</span>+${U.fmt(bb.res)}</div>`).join("") : "");
+        + (bb.res ? DATA.elements.map(e => `<div><span>${e.name}抗性</span>+${U.fmt(bb.res + (bb.resEl[e.id] || 0))}</div>`).join("") : "");
       return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}</h3>
         ${has ? "" : `<p class="desc q5">需要先学会一本肉身秘诀（宗门 → 功法殿）。</p>`}
         <div class="row small"><span>肉身修炼速度 <b class="q4">${U.num(sp.total)}</b> / 10秒</span><span>${status}</span></div>

@@ -67,6 +67,7 @@ const G = {
   newSave(name) {
     let s = { v: 5, name, last: Date.now(), log: [] };
     for (const m of this.modules) if (m.defaults) Object.assign(s, m.defaults());
+    s.brRandOk = 1;
     s._nm = DATA.nmSnap();   // 新存档记下当前用的名字（config/names.js），以后改名读档时对照
     return s;
   },
@@ -77,6 +78,7 @@ const G = {
       const d = m.defaults();
       for (const k in d) if (s[k] === undefined) s[k] = d[k];
     }
+    if (this.brFill) this.brFill(s);   // 突破随机属性：老存档补掷（player.js）
     return s;
   },
   save() { /* 服务器持有唯一权威存档；禁止浏览器保存或上传状态。 */ },

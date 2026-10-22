@@ -304,7 +304,7 @@ DATA.spellJy = id => (typeof G !== "undefined" && G.s && G.s.spJy && G.s.spJy[id
 //   own = { br: 修为 + 肉身攻击, gf: 功法攻击 }，不写 = 玩家自己的
 DATA.ownAtk = () => {
   if (typeof G === "undefined" || !G.s || !G.gongfaBonus) return { br: 0, gf: 0 };
-  const br = DATA.plRealmStat(G.s.mortal ? -1 : G.s.L, "atk") + ((G.bodyBonus ? G.bodyBonus() : {}).atk || 0);
+  const br = DATA.plRealmStat(G.s.mortal ? -1 : G.s.L, "atk") + (G.s.mortal || !G.brRand ? 0 : G.brRand("xw", "atk")) + ((G.bodyBonus ? G.bodyBonus() : {}).atk || 0);
   // v235 上限只管 修为 + 肉身；其余全算（功法、装备、戒指、法宝、丹药、练体池……）= 人物总攻击 − 修为肉身
   //   属性正在计算中（还没有缓存）时退回只算功法攻击，避免循环
   const st = G._cache && G._cache.stats;
@@ -313,7 +313,7 @@ DATA.ownAtk = () => {
 // v165 通用版：k = hp / def …（盾的护盾值、防御用）：min(修为 + 肉身, 参考值) + 功法
 DATA.ownStat = k => {
   if (typeof G === "undefined" || !G.s || !G.gongfaBonus) return { br: 0, gf: 0 };
-  return { br: DATA.plRealmStat(G.s.mortal ? -1 : G.s.L, k) + ((G.bodyBonus ? G.bodyBonus() : {})[k] || 0), gf: G.gongfaBonus()[k] || 0 };
+  return { br: DATA.plRealmStat(G.s.mortal ? -1 : G.s.L, k) + (G.s.mortal || !G.brRand || k === "res" ? 0 : G.brRand("xw", k)) + ((G.bodyBonus ? G.bodyBonus() : {})[k] || 0), gf: G.gongfaBonus()[k] || 0 };
 };
 DATA.capStat = (cap, k) => { const o = DATA.ownStat(k); return o.br || o.gf ? Math.min(o.br, cap) + o.gf : cap; };
 DATA.capAtk = (cap, own) => { const o = own || DATA.ownAtk(); return Math.min(o.br, cap) + o.gf; };

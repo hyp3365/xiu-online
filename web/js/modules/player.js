@@ -76,11 +76,19 @@ G.module({
       return !!((x && !x.rest) || (q && !q.rest) || (s.trib && !s.trib.result));
     },
     // 突破随机属性：kind "xw" 修为 / "rs" 肉身，T = 刚突破到的层序；每项属性 ± (RAND_BASE + RAND_STEP × 境界) 整数，累计存 s.brRand（config/realm.js）
-    brRoll(kind, T) {
+    //   抗性六系各掷各的（键 res:金木水火土雷 id）
+    brRoll(kind, T, s = this.s) {
       const C = CFG.realm, k = (C.RAND_BASE || 0) + (C.RAND_STEP || 0) * Math.floor(Math.max(0, T) / DATA.LAYERS); if (k <= 0) return;
       const g = (DATA.brRow(kind === "rs" ? C.BODY_GAIN : C.GAIN, Math.floor(Math.max(0, T) / DATA.LAYERS)) || [0, {}])[1] || {};
-      const s = this.s, o = ((s.brRand = s.brRand || {})[kind] = s.brRand[kind] || {});
-      for (const a in g) if (a !== "cultivate") o[a] = (o[a] || 0) + Math.floor(Math.random() * (2 * k + 1)) - k;
+      const o = ((s.brRand = s.brRand || {})[kind] = s.brRand[kind] || {}), add = a => { o[a] = (o[a] || 0) + Math.floor(Math.random() * (2 * k + 1)) - k; };
+      for (const a in g) if (a === "res") DATA.elements.forEach(e => add("res:" + e.id)); else if (a !== "cultivate") add(a);
+    },
+    // 老存档：已突破的层补掷一次（只做一次，s.brRandOk 标记）
+    brFill(s) {
+      if (s.brRandOk) return; s.brRand = {};
+      if (!s.mortal) for (let t = 0; t <= (s.L || 0); t++) this.brRoll("xw", t, s);
+      for (let t = 0; t <= (s.bodyL === undefined ? -1 : s.bodyL); t++) this.brRoll("rs", t, s);
+      s.brRandOk = 1;
     },
     brRand(kind, a) { const r = this.s.brRand; return (r && r[kind] && r[kind][a]) || 0; },
     computeStats() {
@@ -98,7 +106,7 @@ G.module({
         hit:     R("hit") + eq.hit + gf.hit + dn.hit,
         dodge:   R("dodge") + eq.dodge + gf.dodge + dn.dodge,
         crit:    Math.min(DATA.CRIT_CAP, F.crit + eq.crit + dn.crit),
-        res:     Object.fromEntries(DATA.elements.map(e => [e.id, R("res") + (gf.res[e.id] || 0) + (bd.res || 0) + (dn0.res || 0) + ((dn0.resEl || {})[e.id] || 0)])),
+        res:     Object.fromEntries(DATA.elements.map(e => [e.id, R("res") + (L < 0 ? 0 : this.brRand("xw", "res:" + e.id)) + (gf.res[e.id] || 0) + (bd.res || 0) + ((bd.resEl || {})[e.id] || 0) + (dn0.res || 0) + ((dn0.resEl || {})[e.id] || 0)])),
       };
     },
   },
