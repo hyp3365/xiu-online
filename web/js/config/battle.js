@@ -1,6 +1,7 @@
 /* =====================================================================
  * ★ 数值设置 · 战斗 ★（代码：modules/world.js 的 battle；雷劫 modules/trib.js；命中 data/realms.js）
- * 保底伤害 = MIN_BASE + 出手方层序 × MIN_STEP（凡人按练气一层）
+ * 保底伤害 = MIN_BASE + 出手方层序 × MIN_STEP（凡人按练气一层）+ 比对方每高 1 层 × MIN_HIGH − 比对方每低 1 层 × MIN_LOW，最少 MIN_FLOOR（人物、怪物都算；雷劫不比境界）
+ * 境界伤害：怪物（所有对手）每比人物高 1 层，命中后额外 + REALM_DMG 点；不吃任何加成（随机、暴击、天赋都不乘），无视防御、抗性、护盾，最后直接扣生命；人物没有
  * 普攻 = max(保底, 攻击 − 对方防御 × DEF_RATE)
  * 法术 / 法宝 = max(保底, 威力 − 对方防御 × RES_RATE − 对方该系抗性 × RES_EL_RATE)（威力含法术% / 法宝% / 灵根）
  * 命中后：伤害 × 随机(RAND_MIN~RAND_MAX)，暴击（几率上限见 config/player.js 的 CRIT_CAP）× CRIT_MULT
@@ -11,6 +12,10 @@ window.CFG = window.CFG || {};
 CFG.battle = {
   MIN_BASE: 1,       // 保底伤害：练气一层的值
   MIN_STEP: 3,       // 保底伤害：每多一层 +
+  MIN_HIGH: 9,       // 保底伤害：出手方比对方每高一层 +
+  MIN_LOW: 5,        // 保底伤害：出手方比对方每低一层 −
+  MIN_FLOOR: 1,      // 保底伤害最少几点
+  REALM_DMG: 20,     // 境界伤害：怪物每比人物高一层，每次命中额外 + 几点（0 = 关闭）
   DEF_RATE: 0.895,     // 普攻：对方防御抵消比例
   RAND_MIN: 0.95,     // 伤害随机下限（倍）
   RAND_MAX: 1.05,     // 伤害随机上限（倍）
