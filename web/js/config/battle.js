@@ -11,7 +11,7 @@ window.CFG = window.CFG || {};
 CFG.battle = {
   MIN_BASE: 1,       // 保底伤害：练气一层的值
   MIN_STEP: 3,       // 保底伤害：每多一层 +
-  DEF_RATE: 0.82,     // 普攻：对方防御抵消比例
+  DEF_RATE: 0.89,     // 普攻：对方防御抵消比例
   RAND_MIN: 0.95,     // 伤害随机下限（倍）
   RAND_MAX: 1.05,     // 伤害随机上限（倍）
   CRIT_MULT: 2,      // 暴击伤害倍率
