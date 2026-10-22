@@ -23,20 +23,20 @@ DATA.mobBody = n => { const o = {}; for (const k of DATA.MOB_KEYS) o[k] = DATA.b
 //   1 宗门功法（宗门功法殿，不含传承功法）  2 坊市功法（凡阶坊市 + 四界坊市）  3 四界功德司功法
 DATA.MOB_GF_CAT = { 1: "宗门功法", 2: "坊市功法", 3: "功德司功法" };
 DATA.mobCatSrcs = c => c === 1 ? DATA.sects : c === 2 ? [...DATA.shopSources, ...((DATA.jieGf || {}).jshop || [])] : c === 3 ? (DATA.jieGf || {}).gd || [] : [];
-// 一行怪物数据转成对象（v260 新格式 6 个数）：[境界, 层, 宗门组, 坊市组, 功德司组, 倍率]
+// 一行怪物数据转成对象：[境界, 层, 宗门组, 倍率]（坊市、功德司组已去掉；以前 6 个数 [境界, 层, 宗门组, 坊市组, 功德司组, 倍率] 也能读）
 //   每组 [类别, 前星学%, 前星层, 星级, 本星学%, 本星层]：1 ~ 星级−1 星全部按前星学% / 前星层；星级那一星按本星学% / 本星层
 //   层、学%、功法层都可以写一个数或 [最小, 最大]（遇到时随机：学% 每种功法一次、功法层每本一次）；星级 0 = 该境界能学到的最高星
 //   旧格式 7 个数 [境界, 层, 星级, [1, 学%, 层], [2, ..], [3, ..], 倍率] 仍能读（前星、本星都用同一个学% 和层）
 //   cats = [{ c, star, pre: { pct, gf }, cur: { pct, gf } }]
-DATA.MOB_NONE = [0, 1, [1, 0, 0, 1, 0, 0], [2, 0, 0, 1, 0, 0], [3, 0, 0, 1, 0, 0], 1];   // 没写时：练气一层、不算功法
+DATA.MOB_NONE = [0, 1, [1, 0, 0, 1, 0, 0], 1];   // 没写时：练气一层、不算功法
 DATA.mobRange = v => Array.isArray(v) ? [v[0], v[v.length - 1]] : [v || 0, v || 0];
 DATA.mobRow = t => {
   t = t || DATA.MOB_NONE;
   const realm = Math.max(0, Math.min(DATA.realms.length - 1, t[0] || 0)), old = !Array.isArray(t[2]);
-  const gs = old ? [t[3], t[4], t[5]].map(x => [x[0], x[1], x[2], t[2], x[1], x[2]]) : [t[2], t[3], t[4]];
+  const gs = old ? [t[3], t[4], t[5]].map(x => [x[0], x[1], x[2], t[2], x[1], x[2]]) : t.slice(2, -1).filter(Array.isArray);
   const part = (p, g) => ({ pct: DATA.mobRange(p), gf: DATA.mobRange(g) });
   const cats = gs.filter(x => x && DATA.MOB_GF_CAT[x[0]]).map(x => ({ c: x[0], star: x[3] > 0 ? x[3] : DATA.refStar(realm), pre: part(x[1], x[2]), cur: part(x[4], x[5]) }));
-  return { realm, lay: DATA.mobRange(t[1]), cats, k: old ? t[6] : t[5] };
+  return { realm, lay: DATA.mobRange(t[1]), cats, k: old ? t[6] : t[t.length - 1] };
 };
 DATA.mobOn = P => P.pct[1] > 0 && P.gf[1] > 0;
 // 某一类来源里 lo ~ hi 星的全部功法，按种类分组：{ 种类id: [{ id, stat, stat2 }] }（缓存）
