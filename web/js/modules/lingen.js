@@ -1,7 +1,7 @@
 /* =====================================================================
  * 模块：灵根（金 木 水 火 土 雷 六种）
  * ---------------------------------------------------------------------
- * 每种灵根可单独升级（消耗灵石 + 同属性灵元，雷灵根只要灵石），最高 CFG.lingen.MAX 级：
+ * 每种灵根可单独升级（消耗灵石 + 同属性灵元），最高 CFG.lingen.MAX 级：
  *   - 每 STEP 级一段，每段的每级效果、消耗单独设置（config/lingen.js：每段每级加成 SPELL / GONGFA，升级灵石 COST_FIRST → COST_LAST、灵元 LY_FIRST → LY_LAST 等比）
  *   - 对应属性的法术伤害 +% = 已升各级的 SPELL 相加
  *   - 对应属性的功法效果 +% = 已升各级的 GONGFA 相加
@@ -16,9 +16,9 @@ G.module({
   defaults: () => ({ lingen: { jin: 0, mu: 0, shui: 0, huo: 0, tu: 0, lei: 0 } }),
 
   api: {
-    // 从 lv 升到 lv+1：灵石 COST_FIRST → COST_LAST、同属性灵元 LY_FIRST → LY_LAST，每次 × 同一倍率（雷灵根不要灵元）
+    // 从 lv 升到 lv+1：灵石 COST_FIRST → COST_LAST、同属性灵元 LY_FIRST → LY_LAST，每次 × 同一倍率
     lingenCost(lv) { const C = CFG.lingen; return DATA.geoStep(C.COST_FIRST ?? 1000, C.COST_LAST ?? 300000, lv, C.MAX); },
-    lingenLy(el, lv) { const C = CFG.lingen; return el === "lei" ? 0 : DATA.geoStep(C.LY_FIRST ?? 1, C.LY_LAST ?? 1200, lv, C.MAX); },
+    lingenLy(el, lv) { const C = CFG.lingen; return DATA.geoStep(C.LY_FIRST ?? 1, C.LY_LAST ?? 1200, lv, C.MAX); },
     // lv 级的总加成 %
     lingenPct(lv, kind) { return DATA.segSum(CFG.lingen, kind === "sp" ? "SPELL" : "GONGFA", lv); },
     // 加成倍率（1 = 无加成）

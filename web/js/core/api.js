@@ -203,6 +203,7 @@ const API = {
     leaveSect: () => G.s.sect && G.s.contrib >= G.leaveCost() ? `叛出门派将扣除贡献 ${U.fmt(G.leaveCost())}、清空职务（已学功法保留），确定？` : "",
     stopStudy: () => G.s.gfStudy ? "中断修炼，已消耗的灵气不退还，确定？" : "",
     svFire: () => "遣散这个道童？",
+    svStartPick: () => !G.s.svPick && G.s.servants.length < CFG.servant.MAX && G.s.stone >= CFG.servant.PICK_COST ? `花费 ${U.fmt(CFG.servant.PICK_COST)} 灵石选拔道童（${CFG.servant.PICK_SEC} 秒出结果），确定？` : "",
     forgetGongfa: id => {
       const g = G.s.gongfa[id] && DATA.skillInfo(id, G.s.gongfa[id]);
       return g && G.ssForgettable(id) ? `遗忘《${g.name}》？\n第 ${g.lv} 层和加的${g.label}全部删除，归还灵识点 ${G.ssCost(id)}。` : "";
@@ -347,7 +348,7 @@ const API = {
     if (name === "tribUse" && G.tribRender) G.tribRender(false);
     if (name === "startChuqiao") { G.closeModal(); G.exploreOpen = true; G.render(); }
     if (["autoTaskSet", "atPickSet"].includes(name) && G.openCultSet) G.openCultSet();
-    if (["learnBook", "learnGfBook", "learnBlueprint", "learnRingBp", "installFurnace", "equipItem", "unequip", "sellItem", "slotSpell", "swapFabao", "unslotSpell", "useStone", "useFurnace", "eatDan", "eatQl", "plantField", "clearField"].includes(name) && G.closeModal) G.closeModal();
+    if (["learnBook", "learnGfBook", "learnBlueprint", "learnRingBp", "installFurnace", "equipItem", "unequip", "sellItem", "slotSpell", "swapFabao", "unslotSpell", "useStone", "useFurnace", "eatDan", "eatQl", "plantField", "clearField", "svAccept"].includes(name) && G.closeModal) G.closeModal();
     if (name === "craftFurnace" && args[2] === "fabao" && G.closeModal) G.closeModal();
     if (name === "spellJy" && G.openSpellJy) G.openSpellJy(args[0]);
     if (name === "doEnhance" && G.openEnhance) G.openEnhance(args[0]);
