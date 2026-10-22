@@ -1499,10 +1499,10 @@ G.module({
       const infoBox = (() => {
         const tab = this.exInfoTab(), x = tab === "cq" ? s.cq : s.explore, last = tab === "cq" ? s.lastCq : s.lastRun, run = x && !x.rest && x.ev;
         const list = run ? x.ev : last ? last.ev : [], src = run ? (tab === "cq" ? "cqcur" : "cur") : (tab === "cq" ? "cqlast" : "last");
-        const btn = (k, n) => `<button class="sm ${tab === k ? "on" : ""}" onclick="G.setExInfo('${k}',1)">${n}</button>`;
+        const btn = (k, n) => `<button class="sm ${tab === k ? "on" : ""}" style="min-width:0;padding-left:0;padding-right:0" onclick="G.setExInfo('${k}',1)">${n}</button>`;
         const head = !run && last ? `<p class="desc ${last.bad ? "q5" : ""}">${last.title}</p>` : "";
         if ((s.explore || s.cq) && !this.exploreOpen) return "";   // 进行中点了「收起信息」：整个信息框（含三个按钮）都隐藏
-        return `<div class="card"><div class="btns" style="margin-top:0;flex-wrap:nowrap;white-space:nowrap">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button class="sm" onclick="G.openExHist()">全部信息</button>${s.explore || s.cq ? "" : `<button class="sm" onclick="G.setExploreOpen(${!this.exploreOpen})">${this.exploreOpen ? "收起" : "详细"}</button>`}</div>
+        return `<div class="card"><div class="btns" style="margin-top:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button class="sm" style="min-width:0;padding-left:0;padding-right:0" onclick="G.openExHist()">全部信息</button>${s.explore || s.cq ? "" : `<button class="sm" style="min-width:0;padding-left:0;padding-right:0" onclick="G.setExploreOpen(${!this.exploreOpen})">${this.exploreOpen ? "收起" : "详细"}</button>`}</div>
           ${this.exploreOpen ? head + `<div class="explore-log">${list.map((e, i) => this.evLine(e, src, i)).join("") || `<p>${x ? "出发……" : tab === "cq" ? "还没有出窍结果。" : "还没有探索结果。"}</p>`}</div>` : head}</div>`;
       })();
       const status = (s.explore ? runCard(s.explore, false) : "") + (s.cq ? runCard(s.cq, true) : "") + infoBox;
