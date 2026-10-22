@@ -87,13 +87,13 @@ G.module({
       else delete this.s.offices[w];
     },
     // NPC：属性按 config/mobs.js 的一行怪物数据（tu）生成；ck = 暴击分类（天将 / 星君 / 界主）
-    xjNpc(a, name, tu, ck) {
-      const b = DATA.mobRoll(tu, DATA.mobCrit(ck)), v = (x, k) => x * DATA.mobRnd(k);   // v168 功法随机
-      const m = this.addMagic({ name, a, img: this.npcImg(`${ck}${a}_${name}`, ck === "天将" ? "rn" : "rx"), glow: ck !== "天将", Lm: DATA.region(a, 3).L, kind: "boss", boss: true, tfCls: ck,
+    xjNpc(a, name, tu, ck, seat) {
+      const elKey = ck === "天将" ? `tj:${a}` : ck === "界主" ? `jz:${a}` : seat !== undefined ? `xj:${a}:${seat}` : "", b = DATA.mobRoll(tu, DATA.mobCrit(ck)), v = (x, k) => x * DATA.mobRnd(k);   // v168 功法随机
+      const m = this.addMagic({ name, a, img: this.npcImg(`${ck}${a}_${name}`, ck === "天将" ? "rn" : "rx"), glow: ck !== "天将", elKey, Lm: DATA.region(a, 3).L, kind: "boss", boss: true, tfCls: ck,
         hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.resEl || b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, ck);
       // 战斗秘法：天将 / 星君 / 界主固定种数（config/wudao.js MOB_MIFA.官位）
       const MM = CFG.wudao.MOB_MIFA || {}, N = (MM.官位 || {})[ck];
-      if (N) { const pool = (MM.POOL || []).slice(); let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); m.mf = []; while (n-- > 0 && pool.length) m.mf.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
+      if (N && !m.mf) { const pool = (MM.POOL || []).slice(); let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); m.mf = []; while (n-- > 0 && pool.length) m.mf.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
       return m;
     },
     // 依次挑战 list（[{name, k}]），满血满法力开打，中间不回复；结束恢复原来的生命法力
@@ -104,7 +104,7 @@ G.module({
       s.hp = st.hp; s.mana = st.mana;
       const ev = []; let win = true;
       for (const x of list) {
-        const res = this.battle(this.xjNpc(a, x.name, x.tu, x.ck), { foe: "xj" });
+        const res = this.battle(this.xjNpc(a, x.name, x.tu, x.ck, x.seat), { foe: "xj" });
         const t = res.win ? `${res.rounds}回合获胜` : res.timeout ? `${res.rounds} 回合未能击败，落败` : `第 ${res.rounds} 回合落败`;
         ev.push({ n: ev.length + 1, t: `${x.name}：${t}`, c: res.win ? "gold" : "bad", b: res.detail });
         if (!res.win) { win = false; break; }
@@ -125,14 +125,14 @@ G.module({
       const name = this.xjSeatName(a, i), title = `挑战${DATA.maps[a].name}${name}`;
       if (!this.mapOpen(a) || !this.realmOK(this.xjReq(a, "xj", i))) return;
       if (!this.xjPay(a, "xj", i)) return this.after();   // 先扣贡献，失败不退
-      this.xjFight(a, [{ name, tu: DATA.mobXj(a, i), ck: "星君" }], title, () => { this.xjSetOffice(w, { t: "xj", map: a, seat: i }); this.log(`${title}获胜，就任${this.xjOffice(this.xjOfficeOf(w))}！`, "gold"); });
+      this.xjFight(a, [{ name, tu: DATA.mobXj(a, i), ck: "星君", seat: i }], title, () => { this.xjSetOffice(w, { t: "xj", map: a, seat: i }); this.log(`${title}获胜，就任${this.xjOffice(this.xjOfficeOf(w))}！`, "gold"); });
     },
     // 界主：连战全部星君（从低到高），最后打界主
     xjChallengeJz(a) {
       const w = this.xjW(a), o = this.xjOfficeOf(w); if (o && o.t === "jz" && o.map === a) return;
       if (!this.xjJzReady(a)) return this.log(`需要先在${DATA.maps[a].name}担任过${this.xjTjName(a)}和全部星君，才能挑战界主。`, "sys");
       if (!this.mapOpen(a) || !this.xjPay(a, "jz")) return this.after();   // 先扣贡献，失败不退
-      const list = this.xjSeats(a).map((n, i) => ({ name: this.xjSeatName(a, i), tu: DATA.mobXj(a, i), ck: "星君" }));
+      const list = this.xjSeats(a).map((n, i) => ({ name: this.xjSeatName(a, i), tu: DATA.mobXj(a, i), ck: "星君", seat: i }));
       list.push({ name: this.xjDadi(a), tu: DATA.mobJz(a), ck: "界主" });
       const title = `挑战${this.xjHallName(a, "tg")}`;
       this.xjFight(a, list, title, () => { this.xjSetOffice(w, { t: "jz", map: a }); this.log(`${title}全胜，就任${this.xjOffice(this.xjOfficeOf(w))}！`, "gold"); });

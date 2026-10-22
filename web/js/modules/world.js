@@ -111,15 +111,17 @@ G.module({
       const R = DATA.region(a, r), b = DATA.mobMeet(R, kind), map = DATA.maps[a];   // v168 每次遇到随机层 / 功法
       const v = (x, k) => x * DATA.mobRnd(k);   // × 随机浮动
       const name = kind === "boss" ? DATA.regionBoss(a, r) : (kind === "elite" ? "精英·" : "") + U.pick(map.monsters);
-      return this.addMagic({ name, Lm: R.L, kind, boss: kind === "boss", elite: kind === "elite",
+      return this.addMagic({ name, Lm: R.L, kind, boss: kind === "boss", elite: kind === "elite", elKey: kind === "boss" ? `b:${a}:${r}` : "",
         hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.resEl || b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, kind);
     },
 
     // 给怪物加 属性 / 六系抗性 / 法术 / 法宝（config/mobs.js 的 mobs.magic）
     addMagic(m, kind, b = {}) {
       // kind：normal / elite / boss / tower，或直接写中文种类（考核、天将、星君、界主）
-      const MG = CFG.mobs.magic || {}, M = MG[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] || {}, O = MG.OWN_RES || 1;
-      m.el = b.el || U.pick(DATA.elements).id;
+      const MG = CFG.mobs.magic || {}, M = MG[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] || {};
+      m.el = b.el || (m.elKey && this.mobElOf(m.elKey)) || U.pick(DATA.elements).id;   // 首领 / 天将 / 星君 / 界主：存档里定死的属性（mobElInit）
+      const fx = m.elKey && this.mobFixOf(m.elKey); if (fx) { m.mf = (fx.mf || []).slice(); m.tfFix = fx.tf || []; }   // 定死的秘法、天赋
+      const OR = MG.OWN_RES, O = typeof OR === "object" ? (OR[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] ?? 1) : (OR || 1);
       m.mana = m.maxMana = b.mana !== undefined ? b.mana : m.mana || 0;   // 法力 = 修为突破 + 肉身突破的法力 × 倍率（同其他属性）
       const r0 = m.res, rv = typeof r0 === "number" ? r0 : 0;   // 数字 = 六系一样；对象 = 每系单独（真经按系分开算）
       m.res = {};
@@ -133,22 +135,58 @@ G.module({
       return m;
     },
 
+    // 首领 / 天将 / 星君 / 界主的属性：第一次进游戏时随机定死（s.mobEl { 键: 元素id }），每类里六种属性平均分；以后新加的按该类最少的属性补
+    //   键：首领 b:地图:区域、mj:秘境、ld:灵地；天将 tj:地图；星君 xj:地图:位；界主 jz:地图
+    mobElKeys() {
+      const C = { 首领: [], 天将: [], 星君: [], 界主: [] };
+      DATA.maps.forEach((mp, a) => { for (let r = 0; r < DATA.regionCount; r++) C.首领.push(`b:${a}:${r}`);
+        if (mp.w && mp.w !== "fan") { C.天将.push(`tj:${a}`); C.界主.push(`jz:${a}`); this.xjSeats(a).forEach((n, i) => C.星君.push(`xj:${a}:${i}`)); } });
+      this.mjCfg().list.forEach((d, i) => C.首领.push(`mj:${i}`));
+      this.mjCfg("ld").list.forEach((d, i) => C.首领.push(`ld:${i}`));
+      return C;
+    },
+    mobElInit(s) {
+      const E = DATA.elements.map(e => e.id), M = s.mobEl || (s.mobEl = {}), C = this.mobElKeys();
+      for (const c in C) {
+        const todo = C[c].filter(k => !E.includes(M[k])); if (!todo.length) continue;
+        for (let i = todo.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [todo[i], todo[j]] = [todo[j], todo[i]]; }
+        const n = {}; E.forEach(e => n[e] = 0); C[c].forEach(k => { if (n[M[k]] !== undefined) n[M[k]]++; });
+        for (const k of todo) { const lo = Math.min(...E.map(e => n[e])), pool = E.filter(e => n[e] === lo), e = U.pick(pool); M[k] = e; n[e]++; }
+      }
+      // 秘法、天赋也一起定死（s.mobFix { 键: { mf, tf } }）
+      const F = s.mobFix || (s.mobFix = {});
+      for (const c in C) for (const k of C[c]) { if (F[k]) continue;
+        const [t, a] = k.split(":"), tc = c !== "首领" ? c : t === "mj" ? "凡界首领" : t === "ld" ? "四界首领" : ((DATA.maps[+a] || {}).w === "fan" ? "凡界" : "四界") + "首领";
+        F[k] = { mf: this.rollMf(c), tf: this.rollTf(tc) }; }
+    },
+    mobElOf(k) { const M = this.s.mobEl || {}; return M[k] || ""; },
+    mobFixOf(k) { return (this.s.mobFix || {})[k] || null; },
+
     // 怪物天赋（config/battle.js 的 TALENT）：第一次战斗时随机，m.tf = ["lianji", "xishou_huo", …]；属性类天赋这时直接加到怪物属性上
     mobTalents(m) {
       const T = CFG.battle.TALENT || {}, w = m.a >= 0 && DATA.maps[m.a] ? DATA.maps[m.a].w : "";
       const cls = m.tfCls || ((m.elite || m.boss) && w ? (w === "fan" ? "凡界" : "四界") + (m.boss ? "首领" : "精英") : "");
-      const C = (T.CHANCE || {})[cls] || [], r = Math.random() * 100;
-      let n = 0; C.forEach((c, i) => { if (r < c) n = i + 1; });
-      const pool = Object.keys(T.NAME || {}); m.tf = [];
-      while (n-- > 0 && pool.length) {
-        const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-        m.tf.push(k === "xishou" ? "xishou_" + U.pick(DATA.elements).id : k);
-      }
+      m.tf = m.tfFix ? m.tfFix.slice() : this.rollTf(cls);   // 首领 / 天将 / 星君 / 界主：存档里定死的天赋（mobElInit）
       const up = 1 + (T.STAT || 0) / 100, has = k => m.tf.includes(k);
       if (has("minjie")) { m.speed *= up; m.hit *= up; }
       if (has("qiangzhuang")) m.hp *= up;
       if (has("fangyu")) m.def *= up;
       if (has("qiangli")) m.atk *= up;
+    },
+    // 按类别随机天赋列表（config/battle.js TALENT.CHANCE[类别]）
+    rollTf(cls) {
+      const T = CFG.battle.TALENT || {}, C = (T.CHANCE || {})[cls] || [], r = Math.random() * 100, out = [];
+      let n = 0; C.forEach((c, i) => { if (r < c) n = i + 1; });
+      const pool = Object.keys(T.NAME || {});
+      while (n-- > 0 && pool.length) { const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push(k === "xishou" ? "xishou_" + U.pick(DATA.elements).id : k); }
+      return out;
+    },
+    // 按类别随机秘法列表（config/wudao.js MOB_MIFA：首领 boss 几率 + 种数；官位必有）
+    rollMf(c) {
+      const MM = CFG.wudao.MOB_MIFA || {}, pool = (MM.POOL || []).slice(), out = [], O = (MM.官位 || {})[c];
+      let N = O; if (!O) { const T = MM.boss || {}; if (Math.random() * 100 >= (T.CHANCE || 0)) return out; N = T.N || [1, 1]; }
+      let n = N[0] + Math.floor(Math.random() * (N[1] - N[0] + 1)); while (n-- > 0 && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      return out;
     },
     tfName(k) { const N = (CFG.battle.TALENT || {}).NAME || {}, [a, el] = k.split("_"); return el ? `${(DATA.elById[el] || {}).name || ""}系${N[a] || a}` : N[a] || a; },
 
@@ -323,6 +361,7 @@ G.module({
         if ((act.k === 1 || act.k === 2) && act.f !== 1 && d > 0) {   // 天赋 X系吸收：免疫该系法术 / 法宝伤害
           const a = acts[act.sp], el = a ? (act.k === 1 ? a.sp.el.id : a.fb.el) : "";
           if (el && tf("xishou_" + el)) { d = 0; act.x = (act.x || 0) | 512; }
+          else if (el && m.elRed && m.elRed[el]) d *= Math.max(0, 1 - m.elRed[el] / 100);   // 试炼塔守关者：某几系伤害减少（config/mobs.js tower.EL_RED）
         }
         if (lx) act.x = (act.x || 0) | 8;
         if (pj && act.k < 3 && act.f !== 1) act.x = (act.x || 0) | 32;
@@ -1186,7 +1225,7 @@ G.module({
       const d = this.mjDef(i, k), b = DATA.mobMeet(d, kind), v = (x, k) => x * DATA.mobRnd(k);
       const pick = kind === "boss" ? -1 : Math.floor(Math.random() * d.monsters.length), name = kind === "boss" ? d.bossName : (kind === "elite" ? "精英·" : "") + d.monsters[pick];
       const img = `${k === "ld" ? "ld" : "mj"}${i}_${pick + 1}`;   // 秘境 / 灵地怪物图：img/mob/mj第几处_序号.webp（0 = 首领，1~4 = monsters 顺序），灵地 ld 开头
-      return this.addMagic({ name, img, Lm: d.L, kind, boss: kind === "boss", elite: kind === "elite",
+      return this.addMagic({ name, img, Lm: d.L, kind, boss: kind === "boss", elite: kind === "elite", elKey: kind === "boss" ? `${k === "ld" ? "ld" : "mj"}:${i}` : "",
         hp: v(b.hp, "hp"), atk: v(b.atk, "atk"), def: v(b.def, "def"), speed: v(b.speed, "speed"), hit: v(b.hit, "hit"), dodge: v(b.dodge, "dodge"), mana: v(b.mana, "mana"), res: b.resEl || b.res, manaBr: b.manaBr, L: b.L, crit: b.crit }, kind);
     },
     // 秘境 / 灵地掉落：extra 必掉 / 几率掉落（药材矿石总量见 CFG.dropTotal，按步分配，stepMats）

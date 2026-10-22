@@ -520,6 +520,7 @@ G.module({
       const tw = DATA.towerStage(this.sectInfo().star, floor, this.towerMax()), m = {};
       for (const k of DATA.REF_KEYS) m[k] = k === "res" ? tw[k] : tw[k] * DATA.mobRnd(k);   // 抗性在 addMagic 里每系单独随机
       m.crit = tw.crit; m.manaBr = tw.manaBr; m.L = tw.L; if (tw.resEl) m.res = tw.resEl;   // 六系分开
+      const ER = CFG.mobs.tower.EL_RED || {}, er = ER[floor % 10]; if (er && ER.PCT) { m.elRed = {}; er.forEach(e => m.elRed[e] = ER.PCT); }   // 层数尾数对应的几系伤害减少
       return this.addMagic(Object.assign(m, { name: `第${floor}层守关者`, img: this.npcImg(`塔${this.sectInfo().star}_${floor}`, "rn"), boss: false }), "tower");
     },
     // 第 f 层的额外奖励：{ kind: "mijue", id } 试炼塔秘诀 / { kind: "ring", r } / { kind: "rbp", g } / { kind: "extra" }（v223）

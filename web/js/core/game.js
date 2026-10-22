@@ -68,6 +68,7 @@ const G = {
     let s = { v: 5, name, last: Date.now(), log: [] };
     for (const m of this.modules) if (m.defaults) Object.assign(s, m.defaults());
     s.brRandOk = 1;
+    if (this.mobElInit) this.mobElInit(s);   // 首领 / 天将 / 星君 / 界主属性：第一次进游戏随机定死
     s._nm = DATA.nmSnap();   // 新存档记下当前用的名字（config/names.js），以后改名读档时对照
     return s;
   },
@@ -79,6 +80,7 @@ const G = {
       for (const k in d) if (s[k] === undefined) s[k] = d[k];
     }
     if (this.brFill) this.brFill(s);   // 突破随机属性：老存档补掷（player.js）
+    if (this.mobElInit) this.mobElInit(s);   // 首领 / 天将 / 星君 / 界主属性：第一次随机定死（world.js）
     return s;
   },
   save() { /* 服务器持有唯一权威存档；禁止浏览器保存或上传状态。 */ },
