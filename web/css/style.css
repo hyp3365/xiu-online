@@ -219,13 +219,13 @@ button.sm.active{background:#5a4220;border-color:#c9a45c;color:#f3d48b}   /* v24
 @media (prefers-reduced-motion:reduce){.eqt img,img.eqt,.eqt::after{animation:none!important}}
 
 /* v49 仙界地图 7 处地点 */
-.xscene{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 6px;margin:8px 0;padding:12px 8px 10px;border-radius:14px;border:1px solid rgba(232,200,120,.25);
+.xscene{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;margin:8px 0;padding:12px 8px 10px;border-radius:14px;border:1px solid rgba(232,200,120,.25);
   background:radial-gradient(ellipse at 50% 0%,rgba(255,224,150,.22),transparent 55%),radial-gradient(ellipse at 50% 100%,rgba(120,200,170,.14),transparent 60%),linear-gradient(180deg,#1e2744,#151b2e)}
-.xscene button{background:none;border:0;padding:2px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#f1e3c2;font-size:13px;cursor:pointer;min-width:0}
+.xscene button{width:33.3%;box-sizing:border-box;background:none;border:0;padding:2px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#f1e3c2;font-size:13px;cursor:pointer;min-width:0}
 .xscene button img{width:100%;max-width:92px;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.55));transition:transform .15s}
 .xscene button:active img{transform:scale(.94)}
 .xscene button span{padding:1px 8px;border-radius:9px;background:rgba(0,0,0,.35);border:1px solid rgba(232,200,120,.3);white-space:nowrap}
-.xscene .tgrow{grid-column:1/4;position:relative;display:flex;justify-content:center;margin-bottom:2px}
+.xscene .tgrow{width:100%;position:relative;display:flex;justify-content:center;margin-bottom:2px}
 .xscene .xs-gx{position:absolute;left:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;padding:4px 10px;border-radius:10px;background:rgba(0,0,0,.4);border:1px solid rgba(232,200,120,.4);color:#f1e3c2;font-size:12px}
 .xscene .xs-gx b{color:#ffe7a6;font-size:15px}
 .xscene .tg img{max-width:150px}
@@ -677,3 +677,13 @@ button.sm.pill{padding:4px 12px}
 .mpage .pghead{text-shadow:0 1px 3px rgba(0,0,0,.8)}
 .mpage>*{flex-shrink:0}.mpage>.fback{margin-top:auto;height:56px}
 .mpage>.row.small,.mpage>.bar{margin-left:0;margin-right:0}.mpage>.row.small{background:rgba(20,16,12,.72);padding:2px 8px;border-radius:6px;margin-top:2px}
+/* 东西南北四域：图片格子 */
+.rggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:4px}
+.rgt{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 4px 8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(232,200,120,.22)}
+.rgt.cur{border-color:rgba(255,215,120,.85);box-shadow:0 0 10px rgba(255,200,90,.35)}
+.rgt img{width:100%;aspect-ratio:16/10;object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.5))}
+.rgt b{margin-top:2px;color:#ffe7a6;font-size:15px}
+.rgt small{color:#b9a988;font-size:11px;line-height:1.35;margin:2px 0 6px}
+.rgt>div,.rgt>button{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.rgt .sm{padding:3px 8px;border-radius:999px}
+.exov-st{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:12px;color:#d8c8a4}

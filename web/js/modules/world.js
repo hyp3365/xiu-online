@@ -44,14 +44,15 @@ G.module({
     // 一张地图的东西南北四域（历练 / 探索 / 出窍）
     regionsCard(sel) {
       const s = this.s, map = DATA.maps[sel], lock = !this.realmOK(DATA.mapReq(sel)), unl = this.mapUnlocked(sel);
-      return `<div class="card"><h3>${map.name}</h3>` +
+      const RG = ["dong", "xi", "nan", "bei"];   // 东西南北四域图 img/map/rg_*.webp
+      return `<div class="card rgcard"><h3>${map.name}</h3><div class="rggrid">` +
           DATA.regionDirs.map((d, r) => {
             const R = DATA.region(sel, r), ok = this.isTrained(sel, r), x = s.explore && s.explore.map === sel && (s.explore.reg || 0) === r ? s.explore : null, q = s.cq && s.cq.map === sel && (s.cq.reg || 0) === r ? s.cq : null;
-            return `<div class="line"><div>${d}域<small>首领 ${DATA.regionBoss(sel, r)} · ${ok ? "已通过历练" : "未历练"}</small></div>
+            return `<div class="rgt${x || q ? " cur" : ""}"><img src="img/map/rg_${RG[r] || "dong"}.webp" alt=""><b>${d}域</b><small>首领 ${DATA.regionBoss(sel, r)}<br>${ok ? "已通过历练" : "未历练"}</small>
               ${lock ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(sel))}</button>` : !unl || !this.regionOpen(sel, r) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x && x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r},true)">${x && x.once ? "停止" : "历练"}</button>
               <button class="sm ${x && !x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r})" ${ok ? "" : "disabled"}>${x && !x.once ? "停止" : "探索"}</button>
               <button class="sm ${q ? "on" : ""}" onclick="G.${q ? "stopChuqiao" : "openChuqiao"}(${sel},${r})" ${q || ok && s.cqLearn ? "" : "disabled"}>${q ? "停止" : "出窍"}</button></div>`}</div>`;
-          }).join("") + (map.w === "fan" ? this.kuangLine(sel) : "") + `</div>`;
+          }).join("") + `</div>` + (map.w === "fan" ? this.kuangLine(sel) : "") + `</div>`;
     },
     /* ---------- 凡界灵矿（config/explore.js 的 KUANG）：不用历练，不遇怪，只挖灵石；探索中 x.kuang = 1、x.reg = -1 ---------- */
     kuangName(a) { return (CFG.explore.KUANG.NAME || "{map}灵矿").replace("{map}", DATA.maps[a].name); },
@@ -87,8 +88,9 @@ G.module({
     // y < 0 = 滚到最底（仙界、魔界第一张图在下面）；图片陆续加载会变高，过一会儿再滚几次
     viewScroll(y) { if (typeof document === "undefined") return; const v = document.getElementById("view"); if (!v) return;
       v.scrollTop = y < 0 ? v.scrollHeight : y;
-      if (y < 0) { const t0 = this._vsT = Date.now(); [80, 300, 700, 1500].forEach(ms => setTimeout(() => { if (this._vsT === t0 && v.scrollHeight - v.scrollTop - v.clientHeight < 400) v.scrollTop = v.scrollHeight; }, ms)); } },
-    mapRev(wid) { return wid === "xian" || wid === "mo"; },   // 仙界、魔界第一张图在最下面
+      // 图片还在加载时高度会变：玩家没自己滑动（scrollTop 没变）就继续贴到底
+      if (y < 0) { const t0 = this._vsT = Date.now(); let last = v.scrollTop; [60, 200, 400, 700, 1100, 1600, 2400, 3500].forEach(ms => setTimeout(() => { if (this._vsT === t0 && Math.abs(v.scrollTop - last) < 4) { v.scrollTop = v.scrollHeight; last = v.scrollTop; } }, ms)); } },
+    mapRev(wid) { return wid === "xian" || wid === "mo" || wid === "shen"; },   // 仙界、魔界、神界第一张图在最下面
     // 元婴出窍 / 自动探索 列表：所有能出窍 / 探索的地图（已历练通过的区域 + 凡界灵矿），可隐藏（存在本机）
     runHidden(k) { try { return JSON.parse(localStorage.getItem("xiu_runhide_" + k) || "[]"); } catch (e) { return []; } },
     hideRun(k, key) { const h = this.runHidden(k), i = h.indexOf(key); if (i >= 0) h.splice(i, 1); else h.push(key); try { localStorage.setItem("xiu_runhide_" + k, JSON.stringify(h)); } catch (e) {} this.openRunList(k); },
@@ -1404,8 +1406,10 @@ G.module({
       const title = x ? `${tab === "cq" ? "出窍中" : x.once ? "历练中" : "探索中"} · ${this.exName(x)}` : last ? last.title : tab === "cq" ? "出窍信息" : "探索信息";
       const T = x ? this.exCfg(x).TIME : 0, left = x && !x.rest ? Math.max(0, Math.ceil((x.start + T * (x.ms || 1000) - (x._pz != null ? x._pz : this.now())) / 1000 + (CFG.explore.END_WAIT || 0))) : 0;
       const sub = x ? [x.rest ? "休养中" : `第 ${U.fix(Math.min(x.step, T))} / ${T} 步 · 剩余 ${U.cd(left, 1)}`, x.cq ? `已完成 ${x.count} / ${x.cq} 次` : x.count !== undefined && !x.once ? `已完成 ${x.count} 次` : ""].filter(Boolean).join(" · ") : "";
+      const st = this.stats(), H = this.regenStep(), hpR = st.hp * H.hp / 100 + (H.hpFlat || 0), mpR = st.mana * H.mana / 100 + (H.manaFlat || 0);
+      const vit = `<div class="exov-st"><span>生命 ${U.fmt(s.hp)} / ${U.fmt(st.hp)}</span><span>法力 ${U.fmt(s.mana)} / ${U.fmt(st.mana)}</span><span>每步恢复 生命 ${U.fmt(Math.floor(hpR))} · 法力 ${U.fmt(Math.floor(mpR))}</span></div>`;
       const btn = (k, n) => `<button class="${tab === k ? "on" : ""}" onclick="G.setExInfo('${k}',1)">${n}</button>`;
-      return `<div class="exov"><div class="exov-head"><div><b class="${!x && last && last.bad ? "q5" : ""}">${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>
+      return `<div class="exov"><div class="exov-head"><div><b class="${!x && last && last.bad ? "q5" : ""}">${title}</b>${sub ? `<small>${sub}</small>` : ""}${vit}</div>
         <button class="sm${this.exFollow === false ? "" : " on"}" onclick="G.setExFollow()">${this.exFollow === false ? "☐" : "☑"} 跟随最新</button></div>
         <div class="exov-log explore-log" id="exov-log">${list.map((e, i) => this.evLine(e, src, i)).join("") || `<p>${x ? "出发……" : tab === "cq" ? "还没有出窍结果。" : "还没有探索结果。"}</p>`}</div>
         <div class="exov-tabs">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button onclick="G.openExHist()">全部信息</button><button onclick="G.setExploreOpen(false)">关闭</button></div></div>`;
@@ -1661,7 +1665,7 @@ G.module({
         }
         const ico = (id, cls) => halls[id] === undefined ? "" : `<button class="${cls || ""}" onclick="G.setHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${hn(id)}</span></button>`;
         const gxTag = this.xjGxOf ? `<div class="xs-gx">贡献<b>${U.fmt(this.xjGxOf(sel))}</b></div>` : "";   // 本图贡献：显示在天宫图片左边
-        return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">` + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + mb + "</div>";
+        return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">` + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + bars + status + this.regionsCard(sel) + mb + "</div>";   // 历练去掉：东西南北四域直接显示在下面
       }
       return pg(mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)));
     }
