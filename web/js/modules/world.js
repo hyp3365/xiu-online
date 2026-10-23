@@ -1625,8 +1625,8 @@ G.module({
     if (wt === "explore" && (this.atlasOn || this.worldId === undefined)) return this.atlasView();
     const worlds = "";
     const W = DATA.worlds.find(w => w.id === wid);
-    if (wt === "battle") return `<div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)");
-    if (!this.worldOpen(wid) && wt === "explore") return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>` + fback("G.openAtlas()");
+    if (wt === "battle") return `<div class="mpage"><div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)") + "</div>";   // 包 mpage：返回固定右下
+    if (!this.worldOpen(wid) && wt === "explore") return worlds + `<div class="mpage"><div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>` + fback("G.openAtlas()") + "</div>";
     const tabs = "";
 
     if (wt === "explore") {
@@ -1696,10 +1696,10 @@ G.module({
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
     const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
-    return `<div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
+    return `<div class="mpage"><div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
       <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
-      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>` + fback("G.setAtlasSub(null)");
+      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>` + fback("G.setAtlasSub(null)") + "</div>";
   },
 
 });
