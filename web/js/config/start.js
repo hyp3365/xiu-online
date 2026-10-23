@@ -48,7 +48,7 @@ CFG.origin = {
     { id: "shijia",   name: "世家子弟", desc: "灵石 +50000，聚气丹 +5。", stone: 50000, pills: [["juqi", 0, 5]] },
     { id: "yaonong",  name: "药农之子", desc: "送 1 星丹方 1 张、凡界药材一批，灵田开局多 1 块。", recipe: 1, herbs: [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [5, 20]], field: 1 },
     { id: "tiejiang", name: "铁匠学徒", desc: "送 1 星装备图谱 1 张、凡界矿石一批，炼器经验 +300。", eqBp: 1, ores: [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [5, 20]], qiExp: 300 },
-    { id: "shuxiang", name: "书香门第", desc: "学习功法时间 永久 -5%。", gfStudyPct: 5 },
+    { id: "shuxiang", name: "书香门第", desc: "学习功法时间 永久 -10%。", gfStudyPct: 10 },
     { id: "zhuiya",   name: "坠崖奇遇", desc: "崖底古修遗骸。送 1 星法宝 1 件、1 星秘诀 1 本。", fabao: 1, gf: ["mijue"] },
     { id: "yixiang",  name: "天降异象", desc: "出生时雷光入体。渡劫时雷属性伤害 -30%。", leiCut: 30 },
     { id: "dongfu",   name: "古修洞府", desc: "误入残破洞府。灵气 +500000，送 1 星真经 1 本。", ling: 500000, gf: ["zhenjue"] },
