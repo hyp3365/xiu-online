@@ -236,7 +236,9 @@ const G = {
     if (this._pressing && v.innerHTML !== "") { this._renderDeferred = true; return; }
     // 正在输入框里打字时也先不替换页面：否则输入框被换掉，手机输入法会自动收起
     if (this.editing(v)) { this._renderDeferred = true; return; }
-    try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html; } }
+    const lg0 = document.getElementById("exov-log"), lgTop = lg0 ? lg0.scrollTop : -1;   // 探索信息浮层：重绘后保持位置，或「跟随最新」滚到底
+    try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html;
+      const lg = document.getElementById("exov-log"); if (lg) lg.scrollTop = this.exFollow === false && lgTop >= 0 ? lgTop : 0; } }   // 最新一条在最上面
     catch (err) { console.error(err); this._viewHtml = null; v.innerHTML = `<div class="card"><h3>页面出错</h3><p class="desc">${String(err && err.message || err)}<br>如果刚改过 js/config/ 里的数值，请检查有没有写错（例如少了小数点、多了问号）。</p></div>`; }
     v.scrollTop = top;
   },

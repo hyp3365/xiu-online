@@ -80,7 +80,11 @@ G.module({
       this.log(`开始在${this.kuangName(a)}挖矿（期间无法修炼）。`, "sys");
       this.after();
     },
-    setWorld(id) { if (this.worldId !== id) { this.mapSel = undefined; this.hallSel = null; } this.worldId = id; this.render(); },
+    setWorld(id) { if (this.worldId !== id) { this.mapSel = undefined; this.hallSel = null; this.mapPage = false; } this.worldId = id; this.atlasOn = false; this.render(); },
+    // 六界图 / 地图卷轴 / 探索信息浮层（纯界面状态，不进服务器白名单）
+    openAtlas() { this.atlasOn = true; this.render(); },
+    setMapPage(v) { this.mapPage = !!v; this.hallSel = null; this.render(); },
+    setExFollow() { this.exFollow = this.exFollow === false; this.render(); },
     // v45：这一界开放没有（config/worldmaps.js 的 open）
     worldOpen(id) {
       if (id === "fan") return true;
@@ -1335,6 +1339,41 @@ G.module({
     setExploreOpen(v) { this.exploreOpen = v; this.render(); },
     // 信息框显示哪个：cq 出窍 / ex 探索（没选过时：正在走的那个，都没有就探索）
     exInfoTab() { const s = this.s; return this.exInfo === "cq" || this.exInfo === "ex" ? this.exInfo : s.cq && !s.explore ? "cq" : "ex"; },
+    // 六界图：整张插画 + 各界竖条名牌（位置 % 写在 ATLAS_POS；没开放的变暗）
+    atlasView() {
+      const P = { tianwai: [50, 9], shen: [50, 26], xian: [50, 44], fan: [50, 61], mo: [21, 82], ming: [79, 82] };
+      const tags = DATA.worlds.map(w => { const p = P[w.id]; if (!p) return "";
+        const open = w.open !== false && (this.worldOpen(w.id) || w.id === "fan"), cur = (this.worldId || "fan") === w.id;
+        const req = (((CFG.worldMaps || {})[w.id] || {}).open || {}).realm;
+        const sub = w.open === false ? "未开放" : !open && req !== undefined ? "需" + DATA.realmLabel(req) : cur ? "当前" : "";
+        return `<button class="atag${open ? "" : " dim"}${cur ? " cur" : ""}" style="left:${p[0]}%;top:${p[1]}%" onclick="${w.open === false ? "G.log('机缘暂未开放，敬请期待。','sys')" : `G.setWorld('${w.id}')`}"><b>${w.name}</b>${sub ? `<small>${sub}</small>` : ""}</button>`; }).join("");
+      return `<div class="atlas"><img src="img/map/atlas.webp" alt="">${tags}</div>`;
+    },
+    // 一界的地图卷轴：从上到下第 1 ~ 10 张图，图左右交替，旁边竖写图名；凡界最后加秘境
+    mapScroll(wid, idx, ex) {
+      const fan = wid === "fan", s = this.s;
+      const rows = idx.map((a, i) => {
+        const m = DATA.maps[a], img = fan ? "fan" + Math.min(8, i) : wid + (i % 3), flip = !fan && Math.floor(i / 3) % 2;
+        const lockR = !this.realmOK(DATA.mapReq(a)), lockU = !lockR && !this.mapUnlocked(a), run = ex === a;
+        const sub = lockR ? "需" + DATA.realmLabel(DATA.mapReq(a)) : lockU ? "未开启" : run ? "探索中" : (fan ? "" : `第 ${i + 1} 重`);
+        return `<div class="wsi ${i % 2 ? "r" : "l"}${lockR || lockU ? " lock" : ""}${run ? " cur" : ""}" onclick="G.setMapSel(${a})">
+          <img src="img/map/is_${img}.webp" alt=""${flip ? ` style="transform:scaleX(-1)"` : ""}><div class="wsn"><b style="height:${[...m.name].length * 1.45 + 1.2}em">${m.name}</b>${sub ? `<small>${sub}</small>` : ""}</div></div>`; }).join("");
+      const mj = fan ? (n => `<div class="wsi ${idx.length % 2 ? "r" : "l"}${ex === "mj" ? " cur" : ""}" onclick="G.setMapSel('mj')"><img src="img/map/is_mj.webp" alt=""><div class="wsn"><b style="height:${[...this.mjLabel("mj")].length * 1.45 + 1.2}em">${this.mjLabel("mj")}</b><small>${ex === "mj" ? "探索中" : n ? `已发现 ${n} 处` : "未发现"}</small></div></div>`)(this.mjState().found.length) : "";
+      return `<div class="wscroll ws-${wid}" style="background-image:url(img/map/bg_${wid}.webp)">${rows}${mj}</div>`;
+    },
+    // 探索信息浮层：盖住整个画面，底部 出窍信息 / 探索信息 / 全部信息 / 关闭；「跟随最新」时停在最上面的最新一条（game.js render）
+    exOverlay() {
+      if (!this.exploreOpen) return "";
+      const s = this.s, tab = this.exInfoTab(), x = tab === "cq" ? s.cq : s.explore, last = tab === "cq" ? s.lastCq : s.lastRun, run = x && !x.rest && x.ev;
+      const list = run ? x.ev : last ? last.ev : [], src = run ? (tab === "cq" ? "cqcur" : "cur") : (tab === "cq" ? "cqlast" : "last");
+      const title = x ? `${tab === "cq" ? "出窍中" : x.once ? "历练中" : "探索中"} · ${this.exName(x)}` : last ? last.title : tab === "cq" ? "出窍信息" : "探索信息";
+      const sub = x ? (x.rest ? "休养中" : x.cq ? `已完成 ${x.count} / ${x.cq} 次` : x.count !== undefined && !x.once ? `已完成 ${x.count} 次` : "") : "";
+      const btn = (k, n) => `<button class="${tab === k ? "on" : ""}" onclick="G.setExInfo('${k}',1)">${n}</button>`;
+      return `<div class="exov"><div class="exov-head"><div><b class="${!x && last && last.bad ? "q5" : ""}">${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>
+        <button class="sm${this.exFollow === false ? "" : " on"}" onclick="G.setExFollow()">${this.exFollow === false ? "☐" : "☑"} 跟随最新</button></div>
+        <div class="exov-log explore-log" id="exov-log">${list.map((e, i) => this.evLine(e, src, i)).join("") || `<p>${x ? "出发……" : tab === "cq" ? "还没有出窍结果。" : "还没有探索结果。"}</p>`}</div>
+        <div class="exov-tabs">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button onclick="G.openExHist()">全部信息</button><button onclick="G.setExploreOpen(false)">关闭</button></div></div>`;
+    },
     setExInfo(k, keep) { if (!keep && this.exploreOpen && this.exInfoTab() === k) this.exploreOpen = false; else { this.exploreOpen = true; this.exInfo = k; } this.render(); },
     // 探索信息一行：战斗事件后面带「详情」按钮
     evLine(e, src, i) { return `<p class="${e.c}">${e.n ? `<b>第${e.n}步</b> ` : ""}${e.t}${e.b ? ` <button class="sm" onclick="G.showBattle('${src}',${i})">详情</button>` : ""}</p>`; },
@@ -1358,7 +1397,7 @@ G.module({
           ${sel === i ? `<div class="explore-log">${(r.ev || []).map((e, j) => this.evLine(e, "h" + i, j)).join("")}</div>` : ""}`).join("") : "<p>还没有记录。</p>"}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
-    setMapSel(a) { this.mapSel = a; this.render(); },   // a = 地图序号，"mj" = 秘境
+    setMapSel(a) { this.mapSel = a; this.mapPage = true; this.hallSel = null; this.render(); },   // a = 地图序号，"mj" = 秘境
 
     /* ---------- 坊市：丹药 装备 功法 药材 矿石 ----------
      * 丹药、装备：content/items.js 的 ITEMS.shop，只卖练气品质
@@ -1537,9 +1576,10 @@ G.module({
 
   view() {
     const s = this.s, wid = this.worldId || "fan", wt = wid === "fan" ? this.worldTab || "explore" : "explore";   // v47：仙冥魔神没有 历练/坊市/设置 页签
-    // 六界选择
-    const worlds = `<div class="room-grid">${DATA.worlds.map(w =>
-      `<button class="${wid === w.id ? "active" : ""}${this.worldOpen(w.id) || (CFG.worldMaps || {})[w.id] ? "" : " dim"}" onclick="G.setWorld('${w.id}')">${w.name}</button>`).join("")}<button class="dim" onclick="G.log('机缘暂未开放，敬请期待。','sys')">机缘</button></div>`;   // 机缘：先只有按钮
+    // 六界图（img/map/atlas.webp，竖条名牌按 ATLAS_POS 摆）；进了某一界顶部只留一条：六界图按钮 + 界名
+    const W0 = DATA.worlds.find(w => w.id === wid) || DATA.worlds[0];
+    if (wt === "explore" && (this.atlasOn || this.worldId === undefined)) return this.atlasView();
+    const worlds = `<div class="wbar"><button class="sm" onclick="G.openAtlas()">六界图</button><b>${W0.name}</b><small>${W0.desc}</small></div>`;
     const W = DATA.worlds.find(w => w.id === wid);
     if (!this.worldOpen(wid)) return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>`;
     const tabs = wid !== "fan" ? worlds : worlds + `<div class="sub-tabs">
@@ -1559,26 +1599,19 @@ G.module({
           return `<div class="card"><h3>${x.once ? "历练中" : cq ? "出窍中" : "探索中"} · ${this.exName(x)}<small>${sub}</small></h3>
           <div class="bar tick"><div style="width:${x.rest ? Math.min(100, restP) : x.step / T * 100}%"></div></div>
           <div class="row small" style="align-items:center"><span>${x.rest ? `<b class="c-red">休养中</b> · 生命 ${U.fix(Math.floor(hpP) + "%")} / <b class="c-green">${gH}%</b><br><b class="c-red">休养中</b> · 法力 ${U.fix(Math.floor(mpP) + "%")} / <b class="c-green">${gM}%</b>` : x.step >= T ? `第 ${U.fix(T)} / ${T} 步 · 结算中` : `第 ${U.fix(x.step)} / ${T} 步 · 剩余 ${U.cd(Math.max(0, Math.ceil((x.start + T * (x.ms || 1000) - (x._pz != null ? x._pz : this.now())) / 1000 + (CFG.explore.END_WAIT || 0))), 1)}`}</span><span style="white-space:nowrap;flex-shrink:0">
-            <button class="sm" onclick="G.setExInfo('${cq ? "cq" : "ex"}')">${this.exploreOpen && this.exInfoTab() === (cq ? "cq" : "ex") ? "收起信息" : cq ? "出窍信息" : "探索信息"}</button>
+            <button class="sm" onclick="G.setExInfo('${cq ? "cq" : "ex"}',1)">${cq ? "出窍信息" : "探索信息"}</button>
             <button class="sm" onclick="G.${cq ? "stopCqNow" : "stopNow"}()">停止</button></span></div></div>`; };
-      const infoBox = (() => {
-        const tab = this.exInfoTab(), x = tab === "cq" ? s.cq : s.explore, last = tab === "cq" ? s.lastCq : s.lastRun, run = x && !x.rest && x.ev;
-        const list = run ? x.ev : last ? last.ev : [], src = run ? (tab === "cq" ? "cqcur" : "cur") : (tab === "cq" ? "cqlast" : "last");
-        const btn = (k, n) => `<button class="sm ${tab === k ? "on" : ""}" style="min-width:0;padding-left:0;padding-right:0" onclick="G.setExInfo('${k}',1)">${n}</button>`;
-        const head = !run && last ? `<p class="desc ${last.bad ? "q5" : ""}">${last.title}</p>` : "";
-        if ((s.explore || s.cq) && !this.exploreOpen) return "";   // 进行中点了「收起信息」：整个信息框（含三个按钮）都隐藏
-        return `<div class="card"><div class="btns" style="margin-top:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button class="sm" style="min-width:0;padding-left:0;padding-right:0" onclick="G.openExHist()">全部信息</button>${s.explore || s.cq ? "" : `<button class="sm" style="min-width:0;padding-left:0;padding-right:0" onclick="G.setExploreOpen(${!this.exploreOpen})">${this.exploreOpen ? "收起" : "详细"}</button>`}</div>
-          ${this.exploreOpen ? head + `<div class="explore-log">${list.map((e, i) => this.evLine(e, src, i)).join("") || `<p>${x ? "出发……" : tab === "cq" ? "还没有出窍结果。" : "还没有探索结果。"}</p>`}</div>` : head}</div>`;
-      })();
-      const status = (s.explore ? runCard(s.explore, false) : "") + (s.cq ? runCard(s.cq, true) : "") + infoBox;
+      // 没在探索 / 出窍时：一行三个按钮打开信息浮层（进行中用卡片上的按钮）
+      const infoBox = s.explore || s.cq ? "" : `<div class="card"><div class="btns" style="margin-top:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"><button class="sm" onclick="G.setExInfo('cq',1)">出窍信息</button><button class="sm" onclick="G.setExInfo('ex',1)">探索信息</button><button class="sm" onclick="G.openExHist()">全部信息</button></div></div>`;
+      const status = (s.explore ? runCard(s.explore, false) : "") + (s.cq ? runCard(s.cq, true) : "") + infoBox + this.exOverlay();
       // 地图选择（9 张）+ 选中地图的 东西南北 四个区域
       // v45：只列当前这一界的 9 张地图；秘境只在凡界
       const idx = (DATA.worldMapIdx[wid] || []).slice().sort((a, b) => DATA.mapReq(a) - DATA.mapReq(b) || a - b), fan = wid === "fan";   // 从低到高
       const ex = s.explore ? (s.explore.mj !== undefined ? (fan && s.explore.mk !== "ld" ? "mj" : undefined) : idx.includes(s.explore.map) ? s.explore.map : undefined) : undefined;
       const ok = idx.filter(a => this.mapOpen(a));
-      const sel = this.mapSel !== undefined && (this.mapSel === "mj" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : fan && ok.length ? ok[ok.length - 1] : idx[0];   // 四界默认第一张图（正在探索的除外）
-      const grid = `<div class="room-grid five">${idx.map(a => { const m = DATA.maps[a]; return `<button class="${sel === a ? "active" : ""}" onclick="G.setMapSel(${a})">${m.name}${!this.realmOK(DATA.mapReq(a)) ? `<small>需${DATA.realmLabel(DATA.mapReq(a))}</small>` : !this.mapUnlocked(a) ? `<small>未开启</small>` : ""}</button>`; }).join("")}
-            ${fan ? `<button class="${sel === "mj" ? "active" : ""}" onclick="G.setMapSel('mj')">${this.mjLabel("mj")}<small>${this.mjState().found.length ? `已发现 ${this.mjState().found.length} 处` : "未发现"}</small></button>` : ""}</div>`;
+      const sel = this.mapSel !== undefined && (this.mapSel === "mj" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : idx[0];
+      if (!this.mapPage) return tabs + bars + status + this.mapScroll(wid, idx, ex);   // 地图卷轴：点一张图进去
+      const mback = `<div class="row" style="margin:6px 0"><b>${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</b><button class="sm" onclick="G.setMapPage(false)">返回地图</button></div>`;
       const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
       if (halls && sel !== "mj") {
         // v49：仙冥魔神每张地图 7 处地点（config/worldmaps.js 的 halls，图片 img/hall_<id>.png），点进去是各自的页面
@@ -1592,9 +1625,9 @@ G.module({
         }
         const ico = (id, cls) => halls[id] === undefined ? "" : `<button class="${cls || ""}" onclick="G.setHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${hn(id)}</span></button>`;
         const gxTag = this.xjGxOf ? `<div class="xs-gx">贡献<b>${U.fmt(this.xjGxOf(sel))}</b></div>` : "";   // 本图贡献：显示在天宫图片左边
-        return tabs + grid + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>`;
+        return tabs + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>`;
       }
-      return tabs + bars + status + grid + (sel === "mj" ? this.mijingView() : this.regionsCard(sel));
+      return tabs + mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel));
     }
     if (wt === "shop") return tabs + this.shopView();
     if (wt === "battle") return tabs + this.bsetView();
