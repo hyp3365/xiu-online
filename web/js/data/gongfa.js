@@ -227,18 +227,20 @@ DATA.studyPer = info => { const v = (x, d) => x === undefined ? d : x, M = v(_GF
   const L = v((_GF.STUDY_LV || [])[(info.lv || 1) - 1], 1);   // v248 每层单独倍率
   return Math.max(1, Math.round(base * M * L)); };
 // 四界坊市 / 功德司功法价格：仙冥魔用 KEY[星级-6]，神界新 11、12 星用 SHEN_KEY[星级-11]（config/gongfa.js 的 jshop / gd）
+// 坊市灵石价格：出身「商贾之家」打折（凡界坊市 + 四界坊市；功德司、宗门不打折）
+DATA.shopPrice = v => { const g = typeof G !== "undefined" && G.s && G.oriSum ? G.oriSum("shopCut") : 0; return g > 0 && v > 0 ? Math.max(1, Math.ceil(v * Math.max(0, 1 - g / 100))) : v; };
 DATA.jiePrice = (o, key) => { const J = _GF[o.src] || {}; return (o.nw ? (J["SHEN_" + key] || [])[o.star - 11] : (J[key] || [])[o.star - 6]) || 0; };
 // 学习所需：宗门 = 贡献，坊市 = 灵石
 DATA.gfLearnCost = (o, typeId) => {
   if (DATA.srcType(o) !== "shop") {   // 宗门学习贡献单独设置：learn × LEARN_TYPE × LEARN_STAR × EFFECT_LEARN（不用效果倍率）
     const C = DATA.srcCfg(o), v = (x, d = 1) => x === undefined ? d : x;
     if (o.src === "jshop" || o.src === "gd") { const t = v(((_GF[o.src] || {}).TYPE || {})[DATA.gfTypeKey(typeId)]);   // 仙魔冥 / 神界价格分开（DATA.jiePrice）
-      return Math.floor(DATA.jiePrice(o, o.src === "gd" ? "MERIT" : "STONE") * t); }
+      const c = Math.floor(DATA.jiePrice(o, o.src === "gd" ? "MERIT" : "STONE") * t); return o.src === "jshop" ? DATA.shopPrice(c) : c; }
     return Math.floor(v(C.learn, 0) * v((C.LEARN_TYPE || {})[DATA.gfTypeKey(typeId)]) * v((C.LEARN_STAR || [])[o.star - 1]) * v(C.EFFECT_LEARN));
   }
   // 坊市售价单独设置：price × PRICE_TYPE × PRICE_STAR × EFFECT_PRICE
   const C = _GF.shop, v = (x, d = 1) => x === undefined ? d : x;
-  return Math.floor(v(C.price, 0) * v((C.PRICE_TYPE || {})[DATA.gfTypeKey(typeId)]) * v((C.PRICE_STAR || [])[o.star - 1]) * v(C.EFFECT_PRICE));
+  return DATA.shopPrice(Math.floor(v(C.price, 0) * v((C.PRICE_TYPE || {})[DATA.gfTypeKey(typeId)]) * v((C.PRICE_STAR || [])[o.star - 1]) * v(C.EFFECT_PRICE)));
 };
 
 /* ---------- 功法 ----------

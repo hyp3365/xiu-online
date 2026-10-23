@@ -92,6 +92,11 @@ G.module({
       if (!this.realmOK(x.reqRealm)) return;
       Object.assign(this.s, { sect: id, rank: 0, room: -1, rankPass: -1, affair: { task: -1, start: 0, count: 0 } });
       this.sectTab = "hall";
+      const O = CFG.origin || {}, yr = this.oriSum ? this.oriSum("sectRank") : 0;   // 出身「宗门遗孤」：第一次加入 SECT_STAR 星宗门直接是真传，加贡献
+      if (yr > 0 && !this.s.oriSect && x.star === (O.SECT_STAR || 1)) {
+        this.s.oriSect = 1; this.s.rank = Math.min(DATA.ranks.length - 1, yr); const c = this.oriSum("contrib"); this.s.contrib = (this.s.contrib || 0) + c;
+        this.log(`你拜入${x.name}（${x.star}星），师门念旧，直接成为${DATA.ranks[this.s.rank].name}${c ? `，贡献 +${U.fmt(c)}` : ""}。`, "gold"); return this.after();
+      }
       this.log(`你拜入${x.name}（${x.star}星），成为外门弟子。`, "gold"); this.after();
     },
     leaveCost() { const x = this.sectInfo(); return DATA.isTest() ? 0 : x ? ((CFG.sect.LEAVE_COST || [])[x.star - 1] || 0) : 0; },   // 叛出门派扣的贡献

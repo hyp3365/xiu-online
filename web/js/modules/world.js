@@ -986,7 +986,7 @@ G.module({
     incMul(x) {
       const G0 = (CFG.rates || {}).MAP_GAIN || {}, n = v => (v === undefined ? 1 : Math.max(0, +v || 0));
       const k = x.mj !== undefined ? (x.mk === "ld" ? "lingdi" : "mijing") : ((DATA.maps[x.map] || {}).w || "fan") === "fan" ? "fan" : "sijie";
-      return n(G0[k]);
+      return n(G0[k]) * (k === "mijing" && this.oriSum ? 1 + this.oriSum("mjDrop") / 100 : 1);   // 出身「秘境遗民」
     },
     // 击败怪物的掉落，写进 loot，返回描述文字
     //   灵石：本次总收益分摊到本次的怪：首领合计 BOSS_SHARE%，其余普通怪、精英怪平分
@@ -1451,8 +1451,8 @@ G.module({
       const g = 0, list = [];   // 只卖练气品质
       for (const x of ITEMS.shop) {
         if (!x || (x.realm !== undefined && this.r() < x.realm)) continue;
-        if (x.kind === "pill" && DATA.pills[x.type]) list.push({ kind: "pill", type: x.type, g, price: x.price || DATA.pillPrice(x.type, g), tab: "pill" });
-        else if (x.kind === "eq" && DATA.eqSlots6.includes(x.slot)) list.push({ kind: "eq", slot: x.slot, price: x.price, tab: "eq" });
+        if (x.kind === "pill" && DATA.pills[x.type]) list.push({ kind: "pill", type: x.type, g, price: DATA.shopPrice(x.price || DATA.pillPrice(x.type, g)), tab: "pill" });
+        else if (x.kind === "eq" && DATA.eqSlots6.includes(x.slot)) list.push({ kind: "eq", slot: x.slot, price: DATA.shopPrice(x.price), tab: "eq" });
       }
       return list;
     },
@@ -1469,7 +1469,7 @@ G.module({
       this.after();
     },
     // 坊市药材、矿石
-    shopMatPrice(kind, g) { return Math.max(1, Math.ceil(DATA.matPrice(kind, g) * (CFG.price.SHOP_MAT || 3))); },
+    shopMatPrice(kind, g) { return DATA.shopPrice(Math.max(1, Math.ceil(DATA.matPrice(kind, g) * (CFG.price.SHOP_MAT || 3)))); },
     buyMat(kind, g, n) {
       n = Math.floor(n || +($("#shop-n") && $("#shop-n").value) || 1);
       const names = kind === "herb" ? DATA.herbs : DATA.ores;
@@ -1696,7 +1696,7 @@ G.module({
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
     const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
-    return `<div class="mpage"><div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
+    return `<div class="mpage"><div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>${this.oriNames && this.oriNames() ? `<p class="desc">出身：${this.oriNames()}</p>` : ""}
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
       <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
       <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>` + fback("G.setAtlasSub(null)") + "</div>";

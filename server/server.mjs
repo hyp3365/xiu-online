@@ -260,7 +260,7 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (q.save.get(user.id)) return error(res, 409, "角色已经创建");
       const name = [...String(body.name || "无名散修").trim().replace(/[^\p{L}\p{N}_·-]/gu, "")].slice(0, 12).join("") || "无名散修";
-      const data = getEngine(user.id).createState(name); persist(user.id, data);
+      const data = getEngine(user.id).createState(name, Date.now(), Array.isArray(body.ori) ? body.ori.slice(0, 20).map(String) : []); persist(user.id, data);
       return sendJson(res, 201, { data, serverNow: Date.now() });
     }
     if (req.method === "POST" && route === "/api/character/reset") {

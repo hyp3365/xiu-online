@@ -10,7 +10,7 @@ const actions = JSON.parse(fs.readFileSync(path.join(HERE, "../action-whitelist.
 
 test("server runtime loads the existing game modules and whitelisted handlers", () => {
   const engine = new GameEngine();
-  assert.equal(engine.G.modules.length, 24);
+  assert.equal(engine.G.modules.length, 25);
   assert.ok(engine.G.runTicks);
   assert.ok(actions.length > 80);
   for (const name of actions) {

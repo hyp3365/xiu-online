@@ -721,3 +721,11 @@ button.sm.pill{padding:4px 12px}
 .mfit .xscene .tg img{max-height:13vh}
 .mfit .xscene .xsrow img{max-height:9vh}
 .mfit .rgt img{max-height:12vh}
+/* 创建角色：出身选择 */
+.ori-box{max-height:46vh;overflow-y:auto;margin:6px 0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ori-box>p{grid-column:1/-1;margin:0}
+.ori-it{border:1px solid rgba(232,200,120,.25);border-radius:8px;padding:6px 8px;background:rgba(0,0,0,.25);cursor:pointer}
+.ori-it b{display:block;color:#e8c878;font-size:14px}
+.ori-it small{display:block;font-size:11px;color:#bba98a;line-height:1.35;margin-top:2px}
+.ori-it.on{border-color:#e8c878;background:rgba(232,200,120,.18);box-shadow:0 0 0 1px #e8c878 inset}
+.ori-it.off{opacity:.45}

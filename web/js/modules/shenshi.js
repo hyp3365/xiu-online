@@ -36,7 +36,7 @@ G.module({
       for (const x of (s.lq && s.lq.gf) || []) if (x.id && !s.gongfa[x.id]) n += this.ssCost(x.id);   // v173 排队的也算
       return n;
     },
-    lsTotal() { return (this.s.lsMax || 0) + ((this.s.wd || {}).ls || 0); },   // 总灵识点 = 买的 + 神魂之道得的
+    lsTotal() { return (this.s.lsMax || 0) + ((this.s.wd || {}).ls || 0) + (this.oriSum ? this.oriSum("ls") : 0); },   // + 出身「残魂附体」   // 总灵识点 = 买的 + 神魂之道得的
     lsLeft() { return this.lsTotal() - this.lsUsed(); },
     // 第 k 点神识要多少灵石（表里没有 = null，买不了）
     lsPrice(k) { for (const [a, b, p] of CFG.shenshi.BUY || []) if (k >= a && k <= b) return p; return null; },

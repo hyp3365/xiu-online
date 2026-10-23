@@ -105,6 +105,7 @@ G.module({
     lqAdd(ch, x) {
       const s = this.s, sl = this.lqSlot(ch);
       if (DATA.isTest()) x = Object.assign({}, x, { ms: 0 });   // 测试模式学习瞬间完成
+      else if (ch === "gf" && this.oriSum && this.oriSum("gfStudyPct")) x = Object.assign({}, x, { ms: Math.round(x.ms * Math.max(0, 1 - this.oriSum("gfStudyPct") / 100)) });   // 出身「书香门第」
       if (!s[sl]) { s[sl] = Object.assign({}, x, { end: this.now() + x.ms }); this.log(`开始学习${this.lqName(x)}，需 ${U.dur(x.ms / 1000)}。`, "good"); }
       else { this.lqList(ch).push(x); this.log(`${this.lqName(x)}已加入学习队列（排第 ${this.lqList(ch).length} 个）。`, "good"); }
       this.lqTick(ch); this.dirty();

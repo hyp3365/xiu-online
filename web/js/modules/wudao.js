@@ -26,6 +26,10 @@ G.module({
       out.hpBattlePct = pctOf("hpBattle", (CFG.wudao.DOUXUE || {}).PCT); out.mpBattlePct = pctOf("mpBattle", (CFG.wudao.DOULING || {}).PCT);   // 斗血 / 斗灵 圆满后每步额外恢复上限 %
       const ZH = CFG.wudao.ZHENHUN || {}, zf = full("zhenhun"); out.zhenhunR = zf.length ? ((ZH.ROUNDS || [])[zf[zf.length - 1] - 1] || 3) : 0;
       out.jinchanCut = Math.max(JC.CUT_MIN || 0, (JC.CUT_START || 0) - full("jinchan").reduce((t, st) => t + ((JC.CUT_STEP || [])[st - 1] || 0), 0));
+      if (this.oriSum) {   // 出身（config/start.js CFG.origin）：探索每步秒、功法修炼时间 %、炼丹 / 炼器成功率 %、肉身速度 %
+        out.explore = (out.explore || 0) + this.oriSum("explore"); out.gfStudy = (out.gfStudy || 0) + this.oriSum("gfStudyPct");
+        out.danRate = (out.danRate || 0) + this.oriSum("danRate"); out.qiRate = (out.qiRate || 0) + this.oriSum("qiRate");
+        out.bodySpeedPct = (out.bodySpeedPct || 0) + this.oriSum("bodyPct"); }
       return out;
     },
     mifaLearnMs(star) { const Q = CFG.gongfa.LEARN_Q || {}; return DATA.gfLearnMin(star) * (Q.MIFA_MUL === undefined ? 5 : Q.MIFA_MUL) * 60000; },
