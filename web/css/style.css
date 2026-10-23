@@ -704,3 +704,20 @@ button.sm.pill{padding:4px 12px}
 .mfit .rgt img{aspect-ratio:auto;height:62px}
 .mfit .rgt b{font-size:14px;margin-top:0}
 .mfit .rgt small{margin:0 0 4px}
+/* 四界地图页不滑动：整页固定一屏，四域格子按剩余高度缩放 */
+#view:has(.mfit){overflow:hidden}
+.mfit{position:relative;height:calc(100% + 20px);min-height:0;padding-bottom:62px}
+.mfit>.fback{position:absolute;right:12px;bottom:6px;margin:0;height:auto;left:12px}
+.mfit .xscene{flex:0 0 auto}
+.mfit .xscene .xsrow{width:100%;display:flex;justify-content:space-between;padding:0 3%;margin-top:-6px}
+.mfit .xscene .xsrow button{width:30%}
+.mfit .rgcard{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-bottom:0}
+.mfit .rggrid{flex:1 1 auto;min-height:0;grid-template-rows:repeat(2,minmax(0,1fr))}
+.mfit .rgt{min-height:0;justify-content:flex-end}
+.mfit .rgt img{flex:1 1 auto;min-height:0;height:auto;max-height:70px;width:100%}
+.mfit .xscene .xsrow{margin-top:0;align-items:flex-end;padding:0 1%}
+.mfit .xscene .xsrow button{width:31%}
+.mfit .xscene .xsrow .mid{margin-top:14px}
+.mfit .xscene .tg img{max-height:13vh}
+.mfit .xscene .xsrow img{max-height:9vh}
+.mfit .rgt img{max-height:12vh}
