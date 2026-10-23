@@ -1378,7 +1378,7 @@ G.module({
       const tags = DATA.worlds.map(w => { const p = P[w.id]; if (!p) return "";
         const open = w.open !== false && (this.worldOpen(w.id) || w.id === "fan"), cur = (this.worldId || "fan") === w.id;
         const req = (((CFG.worldMaps || {})[w.id] || {}).open || {}).realm;
-        const sub = w.open === false ? "未开放" : cur ? "当前" : "";   // 不显示「需某境界」
+        const sub = w.open === false ? "未开放" : "";   // 不显示「需某境界」「当前」
         return `<button class="atag${open ? "" : " dim"}${cur ? " cur" : ""}" style="left:${p[0]}%;top:${p[1]}%" onclick="${w.open === false ? "G.log('机缘暂未开放，敬请期待。','sys')" : `G.setWorld('${w.id}')`}"><b>${w.name}</b>${sub ? `<small>${sub}</small>` : ""}</button>`; }).join("");
       const s = this.s, ln = (x, cq) => x ? `<p onclick="G.setExInfo('${cq ? "cq" : "ex"}',1)"><i>${cq ? "出窍中" : x.once ? "历练中" : "探索中"}</i>${this.exName(x)}</p>` : "";
       const top = `<div class="atl-l"><div class="atl-btns"><button class="pill" onclick="G.openRunList('cq')">元婴出窍</button><button class="pill" onclick="G.openRunList('ex')">自动探索</button></div>${ln(s.cq, true)}${ln(s.explore, false)}</div>
@@ -1625,7 +1625,8 @@ G.module({
     if (wt === "explore" && (this.atlasOn || this.worldId === undefined)) return this.atlasView();
     const worlds = "";
     const W = DATA.worlds.find(w => w.id === wid);
-    if (!this.worldOpen(wid)) return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>` + fback("G.openAtlas()");
+    if (wt === "battle") return `<div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)");
+    if (!this.worldOpen(wid) && wt === "explore") return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>` + fback("G.openAtlas()");
     const tabs = "";
 
     if (wt === "explore") {
@@ -1676,7 +1677,6 @@ G.module({
       }
       return pg(mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)));
     }
-    if (wt === "battle") return `<div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)");
 
     const isAdmin = !!(this.adminInfo && this.adminInfo.admin);
     if (this.giftPage && isAdmin) return tabs + this.giftAdminView();
