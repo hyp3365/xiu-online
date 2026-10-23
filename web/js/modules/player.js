@@ -38,7 +38,7 @@ G.module({
     r() { return Math.floor(this.s.L / DATA.LAYERS); },          // 当前大境界序号
     layer() { return this.s.L % DATA.LAYERS; },
     // 境界够不够：req = -1 凡人即可，否则需要（非凡人且）大境界 ≥ req
-    realmOK(req) { return req < 0 || (!this.s.mortal && this.r() >= req); },                    // 当前层（0~9）
+    realmOK(req) { return req < 0 || DATA.isTest() || (!this.s.mortal && this.r() >= req); },   // 测试模式不限境界                    // 当前层（0~9）
     needExp() { return this.s.mortal ? DATA.needExp(-1) : DATA.needExp(this.s.L); },   // needExp(-1) = 凡人 → 练气一层
     realmName(L) {
       if (L === undefined) { if (this.s.mortal) return "凡人"; L = this.s.L; }

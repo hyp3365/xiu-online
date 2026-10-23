@@ -78,6 +78,9 @@ const G = {
     { const n = ((CFG.cqzj || {}).COST || []).length;   // 出窍真诀删掉的卷（第 4、5 卷）从存档里清掉
       if (Array.isArray(s.cqZj)) s.cqZj = s.cqZj.filter(v => v >= 1 && v <= n);
       if (s.cqzjL && !(s.cqzjL.v >= 1 && s.cqzjL.v <= n)) s.cqzjL = null; }
+    { const K = ["contrib", "stone", "merit"], BIG = 1e15;   // 测试模式（config/rates.js TEST）：贡献、灵石、功德随便花；打开时记下原数，关掉恢复
+      if (DATA.isTest()) { if (!s._testBak) s._testBak = Object.fromEntries(K.map(k => [k, s[k] || 0])); for (const k of K) s[k] = BIG; }
+      else if (s._testBak) { for (const k of K) s[k] = s._testBak[k] || 0; delete s._testBak; } }
     for (const k of DATA.FURNACE_KINDS || []) {   // 新炉子种类（炼丹神炉 sdan）补进老存档
       if (s.blueprints && !s.blueprints[k]) s.blueprints[k] = [];
       if (s.furnaces && !s.furnaces[k]) s.furnaces[k] = [];

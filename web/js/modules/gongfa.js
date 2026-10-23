@@ -84,7 +84,7 @@ G.module({
     lqKey(x) { return x.id !== undefined ? x.id : x.key; },
     // 0 = 没有，1 = 正在学，2 = 排队中
     lqHas(ch, key) { const c = this.s[this.lqSlot(ch)]; if (c && this.lqKey(c) === key) return 1; return this.lqList(ch).some(x => this.lqKey(x) === key) ? 2 : 0; },
-    lqFull(ch) { return !!this.s[this.lqSlot(ch)] && this.lqList(ch).length >= this.lqMax(); },
+    lqFull(ch) { return !DATA.isTest() && !!this.s[this.lqSlot(ch)] && this.lqList(ch).length >= this.lqMax(); },
     // 能不能再加一个（不能就提示）
     lqCan(ch, key) {
       if (this.lqHas(ch, key)) { this.log("已经在学习 / 排队中了。", "sys"); return false; }
@@ -104,6 +104,7 @@ G.module({
     // 加入（调用前已扣费）：空着就马上开始，否则排队
     lqAdd(ch, x) {
       const s = this.s, sl = this.lqSlot(ch);
+      if (DATA.isTest()) x = Object.assign({}, x, { ms: 0 });   // 测试模式学习瞬间完成
       if (!s[sl]) { s[sl] = Object.assign({}, x, { end: this.now() + x.ms }); this.log(`开始学习${this.lqName(x)}，需 ${U.dur(x.ms / 1000)}。`, "good"); }
       else { this.lqList(ch).push(x); this.log(`${this.lqName(x)}已加入学习队列（排第 ${this.lqList(ch).length} 个）。`, "good"); }
       this.lqTick(ch); this.dirty();

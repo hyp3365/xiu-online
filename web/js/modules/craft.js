@@ -82,6 +82,7 @@ G.module({
     },
     // 成功率 0~1：RATE_BASE + (技艺阶 − 物品阶) × RATE_STEP + (炉子阶 − 物品阶) × FURN_STEP + 秘法%，g = 物品阶序号（0 = 一阶）
     craftRate(k, g) {
+      if (DATA.isTest()) return 1;
       const C = CFG.craftsman, m = this.mifaBonus();
       const fu = this.s.furnaceUse || {}, f = k === "xqi" && !(fu.xqi >= 0) ? fu.qi : k === "xdan" && !(fu.xdan >= 0) ? fu.dan : fu[k];   // 用的炉子阶序号（没装炼器仙炉按炼器炉，没装炼丹仙炉按炼丹炉）
       const pct = C.RATE_BASE + (this.craftLv(k) - (g + 1)) * C.RATE_STEP + (f >= 0 ? (f - g) * (C.FURN_STEP || 0) : 0) + ((k === "dan" || k === "xdan" ? m.danRate : m.qiRate) || 0);
@@ -95,6 +96,7 @@ G.module({
     danTotal(type, g) { const c = DATA.danCat(type); return g + (c === 4 ? 20 : c ? 10 : 0); },   // 丹药总阶序号（0 = 一阶凡丹；仙冥魔丹 10 起，神丹 20 起）
     danFurnTier(type) { const fu = this.s.furnaceUse || {}, c = DATA.danCat(type); return c === 4 && fu.sdan >= 0 ? fu.sdan + 20 : c && fu.xdan >= 0 ? fu.xdan + 10 : fu.dan >= 0 ? fu.dan : -1; },   // 炉子总阶：炼丹神炉 21~30
     danRate(type, g) {
+      if (DATA.isTest()) return 1;
       const C = CFG.craftsman, T = this.danTotal(type, g), f = this.danFurnTier(type);
       const pct = C.RATE_BASE + (this.craftLv("dan") - (T + 1)) * C.RATE_STEP + (f >= 0 ? (f - T) * (C.FURN_STEP || 0) : 0) + (this.mifaBonus().danRate || 0);
       return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
@@ -247,6 +249,7 @@ G.module({
     /* ---------- 炼器室：炉子 / 装备 / 空间石 ---------- */
     // 炼制时间（炼器炉缩短）
     forgePer(kind, g) {
+      if (DATA.isTest()) return 1000;   // 测试模式每件 1 秒
       if (kind === "rf") return ((CFG.forge.refine || {}).TIME || [])[g] * 1000 || (g + 1) * 10000;   // 精炼：固定时间，不受炉子、炼器师缩短
       const base = kind === "eq" ? DATA.forgeEqTime(g) : kind === "ss" ? DATA.stoneTime(g) : kind === "ring" ? DATA.ringTime(g) : DATA.furnaceTime(kind, g);
       const xf = (kind === "xdan" || kind === "xqi" || kind === "sdan") && this.s.furnaceUse.xqi >= 0;   // 仙炉、神炉：装有炼器仙炉时按炼器仙炉缩短
@@ -273,6 +276,7 @@ G.module({
     // 炼器：仙炉（炼丹仙炉 / 炼器仙炉）算 11~20 阶；炉子：仙炉装了炼器仙炉算 11~20 阶，否则用炼器炉 1~10 阶。可跨阶，成功率每差一阶 ±5%
     forgeTotal(kind, g) { return g + (kind === "xdan" || kind === "xqi" || kind === "sdan" ? 10 : 0); },   // 炼丹神炉按仙炉算（炼器师 11~20 阶）
     forgeRate(kind, g) {
+      if (DATA.isTest()) return 1;
       const C = CFG.craftsman, fu = this.s.furnaceUse || {}, T = this.forgeTotal(kind, g), xian = T >= 10 && fu.xqi >= 0, f = xian ? fu.xqi + 10 : fu.qi >= 0 ? fu.qi : -1;
       const pct = C.RATE_BASE + (this.craftLv("qi") - (T + 1)) * C.RATE_STEP + (f >= 0 ? (f - T) * (C.FURN_STEP || 0) : 0) + (this.mifaBonus().qiRate || 0);
       return Math.max((C.RATE_MIN || 0) / 100, Math.min(1, pct / 100));
@@ -535,7 +539,7 @@ G.module({
     },
 
     /* ---------- 炼丹 ---------- */
-    danPer(type, g) { const fk = this.danFurn(DATA.danFu(type)), ck = this.danCk(type), tc = (CFG.craftsman[ck].TIME_CUT || [])[this.craftLv(ck) - 1] || 0;   // 炉子% + 炼丹仙师% + 丹火秘法% 相加
+    danPer(type, g) { if (DATA.isTest()) return 1000; const fk = this.danFurn(DATA.danFu(type)), ck = this.danCk(type), tc = (CFG.craftsman[ck].TIME_CUT || [])[this.craftLv(ck) - 1] || 0;   // 炉子% + 炼丹仙师% + 丹火秘法% 相加
       return Math.ceil(DATA.danTime(type, g) * (1 - this.mifaCut("danTime", DATA.furnaceBonus(fk, this.s.furnaceUse[fk]) + tc + this.servantPct("dan")) / 100)); },
     setDanTier(g) { this.danTier = g; this.render(); },
     // 丹药分类（config/alchemy.js 的 CATS）：0 = 现有丹方，其余暂时没有丹方

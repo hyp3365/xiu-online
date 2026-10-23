@@ -233,7 +233,7 @@ G.module({
     canBreak() { return this.s.exp >= this.needExp() && (this.s.mortal || this.s.L < DATA.realms.length * DATA.LAYERS - 1); },
     isMajor() { return !this.s.mortal && this.layer() === DATA.LAYERS - 1; },
     // 这次突破是否要渡雷劫（突破后的层序 ≥ trib.START）
-    needTrib() { return !this.s.mortal && this.s.L + 1 >= CFG.trib.START; },
+    needTrib() { return !this.s.mortal && !DATA.isTest() && this.s.L + 1 >= CFG.trib.START; },   // 测试模式不渡劫
 
     // 渡劫（准备页、劫云、结算）在 modules/trib.js
 

@@ -85,6 +85,7 @@ G.module({
     worldOpen(id) {
       if (id === "fan") return true;
       const W = (CFG.worldMaps || {})[id]; if (!W || !(DATA.worldMapIdx[id] || []).length) return false;
+      if (DATA.isTest()) return true;   // 测试模式四界全开（没地图的界仍不开）
       const o = W.open || {};
       if (o.realm !== undefined && !this.realmOK(o.realm)) return false;
       if (o.map) { const a = (DATA.worldMapIdx[o.map[0]] || [])[o.map[1] - 1]; if (a === undefined || !this.isTrained(a, 3)) return false; }
@@ -97,11 +98,12 @@ G.module({
       return i > 0 ? idx[i - 1] : undefined;
     },
     mapUnlocked(a) {
+      if (DATA.isTest()) return true;
       const p = this.mapPrev(a);
       return p === undefined || this.isTrained(p, DATA.regionCount - 1) || DATA.regionDirs.some((d, r) => this.isTrained(a, r));
     },
     // v52：东域通关后开启西域，依次类推
-    regionOpen(a, r) { return this.mapOpen(a) && (r === 0 || this.isTrained(a, r - 1) || this.isTrained(a, r)); },
+    regionOpen(a, r) { return this.mapOpen(a) && (r === 0 || DATA.isTest() || this.isTrained(a, r - 1) || this.isTrained(a, r)); },
 
     regionKey(a, r) { return a * DATA.regionCount + r; },
     isTrained(a, r) { return this.s.trainedR.includes(this.regionKey(a, r)); },
@@ -1099,7 +1101,7 @@ G.module({
       return list.join("") + "b".repeat(B);
     },
     // 地图每走一步的毫秒数 = STEP_SEC − 宗门秘法「神行」 − 出窍真诀（历练、自动探索、出窍、灵矿、秘境、灵地走路都用这个，最少 STEP_MIN 秒）
-    exploreMs() { const E = CFG.explore; return Math.round(Math.max(E.STEP_MIN || 0.5, (E.STEP_SEC || 1) - this.mifaBonus().explore - this.cqzjSec()) * 1000); },
+    exploreMs() { const E = CFG.explore; if (DATA.isTest()) return 1000; return Math.round(Math.max(E.STEP_MIN || 0.5, (E.STEP_SEC || 1) - this.mifaBonus().explore - this.cqzjSec()) * 1000); },
     // v242 自动探索 / 出窍能否继续：生命 ≥ 战斗设置 goHp%且 法力 ≥ goMp%
     exGo() { const b = this.bsetGet(), st = this.stats(); return { hp: st.hp * Math.min(100, b.goHp || 0) / 100, mp: st.mana * Math.min(100, b.goMp || 0) / 100 }; },
     exReady() { const g = this.exGo(); return this.s.hp >= g.hp - 1e-6 && this.s.mana >= g.mp - 1e-6; },

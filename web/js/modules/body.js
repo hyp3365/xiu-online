@@ -50,6 +50,7 @@ G.module({
     // 突破到第 T 层的消耗
     bodyCost(T) {
       const B = CFG.body, s = this.s; if (T === undefined) T = s.bodyL + 1;
+      if (DATA.isTest()) return { stone: 0, herbs: [] };   // 测试模式不要灵石、药材
       const ri = Math.floor(T / DATA.LAYERS), seg = (B.HERB_SEG || []).find(g => ri >= g.from && ri <= g.to);
       let n, herbs;
       if (seg) {   // 分段规则：(base + step × 段内层数) × 凡界 / 仙界倍率

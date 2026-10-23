@@ -31,8 +31,8 @@ G.module({
     // 职位：1 天将；星君名单第 i 位（0 起）= 职位 i + 2（名单从低到高）
     xjPos(a, t, seat) { return t === "tj" ? 1 : t === "jz" ? CFG.xingjun.JZ_POS : seat + 2; },
     // 每张地图的贡献
-    xjGxOf(a) { return (this.s.xjGx || {})[a] || 0; },
-    xjGxAdd(a, n) { const g = this.s.xjGx || (this.s.xjGx = {}); g[a] = (g[a] || 0) + n; },
+    xjGxOf(a) { return DATA.isTest() ? 1e15 : (this.s.xjGx || {})[a] || 0; },   // 测试模式本图贡献随便花
+    xjGxAdd(a, n) { if (DATA.isTest()) return; const g = this.s.xjGx || (this.s.xjGx = {}); g[a] = (g[a] || 0) + n; },
     // 挑战需要的贡献 = 基础 × 职位 × 第几张地图
     xjCost(a, t, seat) { return Math.round(CFG.xingjun.CH_BASE * this.xjPos(a, t, seat) * ((DATA.maps[a].wi || 0) + 1)); },
     // 担任过的职位

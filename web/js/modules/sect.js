@@ -94,7 +94,7 @@ G.module({
       this.sectTab = "hall";
       this.log(`你拜入${x.name}（${x.star}星），成为外门弟子。`, "gold"); this.after();
     },
-    leaveCost() { const x = this.sectInfo(); return x ? ((CFG.sect.LEAVE_COST || [])[x.star - 1] || 0) : 0; },   // 叛出门派扣的贡献
+    leaveCost() { const x = this.sectInfo(); return DATA.isTest() ? 0 : x ? ((CFG.sect.LEAVE_COST || [])[x.star - 1] || 0) : 0; },   // 叛出门派扣的贡献
     leaveSect() {
       const c = this.leaveCost();
       if (this.s.contrib < c) return this.log(`贡献不足，叛出门派需要 ${U.fmt(c)}。`, "sys");

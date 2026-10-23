@@ -56,6 +56,7 @@ G.module({
     },
     // 学习前检查：神识不够就提示，返回 false
     lsCheck(id) {
+      if (DATA.isTest()) return true;   // 测试模式不占灵识
       const need = this.ssCost(id), left = this.lsLeft();
       if (need > 0 && left < need) { this.log(`灵识点不足（需要 ${need}，剩余 ${Math.max(0, left)}），可在「修炼 → 神识」用灵石增加，或在功法页遗忘功法。`, "bad"); return false; }
       return true;
