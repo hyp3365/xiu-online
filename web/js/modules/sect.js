@@ -37,7 +37,7 @@ G.module({
     freeGf: { day: "", used: 0, end: 0 },
     pool: null,       // 练体池：{ i 池子, end 结束时间, gain 泡完加的属性, day, used }
     poolGain: {},     // 练体池累计加的肉身属性                 // 免费练功房：今天用了几次、本次结束时间
-    cqZj: [],         // 已学会的出窍真诀卷号（1~5），每卷地图每步 −CFG.cqzj.SEC 秒
+    cqZj: [],         // 已学会的出窍真诀卷号（1~3），每卷地图每步 −CFG.cqzj.SEC 秒
     cqzjL: null,      // 正在学习的出窍真诀 { v 卷号, end 学会时间 }（不进功法学习队列，学会就生效，不用修炼）
     cqLearn: 0,       // 1 = 已学会元婴出窍秘法（每天次数 = 神识强度 ssPow）
     cqDay: "", cqUsed: 0,   // 元婴出窍：今天已用次数
