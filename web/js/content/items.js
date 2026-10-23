@@ -58,5 +58,5 @@ ITEMS.treasury = [
   { kind: "furnace", fk: "qi",  g: 0, cost: 100 },
   { kind: "stone", n: 50, cost: 100, name: "一袋灵石" },
   { kind: "chuqiao" },   // 元婴出窍秘法：消耗、效果、境界限制在 config/sect.js 的 CFG.chuqiao
-  { kind: "cqzj", v: 1 }, { kind: "cqzj", v: 2 }, { kind: "cqzj", v: 3 }, { kind: "cqzj", v: 4 }, { kind: "cqzj", v: 5 },   // 出窍真诀第一~五卷：贡献、效果在 config/sect.js 的 CFG.cqzj
+  { kind: "cqzj", v: 1 }, { kind: "cqzj", v: 2 }, { kind: "cqzj", v: 3 },   // 出窍真诀第一~三卷：贡献、效果在 config/sect.js 的 CFG.cqzj
 ];

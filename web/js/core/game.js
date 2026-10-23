@@ -75,6 +75,9 @@ const G = {
   // 存档缺字段时，用模块默认值补上（以后加新功能不会坏档）
   migrate(s) {
     DATA.nmMigrate(s);   // 存档里的旧名字 → config/names.js 的新名字
+    { const n = ((CFG.cqzj || {}).COST || []).length;   // 出窍真诀删掉的卷（第 4、5 卷）从存档里清掉
+      if (Array.isArray(s.cqZj)) s.cqZj = s.cqZj.filter(v => v >= 1 && v <= n);
+      if (s.cqzjL && !(s.cqzjL.v >= 1 && s.cqzjL.v <= n)) s.cqzjL = null; }
     for (const m of this.modules) if (m.defaults) {
       const d = m.defaults();
       for (const k in d) if (s[k] === undefined) s[k] = d[k];
