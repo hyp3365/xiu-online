@@ -78,6 +78,10 @@ const G = {
     { const n = ((CFG.cqzj || {}).COST || []).length;   // 出窍真诀删掉的卷（第 4、5 卷）从存档里清掉
       if (Array.isArray(s.cqZj)) s.cqZj = s.cqZj.filter(v => v >= 1 && v <= n);
       if (s.cqzjL && !(s.cqzjL.v >= 1 && s.cqzjL.v <= n)) s.cqzjL = null; }
+    for (const k of DATA.FURNACE_KINDS || []) {   // 新炉子种类（炼丹神炉 sdan）补进老存档
+      if (s.blueprints && !s.blueprints[k]) s.blueprints[k] = [];
+      if (s.furnaces && !s.furnaces[k]) s.furnaces[k] = [];
+      if (s.furnaceUse && s.furnaceUse[k] === undefined) s.furnaceUse[k] = -1; }
     for (const m of this.modules) if (m.defaults) {
       const d = m.defaults();
       for (const k in d) if (s[k] === undefined) s[k] = d[k];

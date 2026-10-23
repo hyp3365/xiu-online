@@ -1410,7 +1410,7 @@ G.module({
     // 仙魔冥神坊市 / 功德司功法：坊市 = 灵石 + 本图贡献，功德司 = 功德
     learnJieGf(id) {
       const g = DATA.skillInfo(id), s = this.s;
-      if (!g || (g.src !== "jshop" && g.src !== "gd") || this.hasGongfa(id)) return;
+      if (!g || (g.src !== "jshop" && g.src !== "gd") || (g.sect && g.sect.old) || this.hasGongfa(id)) return;   // 神界旧 6~10 星不再出售
       if (!this.realmOK(g.sect.reqRealm)) return this.log(`境界不足，需要${DATA.realmLabel(g.sect.reqRealm)}。`, "sys");
       if (!this.lqCan("gf", id)) return;   // v173 学习队列
       if (!this.lsCheck(id)) return;   // 神识（shenshi.js）
@@ -1431,7 +1431,7 @@ G.module({
     // 四界功德司丹方：第 i 张地图（0 起）学本界 i 阶丹方，功德 = DATA.danGdCost(i)
     gdRecipeList(a) {
       const S = CFG.alchemy.SHANGGU || {}, w = (DATA.maps[a] || {}).w, cat = (S.WORLD_CAT || {})[w], g = (DATA.worldMapIdx[w] || []).indexOf(a);
-      if (!cat || g < 0) return [];
+      if (!cat || g < 0 || cat === 4) return [];   // 神丹丹方改在 9、10 星宗门炼丹房学
       return Object.keys(DATA.recipes).filter(t => DATA.danCat(t) === cat && DATA.recipeHas(t, g)).map(type => ({ type, g, cost: DATA.danGdCost(g) }));
     },
     learnGdRecipe(a, type) {

@@ -35,7 +35,7 @@ G.module({
       if (c === "stone" || c === "contrib" || c === "merit" || c === "hx") return [N];
       if (c === "lj" || c === "lz") return [{ k: "ft", label: "名称", opts: CFG.mijing.items[c].names.map((n, i) => [i, n]) }, N];
       if (c === "gf") {
-        const srcs = [...DATA.sects, ...DATA.shopSources, ...DATA.jieGf.jshop, ...DATA.jieGf.gd, ...DATA.towerBooks, ...DATA.twSources].sort((x, y) => x.star - y.star);
+        const srcs = [...DATA.sects, ...DATA.shopSources, ...DATA.jieGf.jshop.filter(x => !x.old), ...DATA.jieGf.gd.filter(x => !x.old), ...DATA.towerBooks, ...DATA.twSources].sort((x, y) => x.star - y.star);
         const o = DATA.gfSrcById[a.src] || srcs[0];
         const types = o.src === "tower" ? DATA.gongfaTypes.filter(t => DATA.TOWER_TYPES.includes(t.id)) : o.src === "shop" || o.src === "tianwai" ? DATA.gfTypesOf(o.src, o.star).filter(t => !t.sectOnly) : DATA.gfTypesOf(o.src, o.star);
         return [{ k: "src", label: "来源", opts: srcs.map(x => [x.id, srcName(x)]) }, { k: "type", label: "种类", opts: types.map(t => [t.id, t.name]) }];

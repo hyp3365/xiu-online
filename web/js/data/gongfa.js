@@ -44,7 +44,7 @@ DATA.gongfaTypes.forEach(t => { const n = (_NM.gfType || {})[t.id]; if (n) { t.n
 //   ni = 原来的序号（起名用，不影响原有功法的名字）
 //   功法分阶段（BOOK_STAGE）：fam = 本数按哪一类算（sufa 单独一类），bk = 这一类的第几本；第 4 本起 id「mijue4」…，sufa 第 2 本起「sufa2」…
 DATA.GF_STAGE_SRC = ["sect"];   // 分阶段加书的来源（只有宗门）
-DATA.GF_NEW_SRC = ["sect", "shop", "jshop", "gd"];   // 按新算法算效果的来源：坊市、功德司每本 = 宗门同星级每本 × PCT%（跟本数无关）
+DATA.GF_NEW_SRC = ["sect", "shop", "jshop", "gd", "tianwai"];   // 按新算法算效果的来源：坊市、功德司、天外天每本 = 宗门同星级每本 × PCT%（跟本数无关）
 DATA.gfStage = star => { const n = (_GF.BOOK_STAGE || [1]).length; return Math.max(1, Math.min(n, Math.ceil((star || 1) / (_GF.BOOK_STAGE_STARS || 2)))); };
 DATA.gfBookN = (src, star, fam) => {   // 某来源、某星级、某一类有几本
   src = src || "sect"; const b1 = src === "sect" ? (_GF.BOOKS || {})[fam] || 1
@@ -169,13 +169,14 @@ DATA.towerBooks = [];
 DATA.towerSources.forEach(src => DATA.towerBookFloors(src.star).forEach((x, k) =>
   DATA.towerBooks.push({ id: `${src.id}_f${x.f}`, src: "tower", star: src.star, prefix: src.prefix, name: src.name, el: src.el, reqRealm: -1, book: k + 1, floor: x.f, mult: x.pct / 100 })));
 DATA.towerBookAt = (star, f) => { const b = DATA.towerBooks.find(x => x.star === star && x.floor === f); return b ? `${b.id}:mijue` : null; };
-/* ---------- v106：天外天功法、法术的「来源」（11、12 星，每星 6 个 = 金木水火土雷各一个，id tw星级_序号；暂未开放获取） ---------- */
-DATA.TW_GF_PREFIX = [["太初", "太始", "太素", "太易", "元始", "灵宝"], ["无极", "无量", "无上", "无始", "无终", "无相"]];
+/* ---------- v106：天外天功法、法术的「来源」（11 ~ 15 星，每星 6 个 = 金木水火土雷各一个，id tw星级_序号；暂未开放获取） ---------- */
+DATA.TW_GF_PREFIX = [["太初", "太始", "太素", "太易", "元始", "灵宝"], ["无极", "无量", "无上", "无始", "无终", "无相"],
+  ["鸿蒙", "混元", "玄黄", "开天", "造化", "归墟"], ["混沌", "太虚", "大罗", "周天", "万象", "轮回"], ["道源", "道玄", "道极", "道衍", "道真", "道一"]];   // 11 ~ 15 星
 DATA.twSources = [];
 DATA.TW_GF_PREFIX.forEach((list, i) => list.forEach((prefix, n) => {
   const star = 11 + i, id = `tw${star}_${n}`; prefix = DATA.nmPick(_NM.twGf, id, prefix);
   DATA.twSources.push({ id, src: "tianwai", star, prefix, name: prefix + DATA.nmPick(_NM, "shopGfSuffix", "传承"), el: DATA.elements[n].id,
-    reqRealm: ((_GF.tianwai || {}).REQ || [20, 22])[i] });
+    reqRealm: ((_GF.tianwai || {}).REQ || [20, 22, 24, 26, 28])[i] });
 }));
 /* ---------- v213：宗门传承的「来源」（每个门派一个，id cc_门派id；只有本门派宗主能领悟） ---------- */
 DATA.ccSources = DATA.sects.map(x => ({ id: "cc_" + x.id, src: "cc", sectId: x.id, star: x.star, prefix: x.prefix, name: x.name, el: x.el, reqRealm: x.reqRealm }));
@@ -228,7 +229,7 @@ DATA.studyPer = info => { const v = (x, d) => x === undefined ? d : x, M = v(_GF
 DATA.gfLearnCost = (o, typeId) => {
   if (DATA.srcType(o) !== "shop") {   // 宗门学习贡献单独设置：learn × LEARN_TYPE × LEARN_STAR × EFFECT_LEARN（不用效果倍率）
     const C = DATA.srcCfg(o), v = (x, d = 1) => x === undefined ? d : x;
-    if (o.src === "jshop" || o.src === "gd") { const J = _GF[o.src] || {}, i = o.star - 6, t = v((J.TYPE || {})[DATA.gfTypeKey(typeId)]);   // 仙魔冥神：按星级（6~10 星）
+    if (o.src === "jshop" || o.src === "gd") { const J = _GF[o.src] || {}, i = o.star - 6, t = v((J.TYPE || {})[DATA.gfTypeKey(typeId)]);   // 仙魔冥神：按星级（6~12 星）
       return o.src === "gd" ? Math.floor(v((J.MERIT || [])[i], 0) * t) : Math.floor(v((J.STONE || [])[i], 0) * t); }
     return Math.floor(v(C.learn, 0) * v((C.LEARN_TYPE || {})[DATA.gfTypeKey(typeId)]) * v((C.LEARN_STAR || [])[o.star - 1]) * v(C.EFFECT_LEARN));
   }

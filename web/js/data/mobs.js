@@ -22,7 +22,7 @@ DATA.mobBody = n => { const o = {}; for (const k of DATA.MOB_KEYS) o[k] = DATA.b
 // 怪物功法的三类来源（悟道、试炼塔、宗门传承功法怪物不算）
 //   1 宗门功法（宗门功法殿，不含传承功法）  2 坊市功法（凡阶坊市 + 四界坊市）  3 四界功德司功法
 DATA.MOB_GF_CAT = { 1: "宗门功法", 2: "坊市功法", 3: "功德司功法" };
-DATA.mobCatSrcs = c => c === 1 ? DATA.sects : c === 2 ? [...DATA.shopSources, ...((DATA.jieGf || {}).jshop || [])] : c === 3 ? (DATA.jieGf || {}).gd || [] : [];
+DATA.mobCatSrcs = c => c === 1 ? [...DATA.sects, ...(DATA.twSources || [])] : c === 2 ? [...DATA.shopSources, ...((DATA.jieGf || {}).jshop || []).filter(x => !x.old)] : c === 3 ? ((DATA.jieGf || {}).gd || []).filter(x => !x.old) : [];   // 宗门功法 11 星以上用天外天（宗门只到 10 星）
 // 一行怪物数据转成对象：[境界, 层, 宗门组, 倍率]（坊市、功德司组已去掉；以前 6 个数 [境界, 层, 宗门组, 坊市组, 功德司组, 倍率] 也能读）
 //   每组 [类别, 前星学%, 前星层, 星级, 本星学%, 本星层]：1 ~ 星级−1 星全部按前星学% / 前星层；星级那一星按本星学% / 本星层
 //   层、学%、功法层都可以写一个数或 [最小, 最大]（遇到时随机：学% 每种功法一次、功法层每本一次）；星级 0 = 该境界能学到的最高星

@@ -11,7 +11,7 @@ DATA.REF_KEYS = ["hp", "atk", "def", "speed", "hit", "dodge", "mana", "res"];   
 DATA._ref = {};
 DATA.refStar = realm => (CFG.sect.REQ_REALM || []).filter(x => x <= realm).length;   // 该境界能进的最高星级
 // v105：star = 算 1 ~ star 星的功法（不写 = 该境界能进的最高星）；src = 算哪些来源（1 宗门 2 +凡界坊市 3 +仙魔冥神坊市 4 +功德司，不写 = 1）
-DATA.refSrcList = src => [DATA.sects, src >= 2 ? DATA.shopSources : [], src >= 3 ? (DATA.jieGf || {}).jshop || [] : [], src >= 4 ? (DATA.jieGf || {}).gd || [] : []].flat();
+DATA.refSrcList = src => [DATA.sects, src >= 2 ? DATA.shopSources : [], src >= 3 ? ((DATA.jieGf || {}).jshop || []).filter(x => !x.old) : [], src >= 4 ? ((DATA.jieGf || {}).gd || []).filter(x => !x.old) : []].flat();
 DATA.refStats = (realm, layer, gf, star, src) => {
   realm = Math.max(0, Math.min(DATA.realms.length - 1, realm)); layer = Math.max(1, Math.min(DATA.LAYERS, layer));
   const ms = star > 0 ? star : DATA.refStar(realm), sr = src > 0 ? src : 1;
