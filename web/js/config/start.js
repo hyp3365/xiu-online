@@ -38,23 +38,23 @@ CFG.start = {
  *   mjDrop 秘境收益 +%   noTribLoss 1 = 渡劫失败不掉修为   shopCut 坊市（凡界 + 四界）灵石价格 -%   ls 神识（灵识点）+
  * --------------------------------------------------------------------- */
 CFG.origin = {
-  PICK: 4,           // 能选几个
+  PICK: 5,           // 能选几个
   RECIPE_STAR: 1,    // 送的丹方：几星宗门能学的
   FABAO_G: 0,        // 送的法宝阶（0 = 一星）
   GF_STAR: 1,        // 送的功法：几星宗门
   SECT_STAR: 1,      // 宗门遗孤：加入几星宗门生效
   LIST: [
-    { id: "yigu",     name: "宗门遗孤", desc: "师门长辈收养。加入任一 1 星宗门直接是真传弟子，贡献 +500。", sectRank: 2, contrib: 500 },
+    { id: "yigu",     name: "宗门遗孤", desc: "师门长辈收养。加入任一 1 星宗门直接是真传弟子，贡献 +1000。", sectRank: 2, contrib: 1000 },
     { id: "shijia",   name: "世家子弟", desc: "灵石 +50000，聚气丹 +5。", stone: 50000, pills: [["juqi", 0, 5]] },
-    { id: "yaonong",  name: "药农之子", desc: "送 1 星丹方 1 张、凡界药材一批，灵田开局多 1 块。", recipe: 1, herbs: [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [5, 20]], field: 1 },
-    { id: "tiejiang", name: "铁匠学徒", desc: "送 1 星装备图谱 1 张、凡界矿石一批，炼器经验 +300。", eqBp: 1, ores: [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [5, 20]], qiExp: 300 },
+    { id: "yaonong",  name: "药农之子", desc: "送 1 星丹方 3 张、凡界药材一批，灵田开局多 3 块。", recipe: 3, herbs: [[0, 50], [1, 50], [2, 50], [3, 50], [4, 50], [5, 50]], field: 3 },
+    { id: "tiejiang", name: "铁匠学徒", desc: "送 1 星装备图谱 3 张、凡界矿石一批，炼器经验 +600。", eqBp: 3, ores: [[0, 50], [1, 50], [2, 50], [3, 50], [4, 50], [5, 50]], qiExp: 600 },
     { id: "shuxiang", name: "书香门第", desc: "学习功法时间 永久 -10%。", gfStudyPct: 10 },
     { id: "zhuiya",   name: "坠崖奇遇", desc: "崖底古修遗骸。送 1 星法宝 1 件、1 星秘诀 1 本。", fabao: 1, gf: ["mijue"] },
     { id: "yixiang",  name: "天降异象", desc: "出生时雷光入体。渡劫时雷属性伤害 -30%。", leiCut: 30 },
-    { id: "dongfu",   name: "古修洞府", desc: "误入残破洞府。灵气 +500000，送 1 星真经 1 本。", ling: 500000, gf: ["zhenjue"] },
+    { id: "dongfu",   name: "古修洞府", desc: "误入残破洞府。灵气 +5000000，送 1 星真经 1 本。", ling: 5000000, gf: ["zhenjue"] },
     { id: "liehu",    name: "猎户之后", desc: "山中长大，筋骨强健。肉身修炼气血 +10%，开局肉身多 5 层。", bodyPct: 10, bodyL: 5 },
-    { id: "dantong",  name: "丹童出身", desc: "自幼在丹房烧火。炼丹成功率 永久 +5%，送 1 星丹炉 1 座。", danRate: 5, furnace: [["dan", 0]] },
-    { id: "qifang",   name: "器坊学徒", desc: "自幼在器坊拉风箱。炼器成功率 永久 +5%，送 1 星炼器炉 1 座。", qiRate: 5, furnace: [["qi", 0]] },
+    { id: "dantong",  name: "丹童出身", desc: "自幼在丹房烧火。炼丹成功率 永久 +8%，送 1 星丹炉 1 座。", danRate: 8, furnace: [["dan", 0]] },
+    { id: "qifang",   name: "器坊学徒", desc: "自幼在器坊拉风箱。炼器成功率 永久 +9%，送 1 星炼器炉 1 座。", qiRate: 8, furnace: [["qi", 0]] },
     { id: "youfang",  name: "游方散修", desc: "随师父走遍凡界。探索每步时间 永久 -0.5 秒。", explore: 0.5 },
     { id: "mijing",   name: "秘境遗民", desc: "生于秘境边缘。秘境掉落 永久 +30%。", mjDrop: 30 },
     { id: "simiao",   name: "寺庙寄养", desc: "在古寺长大，心性平和。渡劫失败不掉修为。", noTribLoss: 1 },
