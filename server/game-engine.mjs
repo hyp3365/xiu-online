@@ -205,6 +205,9 @@ export class GameEngine {
     return safeClone(state);
   }
 
+  // 这个引擎是否属于管理员账号（config/rates.js 的测试模式只对管理员生效）
+  setAdmin(v) { this.DATA._admin = !!v; }
+
   bindState(state, now = Date.now()) {
     if (!state || typeof state !== "object" || Array.isArray(state)) throw new TypeError("Invalid player state");
     this.seedRandom();

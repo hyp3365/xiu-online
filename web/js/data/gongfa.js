@@ -52,7 +52,7 @@ DATA.gfBookN = (src, star, fam) => {   // 某来源、某星级、某一类有�
   if (!DATA.GF_STAGE_SRC.includes(src)) return b1;
   return b1 * ((_GF.BOOK_STAGE || [1])[DATA.gfStage(star) - 1] || 1);
 };
-DATA.gfBookMax = fam => ((_GF.BOOKS || {})[fam] || 1) * Math.max(1, ...(_GF.BOOK_STAGE || [1]));
+DATA.gfBookMax = fam => Math.max(((_GF.BOOKS || {})[fam] || 1) * Math.max(1, ...(_GF.BOOK_STAGE || [1])), ...["jshop", "gd"].map(k => (((_GF[k] || {}).BOOKS || {})[fam]) || 1));   // 四界坊市、功德司真经 6 本也算进来
 DATA.gongfaTypes = DATA.gongfaTypes.flatMap((t, i) => { t.ni = i; t.fam = t.id; t.bk = 1; const r = [t];
   for (let b = 2; b <= DATA.gfBookMax(t.id); b++) r.push(Object.assign({}, t, { id: t.id + b, base: t.id, book: b, bk: b }));
   if (t.id === "shenfa") { const sf = Object.assign({}, t, { id: "sufa", base: "shenfa", book: 2, allSrc: true, stat: "speed", label: "速度", catLabel: undefined, fam: "sufa", bk: 1 });   // v240：另一本身法只加速度（同属身法类，宗门、坊市、功德司都有）
@@ -113,6 +113,7 @@ DATA.gongfaName = (sect, type) => {
   if (sect.src === "cc") { const C = CFG.sect.chuancheng; return sect.name + C.WORD + (C.NAME[type.id] || type.suffix); }   // 宗门传承
   if (sect.src === "wdroom") return `${CFG.wudaoRoom.xiulian.NAME[type.id] || type.suffix}·第${DATA.cnNum(sect.juan)}卷`;   // 悟道室秘诀
   if (sect.book) return `${sect.prefix}${type.suffix}·第${sect.book}卷`;   // 试炼塔秘诀
+  if (sect.plain && type.fam === "zhenjue") return sect.prefix + (DATA.elById[(sect.els || {})[type.id]] || {}).name + type.suffix;   // 四界真经 6 本：地图名 + 属性 + 真经（梵度天火真经）
   // 分阶段多出来的书：也用随机词起名（跳过同类原有书已用的词，同类不重名；宗门原来就有的第 2、3 本不变）
   const isSect = (sect.src || "sect") === "sect", bOf = f => isSect ? (_GF.BOOKS || {})[f] || 1 : 1;
   const nb = bOf(type.fam), old = !type.bk || type.bk <= nb || ["cc", "wdroom", "tianwai"].includes(sect.src);
@@ -225,12 +226,14 @@ DATA.studyPer = info => { const v = (x, d) => x === undefined ? d : x, M = v(_GF
   const base = info.per ? info.per : Math.max(1, Math.floor(v(_GF.STUDY_RATE, 5) * v((_GF.STUDY_STAR || [])[info.star - 1], info.star)));
   const L = v((_GF.STUDY_LV || [])[(info.lv || 1) - 1], 1);   // v248 每层单独倍率
   return Math.max(1, Math.round(base * M * L)); };
+// 四界坊市 / 功德司功法价格：仙冥魔用 KEY[星级-6]，神界新 11、12 星用 SHEN_KEY[星级-11]（config/gongfa.js 的 jshop / gd）
+DATA.jiePrice = (o, key) => { const J = _GF[o.src] || {}; return (o.nw ? (J["SHEN_" + key] || [])[o.star - 11] : (J[key] || [])[o.star - 6]) || 0; };
 // 学习所需：宗门 = 贡献，坊市 = 灵石
 DATA.gfLearnCost = (o, typeId) => {
   if (DATA.srcType(o) !== "shop") {   // 宗门学习贡献单独设置：learn × LEARN_TYPE × LEARN_STAR × EFFECT_LEARN（不用效果倍率）
     const C = DATA.srcCfg(o), v = (x, d = 1) => x === undefined ? d : x;
-    if (o.src === "jshop" || o.src === "gd") { const J = _GF[o.src] || {}, i = o.star - 6, t = v((J.TYPE || {})[DATA.gfTypeKey(typeId)]);   // 仙魔冥神：按星级（6~12 星）
-      return o.src === "gd" ? Math.floor(v((J.MERIT || [])[i], 0) * t) : Math.floor(v((J.STONE || [])[i], 0) * t); }
+    if (o.src === "jshop" || o.src === "gd") { const t = v(((_GF[o.src] || {}).TYPE || {})[DATA.gfTypeKey(typeId)]);   // 仙魔冥 / 神界价格分开（DATA.jiePrice）
+      return Math.floor(DATA.jiePrice(o, o.src === "gd" ? "MERIT" : "STONE") * t); }
     return Math.floor(v(C.learn, 0) * v((C.LEARN_TYPE || {})[DATA.gfTypeKey(typeId)]) * v((C.LEARN_STAR || [])[o.star - 1]) * v(C.EFFECT_LEARN));
   }
   // 坊市售价单独设置：price × PRICE_TYPE × PRICE_STAR × EFFECT_PRICE
@@ -261,7 +264,7 @@ DATA.gongfaInfo = (id, lv = 1) => {
   return {
     kind: "gf", id, sect, src: DATA.srcType(sect), star: sect.star, type, lv, el,
     label: type.stat === "res" ? el.name + "抗性" : type.label, // 显示用：真经写成「火抗性」等
-    gx: J ? Math.floor(((J.GX || [])[sect.star - 6] || 0) * (((J.TYPE || {})[DATA.gfTypeKey(type.id)]) === undefined ? 1 : J.TYPE[DATA.gfTypeKey(type.id)])) : 0,   // 仙魔冥神坊市：还要本图贡献
+    gx: J ? Math.floor(DATA.jiePrice(sect, "GX") * (((J.TYPE || {})[DATA.gfTypeKey(type.id)]) === undefined ? 1 : J.TYPE[DATA.gfTypeKey(type.id)])) : 0,   // 仙魔冥神坊市：还要本图贡献
     name: DATA.gongfaName(sect, type),
     value: per * DATA.lvMul(lv),                  // 当前加成（固定数值）
     next: per * DATA.lvMul(lv + 1),               // 下一层的加成

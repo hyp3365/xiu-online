@@ -201,5 +201,7 @@ test("HTTP auth and WebSocket actions use authoritative server state", { timeout
   assert.equal((await waitFor2(m => m.type === "result" && m.id === "second-player-01")).state.auto, true);
   const firstAgain = await fetch(`${base}/api/session`, { headers: { "X-Token": token } }).then(r => r.json());
   assert.equal(firstAgain.data.auto, true);
-  assert.equal(firstAgain.data.stone, persisted.data.stone + 25);
+  // 测试模式（config/rates.js TEST: 1）对管理员生效：重新载入时灵石被填成测试值，礼包加的不保留
+  const testOn = /\bTEST:\s*1\b/.test((await fs.readFile(new URL("../../web/js/config/rates.js", import.meta.url), "utf8")));
+  if (!testOn) assert.equal(firstAgain.data.stone, persisted.data.stone + 25);
 });

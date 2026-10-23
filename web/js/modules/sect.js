@@ -116,7 +116,7 @@ G.module({
     promote() {
       const i = this.s.rank + 1; if (i >= DATA.ranks.length) return;
       if (!this.realmOK(this.rankReqRealm(i)) || this.s.contrib < this.rankCost(i)) return;
-      if (this.s.rankPass !== i) return this.log("需先通过晋升考验。", "sys");
+      if (this.s.rankPass !== i && !DATA.isTest()) return this.log("需先通过晋升考验。", "sys");   // 测试模式不用考核
       this.s.contrib -= this.rankCost(i); this.s.rank = i; this.s.rankPass = -1;
       this.log(`晋升为【${DATA.ranks[i].name}】！`, "gold"); this.after();
     },
@@ -750,7 +750,7 @@ G.module({
         <button class="sm" onclick="G.claimQl()" ${s.qlDay === this.today() ? "disabled" : ""}>${s.qlDay === this.today() ? "今日已领" : "领取"}</button></div>` : ""}
         ${next < 0 ? `<p class="desc">你已是一宗之主。</p>` : `<div class="line"><div>晋升【${DATA.ranks[next].name}】
           <small>需${DATA.realmLabel(this.rankReqRealm(next))} · ${U.fmt(this.rankCost(next))} 贡献 · ${s.rankPass === next ? "已通过考验" : "需先通过考验"}</small></div>
-          <button class="sm" onclick="G.promote()" ${s.rankPass !== next || !this.realmOK(this.rankReqRealm(next)) || s.contrib < this.rankCost(next) ? "disabled" : ""}>晋升</button></div>
+          <button class="sm" onclick="G.promote()" ${(s.rankPass !== next && !DATA.isTest()) || !this.realmOK(this.rankReqRealm(next)) || s.contrib < this.rankCost(next) ? "disabled" : ""}>晋升</button></div>
           <div class="line"><div>晋升考验 · ${DATA.ranks[next].name}考官<small>每次消耗 ${U.fmt(this.rankTrialCost(next))} 贡献 · 战斗胜利后才能晋升</small></div>
           <button class="sm ${s.rankPass === next ? "on" : ""}" onclick="G.challengeRank()" ${s.rankPass === next || !this.realmOK(this.rankReqRealm(next)) || s.contrib < this.rankTrialCost(next) ? "disabled" : ""}>${s.rankPass === next ? "已通过" : "考验"}</button></div>`}</div>
         ${this.isMaster() ? this.ccCard() : ""}

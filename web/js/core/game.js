@@ -81,6 +81,15 @@ const G = {
     { const K = ["contrib", "stone", "merit"], BIG = 1e15;   // 测试模式（config/rates.js TEST）：贡献、灵石、功德随便花；打开时记下原数，关掉恢复
       if (DATA.isTest()) { if (!s._testBak) s._testBak = Object.fromEntries(K.map(k => [k, s[k] || 0])); for (const k of K) s[k] = BIG; }
       else if (s._testBak) { for (const k of K) s[k] = s._testBak[k] || 0; delete s._testBak; } }
+    {   // 炼器仙炉（xqi）删掉：清掉老存档里的图纸、炉子、背包图纸 / 炉子、学习和炼制队列
+      const X = o => o && (o.kind === "xqi" || o.k === "xqi");
+      for (const f of ["blueprints", "furnaces", "furnaceUse"]) if (s[f]) delete s[f].xqi;
+      if (Array.isArray(s.bag)) s.bag = s.bag.filter(it => !((it.t === "bp" || it.t === "fu") && it.kind === "xqi"));
+      if (s.lq && Array.isArray(s.lq.forge)) s.lq.forge = s.lq.forge.filter(x => !X(x));
+      if (X(s.forgeStudy)) s.forgeStudy = null;
+      if (Array.isArray(s.forgeQueue)) s.forgeQueue = s.forgeQueue.filter(x => !X(x));
+      if (X(s.forgeJob)) s.forgeJob = null;
+      if (s.craftsman) delete s.craftsman.xqi; }
     for (const k of DATA.FURNACE_KINDS || []) {   // 新炉子种类（炼丹神炉 sdan）补进老存档
       if (s.blueprints && !s.blueprints[k]) s.blueprints[k] = [];
       if (s.furnaces && !s.furnaces[k]) s.furnaces[k] = [];

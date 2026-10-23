@@ -66,7 +66,8 @@ function readUpdateLog() {
 
 function getEngine(userId) {
   let entry = engines.get(userId);
-  if (!entry) { entry = { engine: new GameEngine(), lastUsed: Date.now() }; engines.set(userId, entry); }
+  if (!entry) { entry = { engine: new GameEngine(), lastUsed: Date.now() }; engines.set(userId, entry);
+    try { entry.engine.setAdmin(!!(q.byId.get(userId) || {}).is_admin); } catch (err) { console.error("setAdmin failed", err); } }   // 测试模式只对管理员生效
   entry.lastUsed = Date.now();
   return entry.engine;
 }

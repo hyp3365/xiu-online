@@ -33,12 +33,12 @@ DATA.recipeHas = (type, g) => !!(_AL.recipes[type] && _AL.recipes[type].herbs[g]
 // v41：丹方分类（0 凡丹 1 仙丹 2 冥丹 3 魔丹 4 神丹）、学习需要的门派星级、加成的属性
 DATA.danCat = type => (_AL.recipes[type] && _AL.recipes[type].cat) || 0;
 // 凡丹：N 星宗门有一阶~N 阶（用户定，2026-10-20）；仙冥魔神丹在四界功德司学，这里的星级只作旧配置兼容
-DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || (DATA.danCat(type) === 4 ? (_AL.SHEN_STAR || [])[g] || 10 : Math.min(5, Math.floor(g / (_AL.SECT_STAR_TIERS || 2)) + 1));   // 凡丹学习需要的门派星级：1~5 星宗门每星两阶（一二阶 1 星 … 九十阶 5 星），6~10 星宗门全部；仙冥魔神丹在功德司学
+DATA.danStar = (type, g) => (_AL.recipes[type] || {}).star || (Math.min(5, Math.floor(g / (_AL.SECT_STAR_TIERS || 2)) + 1));   // 凡丹学习需要的门派星级：1~5 星宗门每星两阶（一二阶 1 星 … 九十阶 5 星），6~10 星宗门全部；仙冥魔神丹在功德司学
 DATA.danStat = type => (_AL.recipes[type] && _AL.recipes[type].stat) || type;
 // v42：仙冥魔神丹（cat ≥ 1）用炼丹仙炉、炼丹仙师；修炼丹的品质 = 阶 + REALM0
 DATA.danFu = type => DATA.danCat(type) === 4 ? "sdan" : DATA.danCat(type) ? "xdan" : "dan";   // 神丹用炼丹神炉
 DATA.danCraft = type => DATA.danCat(type) ? "xdan" : "dan";
-DATA.danSect = type => { const c = DATA.danCat(type); return c === 0 || c === 4; };   // 在宗门炼丹房学的丹方：凡丹、神丹
+DATA.danSect = type => DATA.danCat(type) === 0;   // 在宗门炼丹房学的丹方：只有凡丹（仙冥魔神丹在四界功德司）
 DATA.pillGrade = (type, g) => g + ((_AL.recipes[type] && _AL.recipes[type].REALM0) || 0);
 DATA.isSpeedRecipe = type => !!(_AL.recipes[type] && _AL.recipes[type].speed);
 // 一阶破军丹；修炼速度丹显示为 一阶聚气丹（练气期）
@@ -52,23 +52,23 @@ DATA.danLimit = (type, g) => _AL.recipes[type].limit[g];
 DATA.danRecipe = (type, g) => DATA.parseMats(_AL.recipes[type].herbs[g]);
 DATA.danTime = (type, g) => _AL.recipes[type].time[g] * 60000;     // 毫秒（未算炉子加成）
 DATA.danLearnTime = (type, g) => _AL.recipes[type].learnTime[g] * 60000;
-DATA.danLearnCost = (type, g) => DATA.danCat(type) === 4 ? (_AL.SHEN_LEARN || [])[g] || 0 : (_AL.recipes[type].learnCost || [])[g] || 0;
+DATA.danLearnCost = (type, g) => (_AL.recipes[type].learnCost || [])[g] || 0;
 // 四界功德司丹方在背包里学习的时间（毫秒），ss = 神识强度
 DATA.danGdLearnMs = (g, ss) => { const R = _AL.GD_RECIPE || {}, d = (k, v) => R[k] === undefined ? v : R[k];
   ss = Math.max(0, ss || 0);
   let sec = (d("LEARN_MIN", 720) + d("LEARN_STEP", 90) * g) * 60 - ss * d("SS_SEC", 10);
   sec *= 1 - Math.min(d("SS_PCT_MAX", 50), Math.floor(ss / 100) * d("SS_PCT", 2)) / 100;
   return Math.max(d("MIN_SEC", 30), sec) * 1000; };
-DATA.danGdCost = g => { const R = _AL.GD_RECIPE || {}; return (R.MERIT === undefined ? 5000 : R.MERIT) + (R.STEP === undefined ? 1000 : R.STEP) * g; };   // 四界功德司学丹方的功德
+DATA.danGdCost = (g, shen) => { const R = _AL.GD_RECIPE || {}, m = shen && R.SHEN_MERIT !== undefined ? R.SHEN_MERIT : R.MERIT, st = shen && R.SHEN_STEP !== undefined ? R.SHEN_STEP : R.STEP; return (m === undefined ? 5000 : m) + (st === undefined ? 1000 : st) * g; };   // 四界功德司兑换丹方的功德（神界单独）
 DATA.danPrice = (type, g) => (_AL.recipes[type].price || [])[g] || 0;
 
 /* ---------- 炼丹炉 / 炼器炉 ---------- */
 DATA.furnaces = _FU;                                                // dan / qi
-DATA.furnaceName = (kind, g) => (kind === "qi" || kind === "xqi" ? DATA.XING : DATA.JIE)[g] + _FU[kind].name;   // 炼器炉 / 炼器仙炉按星
+DATA.furnaceName = (kind, g) => (kind === "qi" ? DATA.XING : DATA.JIE)[g] + _FU[kind].name;   // 炼器炉 / 炼器仙炉按星
 DATA.furnaceMats = (kind, g) => DATA.parseMats(_FU[kind].mats[g]);
 DATA.furnaceTime = (kind, g) => _FU[kind].time[g] * 60000;
 DATA.furnaceBonus = (kind, g) => g >= 0 ? _FU[kind].bonus[g] : 0;  // 缩短时间 %
-DATA.furnaceKinds = { dan: "炼丹炉", qi: "炼器炉", xdan: "炼丹仙炉", xqi: "炼器仙炉", sdan: "炼丹神炉" };
+DATA.furnaceKinds = { dan: "炼丹炉", qi: "炼器炉", xdan: "炼丹仙炉", sdan: "炼丹神炉" };
 for (const k in DATA.furnaceKinds) if (_FU[k] && _FU[k].name) DATA.furnaceKinds[k] = _FU[k].name;   // 名字在 config/names.js 的 furnace
 DATA.FURNACE_KINDS = Object.keys(DATA.furnaceKinds).filter(k => _FU[k]);
 DATA.isDanFu = k => k === "dan" || k === "xdan" || k === "sdan";                                // 炼丹用的炉子

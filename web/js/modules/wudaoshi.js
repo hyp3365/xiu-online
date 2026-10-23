@@ -41,8 +41,9 @@ G.module({
     wdLeft(dao) { const w = this.s.wd || {}; return (w.day || {})[dao] === this.today() ? 0 : 1; },   // 每条道每天 1 次
     setWdDao(id) { this.wdDao = id; this.render(); },
     // 功德司：买悟道果
-    buyWdFruit(n) {
-      const s = this.s, c = _WR.FRUIT_MERIT; n = Math.min(n, Math.floor((s.merit || 0) / c));
+    wdFruitCost(a) { const w = (DATA.maps[a] || {}).w; return w === "shen" && _WR.FRUIT_MERIT_SHEN !== undefined ? _WR.FRUIT_MERIT_SHEN : _WR.FRUIT_MERIT; },   // 神界功德司单独价格
+    buyWdFruit(n, a) {
+      const s = this.s, c = this.wdFruitCost(a); n = Math.min(n, Math.floor((s.merit || 0) / c));
       if (n <= 0) return this.log("功德不足。", "sys");
       if (!this.addSm("wdg", n)) return;
       s.merit -= c * n; this.log(`购得${DATA.smName("wdg")} ×${n}。`, "good"); this.after();

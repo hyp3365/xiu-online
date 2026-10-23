@@ -25,6 +25,8 @@ DATA.jieGf = { jshop: [], gd: [] };
       for (let i = seq.length - 1; i > 0; i--) { h = (h * 1103515245 + 12345) >>> 0; const j = h % (i + 1); [seq[i], seq[j]] = [seq[j], seq[i]]; }
       grp.forEach((o, i) => { o.els[t.id] = seq[i]; });
     });
+    const E = DATA.elements;   // 真经 6 本：第 1 本属性不变，后面 5 本依次补齐金木水火土雷（每处六种抗性各一本）
+    list.forEach(o => { const b0 = E.findIndex(e => e.id === o.els.zhenjue); for (let b = 2; b <= 6; b++) if (("zhenjue" + b) in o.els) o.els["zhenjue" + b] = E[(b0 + b - 1) % E.length].id; });
     list.forEach(o => { o.el = o.els.mijue; DATA.gfSrcById[o.id] = o; });
   }
 })();

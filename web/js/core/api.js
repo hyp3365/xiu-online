@@ -244,7 +244,7 @@ const API = {
 
   async loadSave() {
     const j = await this.req("session");
-    this.isAdmin = !!j.admin;
+    this.isAdmin = !!j.admin; DATA._admin = this.isAdmin;   // 测试模式只对管理员生效
     this.syncClock(j.serverNow);
     this.installActions(j.actions || []);
     this.installResume();
