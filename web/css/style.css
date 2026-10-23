@@ -624,8 +624,9 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 /* ===== 六界图 / 地图卷轴 / 探索信息浮层 ===== */
 .wbar{display:flex;align-items:center;gap:8px;margin:2px 0 6px;padding:6px 8px;border-radius:10px;background:var(--c-card);border:1px solid var(--c-line)}
 .wbar b{font-size:16px;letter-spacing:2px}.wbar small{color:var(--t-dim);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
-.atlas{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(232,200,120,.35);box-shadow:0 6px 18px rgba(0,0,0,.35)}
-.atlas img{display:block;width:100%}
+/* 六界图铺满整个页面区（抵消 #view 的内边距，高度到底部图标栏） */
+.atlas{position:relative;overflow:hidden;margin:-10px -12px;height:calc(100% + 20px);min-height:420px}
+.atlas img{display:block;width:100%;height:100%;object-fit:cover}
 .atag{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px 5px;border-radius:3px;cursor:pointer;
   background:linear-gradient(180deg,#f7eed6,#e6d2a2);border:1px solid #7d5c27;box-shadow:0 0 0 2px rgba(247,238,214,.35),0 4px 10px rgba(0,0,0,.45);color:#3a2812}
 .atag b{font-size:16px;letter-spacing:4px;padding-left:4px}
@@ -653,3 +654,21 @@ html[data-bg="xuanzhi"] .bar-img,html[data-bg="xinghuang"] .bar-img,html[data-bg
 .exov-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .exov-tabs button{padding:9px 0;min-width:0}
 .exov-tabs button.on{border-color:var(--t-gold);color:var(--t-gold)}
+/* 六界图上的按钮、固定返回、圆角按钮 */
+.pill{border-radius:999px!important;padding:6px 14px;background:linear-gradient(180deg,rgba(60,45,28,.92),rgba(30,22,14,.92));border:1px solid rgba(232,200,120,.6);color:#f3e2b8;box-shadow:0 3px 8px rgba(0,0,0,.45);font-size:13px;white-space:nowrap}
+button.sm.pill{padding:4px 12px}
+.pill.on{border-color:var(--t-gold);color:var(--t-gold)}
+.atl-l{position:absolute;left:2.5%;top:2%;display:flex;flex-direction:column;gap:4px;max-width:44%}
+.atl-btns{display:flex;gap:6px}
+.atl-btns .pill{padding:5px 10px;font-size:12px}
+.atl-l p{margin:0;padding:2px 8px;border-radius:10px;background:rgba(10,8,6,.62);color:#f1e3c2;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.atl-l p i{font-style:normal;color:#ffd77a;margin-right:4px}
+.atl-r{position:absolute;right:2.5%;top:6.5%;padding:5px 12px;font-size:12px}
+.atl-bl{position:absolute;left:3%;bottom:2.5%}
+.atl-br{position:absolute;right:3%;bottom:2.5%}
+.fback{position:sticky;bottom:10px;height:0;margin-top:52px;display:flex;justify-content:flex-end;z-index:5;pointer-events:none}
+.fback button{pointer-events:auto;transform:translateY(-100%);border-radius:999px;padding:9px 22px;background:linear-gradient(180deg,rgba(70,52,30,.95),rgba(34,25,16,.95));border:1px solid rgba(232,200,120,.7);color:#f6e6bd;box-shadow:0 4px 12px rgba(0,0,0,.55);font-size:14px;letter-spacing:2px}
+.pghead{font-size:16px;font-weight:bold;letter-spacing:2px;color:var(--t-gold);margin:4px 2px 8px}
+.runlist{max-height:55vh;overflow-y:auto;margin:6px 0}
+.runlist .line{align-items:center}.runlist .line>div:last-child{display:flex;gap:6px;flex:none}
+.runlist .dimrow{opacity:.5}

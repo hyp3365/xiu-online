@@ -80,10 +80,39 @@ G.module({
       this.log(`开始在${this.kuangName(a)}挖矿（期间无法修炼）。`, "sys");
       this.after();
     },
-    setWorld(id) { if (this.worldId !== id) { this.mapSel = undefined; this.hallSel = null; this.mapPage = false; } this.worldId = id; this.atlasOn = false; this.render(); },
+    setWorld(id) { if (this.worldId !== id) { this.mapSel = undefined; this.hallSel = null; } this.mapPage = false; this.worldId = id; this.atlasOn = false; this.atlasSub = null; this.render(); this.viewScroll(this.mapRev(id) ? -1 : 0); },
     // 六界图 / 地图卷轴 / 探索信息浮层（纯界面状态，不进服务器白名单）
-    openAtlas() { this.atlasOn = true; this.render(); },
-    setMapPage(v) { this.mapPage = !!v; this.hallSel = null; this.render(); },
+    openAtlas() { this.atlasOn = true; this.atlasSub = null; this.render(); this.viewScroll(0); },
+    setAtlasSub(k) { this.atlasSub = k; this.atlasOn = !k; this.adminPage = false; this.render(); this.viewScroll(0); },
+    // y < 0 = 滚到最底（仙界、魔界第一张图在下面）；图片陆续加载会变高，过一会儿再滚几次
+    viewScroll(y) { if (typeof document === "undefined") return; const v = document.getElementById("view"); if (!v) return;
+      v.scrollTop = y < 0 ? v.scrollHeight : y;
+      if (y < 0) { const t0 = this._vsT = Date.now(); [80, 300, 700, 1500].forEach(ms => setTimeout(() => { if (this._vsT === t0 && v.scrollHeight - v.scrollTop - v.clientHeight < 400) v.scrollTop = v.scrollHeight; }, ms)); } },
+    mapRev(wid) { return wid === "xian" || wid === "mo"; },   // 仙界、魔界第一张图在最下面
+    // 元婴出窍 / 自动探索 列表：所有能出窍 / 探索的地图（已历练通过的区域 + 凡界灵矿），可隐藏（存在本机）
+    runHidden(k) { try { return JSON.parse(localStorage.getItem("xiu_runhide_" + k) || "[]"); } catch (e) { return []; } },
+    hideRun(k, key) { const h = this.runHidden(k), i = h.indexOf(key); if (i >= 0) h.splice(i, 1); else h.push(key); try { localStorage.setItem("xiu_runhide_" + k, JSON.stringify(h)); } catch (e) {} this.openRunList(k); },
+    toggleRunHid(k) { this.runShowHid = !this.runShowHid; this.openRunList(k); },
+    openRunList(k) {
+      const s = this.s, cq = k === "cq", hid = this.runHidden(k), rows = [];
+      DATA.worlds.forEach(w => { if (!this.worldOpen(w.id)) return;
+        (DATA.worldMapIdx[w.id] || []).slice().sort((a, b) => DATA.mapReq(a) - DATA.mapReq(b) || a - b).forEach(a => {
+          if (!this.realmOK(DATA.mapReq(a)) || !this.mapUnlocked(a)) return;
+          const m = DATA.maps[a];
+          DATA.regionDirs.forEach((d, r) => { if (!this.regionOpen(a, r) || !this.isTrained(a, r)) return;
+            const run = cq ? s.cq && !s.cq.kuang && s.cq.map === a && (s.cq.reg || 0) === r : s.explore && !s.explore.once && !s.explore.kuang && s.explore.mj === undefined && s.explore.map === a && (s.explore.reg || 0) === r;
+            rows.push({ key: a + "_" + r, name: `${w.name} · ${m.name} · ${d}域`, run, act: cq ? (run ? `G.stopChuqiao(${a},${r})` : `G.openChuqiao(${a},${r})`) : `G.toggleExplore(${a},${r})` }); });
+          if (w.id === "fan" && this.mapOpen(a)) { const run = cq ? s.cq && s.cq.kuang && s.cq.map === a : s.explore && s.explore.kuang && !s.explore.cq && s.explore.map === a;
+            rows.push({ key: a + "_k", name: `${w.name} · ${this.kuangName(a)}`, run, act: cq ? (run ? `G.stopChuqiao(${a},-1)` : `G.openChuqiao(${a},-1)`) : `G.toggleKuang(${a})` }); }
+        }); });
+      const show = rows.filter(x => this.runShowHid || !hid.includes(x.key)), nh = rows.filter(x => hid.includes(x.key)).length, dis = cq && !s.cqLearn;
+      this.modal(`<h2>${cq ? "元婴出窍" : "自动探索"}</h2>
+        ${dis ? `<p class="desc" style="text-align:center">尚未学会元婴出窍。</p>` : ""}
+        <div class="row small" style="align-items:center"><span>可${cq ? "出窍" : "探索"} ${rows.length} 处${nh ? ` · 已隐藏 ${nh} 处` : ""}</span>${nh ? `<button class="sm pill" onclick="G.toggleRunHid('${k}')">${this.runShowHid ? "收起已隐藏" : "显示已隐藏"}</button>` : ""}</div>
+        <div class="runlist">${show.map(x => `<div class="line${hid.includes(x.key) ? " dimrow" : ""}"><div>${x.name}</div><div><button class="sm pill${x.run ? " on" : ""}" onclick="${x.act}" ${dis && !x.run ? "disabled" : ""}>${x.run ? "停止" : cq ? "出窍" : "探索"}</button><button class="sm pill" onclick="G.hideRun('${k}','${x.key}')">${hid.includes(x.key) ? "显示" : "隐藏"}</button></div></div>`).join("") || `<p class="desc" style="text-align:center">${rows.length ? "都隐藏了。" : "还没有可以" + (cq ? "出窍" : "探索") + "的地图（先历练通过区域）。"}</p>`}</div>
+        <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+    setMapPage(v) { this.mapPage = !!v; this.hallSel = null; this.render(); if (!v) this.viewScroll(this.mapRev(this.worldId || "fan") ? -1 : 0); },
     setExFollow() { this.exFollow = this.exFollow === false; this.render(); },
     // v45：这一界开放没有（config/worldmaps.js 的 open）
     worldOpen(id) {
@@ -1347,7 +1376,11 @@ G.module({
         const req = (((CFG.worldMaps || {})[w.id] || {}).open || {}).realm;
         const sub = w.open === false ? "未开放" : !open && req !== undefined ? "需" + DATA.realmLabel(req) : cur ? "当前" : "";
         return `<button class="atag${open ? "" : " dim"}${cur ? " cur" : ""}" style="left:${p[0]}%;top:${p[1]}%" onclick="${w.open === false ? "G.log('机缘暂未开放，敬请期待。','sys')" : `G.setWorld('${w.id}')`}"><b>${w.name}</b>${sub ? `<small>${sub}</small>` : ""}</button>`; }).join("");
-      return `<div class="atlas"><img src="img/map/atlas.webp" alt="">${tags}</div>`;
+      const s = this.s, ln = (x, cq) => x ? `<p onclick="G.setExInfo('${cq ? "cq" : "ex"}',1)"><i>${cq ? "出窍中" : x.once ? "历练中" : "探索中"}</i>${this.exName(x)}</p>` : "";
+      const top = `<div class="atl-l"><div class="atl-btns"><button class="pill" onclick="G.openRunList('cq')">元婴出窍</button><button class="pill" onclick="G.openRunList('ex')">自动探索</button></div>${ln(s.cq, true)}${ln(s.explore, false)}</div>
+        <button class="pill atl-r" onclick="G.setExInfo('${s.cq && !s.explore ? "cq" : "ex"}',1)">探索信息</button>
+        <button class="pill atl-bl" onclick="G.setAtlasSub('battle')">战斗</button><button class="pill atl-br" onclick="G.setAtlasSub('set')">设置</button>`;
+      return `<div class="atlas"><img src="img/map/atlas.webp" alt="">${tags}${top}</div>` + this.exOverlay();
     },
     // 一界的地图卷轴：从上到下第 1 ~ 10 张图，图左右交替，旁边竖写图名；凡界最后加秘境
     mapScroll(wid, idx, ex) {
@@ -1357,9 +1390,11 @@ G.module({
         const lockR = !this.realmOK(DATA.mapReq(a)), lockU = !lockR && !this.mapUnlocked(a), run = ex === a;
         const sub = lockR ? "需" + DATA.realmLabel(DATA.mapReq(a)) : lockU ? "未开启" : run ? "探索中" : (fan ? "" : `第 ${i + 1} 重`);
         return `<div class="wsi ${i % 2 ? "r" : "l"}${lockR || lockU ? " lock" : ""}${run ? " cur" : ""}" onclick="G.setMapSel(${a})">
-          <img src="img/map/is_${img}.webp" alt=""${flip ? ` style="transform:scaleX(-1)"` : ""}><div class="wsn"><b style="height:${[...m.name].length * 1.45 + 1.2}em">${m.name}</b>${sub ? `<small>${sub}</small>` : ""}</div></div>`; }).join("");
+          <img src="img/map/is_${img}.webp" alt=""${flip ? ` style="transform:scaleX(-1)"` : ""}><div class="wsn"><b style="height:${[...m.name].length * 1.45 + 1.2}em">${m.name}</b>${sub ? `<small>${sub}</small>` : ""}</div></div>`; });
+      const shop = fan ? `<div class="wsi ${(idx.length + 1) % 2 ? "r" : "l"}" onclick="G.setMapSel('shop')"><img src="img/map/is_shop.webp" alt=""><div class="wsn"><b style="height:${2 * 1.45 + 1.2}em">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</b></div></div>` : "";
       const mj = fan ? (n => `<div class="wsi ${idx.length % 2 ? "r" : "l"}${ex === "mj" ? " cur" : ""}" onclick="G.setMapSel('mj')"><img src="img/map/is_mj.webp" alt=""><div class="wsn"><b style="height:${[...this.mjLabel("mj")].length * 1.45 + 1.2}em">${this.mjLabel("mj")}</b><small>${ex === "mj" ? "探索中" : n ? `已发现 ${n} 处` : "未发现"}</small></div></div>`)(this.mjState().found.length) : "";
-      return `<div class="wscroll ws-${wid}" style="background-image:url(img/map/bg_${wid}.webp)">${rows}${mj}</div>`;
+      const list = this.mapRev(wid) ? rows.slice().reverse() : rows;
+      return `<div class="wscroll ws-${wid}" style="background-image:url(img/map/bg_${wid}.webp)">${list.join("")}${mj}${shop}</div>`;
     },
     // 探索信息浮层：盖住整个画面，底部 出窍信息 / 探索信息 / 全部信息 / 关闭；「跟随最新」时停在最上面的最新一条（game.js render）
     exOverlay() {
@@ -1397,7 +1432,7 @@ G.module({
           ${sel === i ? `<div class="explore-log">${(r.ev || []).map((e, j) => this.evLine(e, "h" + i, j)).join("")}</div>` : ""}`).join("") : "<p>还没有记录。</p>"}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
-    setMapSel(a) { this.mapSel = a; this.mapPage = true; this.hallSel = null; this.render(); },   // a = 地图序号，"mj" = 秘境
+    setMapSel(a) { this.mapSel = a; this.mapPage = true; this.hallSel = null; this.render(); this.viewScroll(0); },   // a = 地图序号，"mj" = 秘境
 
     /* ---------- 坊市：丹药 装备 功法 药材 矿石 ----------
      * 丹药、装备：content/items.js 的 ITEMS.shop，只卖练气品质
@@ -1575,18 +1610,16 @@ G.module({
   },
 
   view() {
-    const s = this.s, wid = this.worldId || "fan", wt = wid === "fan" ? this.worldTab || "explore" : "explore";   // v47：仙冥魔神没有 历练/坊市/设置 页签
+    // 战斗、设置从六界图左下 / 右下进（atlasSub）；凡界坊市在凡界地图卷轴里（mapSel "shop"）
+    const s = this.s, wid = this.worldId || "fan", wt = this.atlasSub === "battle" || this.atlasSub === "set" ? this.atlasSub : "explore";
+    const fback = fn => `<div class="fback"><button onclick="${fn}">返回</button></div>`;   // 固定在右下角的返回（不跟着地图滑动）
     // 六界图（img/map/atlas.webp，竖条名牌按 ATLAS_POS 摆）；进了某一界顶部只留一条：六界图按钮 + 界名
     const W0 = DATA.worlds.find(w => w.id === wid) || DATA.worlds[0];
     if (wt === "explore" && (this.atlasOn || this.worldId === undefined)) return this.atlasView();
-    const worlds = `<div class="wbar"><button class="sm" onclick="G.openAtlas()">六界图</button><b>${W0.name}</b><small>${W0.desc}</small></div>`;
+    const worlds = "";
     const W = DATA.worlds.find(w => w.id === wid);
-    if (!this.worldOpen(wid)) return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>`;
-    const tabs = wid !== "fan" ? worlds : worlds + `<div class="sub-tabs">
-      <button class="${wt === "explore" ? "active" : ""}" onclick="G.setWorldTab('explore')">${DATA.nmPick(CFG.names.worldTab, "explore", "历练")}</button>
-      <button class="${wt === "shop" ? "active" : ""}" onclick="G.setWorldTab('shop')">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</button>
-      <button class="${wt === "battle" ? "active" : ""}" onclick="G.setWorldTab('battle')">战斗</button>
-      <button class="${wt === "set" ? "active" : ""}" onclick="G.setWorldTab('set')">设置</button></div>`;
+    if (!this.worldOpen(wid)) return worlds + `<div class="card"><h3>${W.name}</h3><p class="desc">${W.desc}</p>${(CFG.worldMaps || {})[wid] ? "" : `<p class="desc">界壁未开，以你如今的修为尚无法踏足。</p>`}</div>` + fback("G.openAtlas()");
+    const tabs = "";
 
     if (wt === "explore") {
       const st = this.stats();
@@ -1609,28 +1642,29 @@ G.module({
       const idx = (DATA.worldMapIdx[wid] || []).slice().sort((a, b) => DATA.mapReq(a) - DATA.mapReq(b) || a - b), fan = wid === "fan";   // 从低到高
       const ex = s.explore ? (s.explore.mj !== undefined ? (fan && s.explore.mk !== "ld" ? "mj" : undefined) : idx.includes(s.explore.map) ? s.explore.map : undefined) : undefined;
       const ok = idx.filter(a => this.mapOpen(a));
-      const sel = this.mapSel !== undefined && (this.mapSel === "mj" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : idx[0];
-      if (!this.mapPage) return tabs + bars + status + this.mapScroll(wid, idx, ex);   // 地图卷轴：点一张图进去
-      const mback = `<div class="row" style="margin:6px 0"><b>${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</b><button class="sm" onclick="G.setMapPage(false)">返回地图</button></div>`;
+      const sel = this.mapSel !== undefined && (this.mapSel === "mj" || this.mapSel === "shop" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : idx[0];
+      if (!this.mapPage) return this.mapScroll(wid, idx, ex) + this.exOverlay() + fback("G.openAtlas()");   // 地图卷轴：不显示生命法力，点一张图进去
+      const mb = fback("G.setMapPage(false)");
+      if (sel === "shop") return `<div class="pghead">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</div>` + this.shopView() + mb;
+      const mback = `<div class="pghead">${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</div>`;
       const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
       if (halls && sel !== "mj") {
         // v49：仙冥魔神每张地图 7 处地点（config/worldmaps.js 的 halls，图片 img/hall_<id>.png），点进去是各自的页面
         const hn = id => this.xjHallName(sel, id), hs = halls[this.hallSel] ? this.hallSel : null;
         if (hs) {
-          const back = `<div class="row" style="margin:6px 0"><b>${DATA.maps[sel].name} · ${hn(hs)}</b><button class="sm" onclick="G.setHall(null)">返回</button></div>`;
+          const back = `<div class="pghead">${DATA.maps[sel].name} · ${hn(hs)}</div>`;
           const page = hs === "tg" ? this.tgView(sel) : hs === "xj" ? this.xjView(sel)
             : hs === "lilian" ? bars + status + this.regionsCard(sel) : hs === "lingdi" ? bars + status + this.lingdiView()
             : hs === "shop" || hs === "gd" ? this.jieGfView(hs === "gd" ? "gd" : "jshop", sel) : `<div class="card"><h3>${hn(hs)}</h3></div>`;
-          return tabs + back + page;
+          return back + page + fback("G.setHall(null)");
         }
         const ico = (id, cls) => halls[id] === undefined ? "" : `<button class="${cls || ""}" onclick="G.setHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${hn(id)}</span></button>`;
         const gxTag = this.xjGxOf ? `<div class="xs-gx">贡献<b>${U.fmt(this.xjGxOf(sel))}</b></div>` : "";   // 本图贡献：显示在天宫图片左边
-        return tabs + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>`;
+        return mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + mb;
       }
-      return tabs + mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel));
+      return mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)) + mb;
     }
-    if (wt === "shop") return tabs + this.shopView();
-    if (wt === "battle") return tabs + this.bsetView();
+    if (wt === "battle") return `<div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)");
 
     const isAdmin = !!(this.adminInfo && this.adminInfo.admin);
     if (this.giftPage && isAdmin) return tabs + this.giftAdminView();
@@ -1650,10 +1684,10 @@ G.module({
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
     const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
-    return tabs + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
+    return `<div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>
       <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
       <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
-      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>`;
+      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>` + fback("G.setAtlasSub(null)");
   },
 
 });
