@@ -1370,7 +1370,7 @@ G.module({
     exInfoTab() { const s = this.s; return this.exInfo === "cq" || this.exInfo === "ex" ? this.exInfo : s.cq && !s.explore ? "cq" : "ex"; },
     // 六界图：整张插画 + 各界竖条名牌（位置 % 写在 ATLAS_POS；没开放的变暗）
     atlasView() {
-      const P = { tianwai: [50, 9], shen: [50, 26], xian: [50, 44], fan: [50, 61], mo: [21, 82], ming: [79, 82] };
+      const P = { tianwai: [50, 12], shen: [50, 29.5], xian: [50, 47.5], fan: [50, 64.5], mo: [21, 82], ming: [79, 82] };
       const tags = DATA.worlds.map(w => { const p = P[w.id]; if (!p) return "";
         const open = w.open !== false && (this.worldOpen(w.id) || w.id === "fan"), cur = (this.worldId || "fan") === w.id;
         const req = (((CFG.worldMaps || {})[w.id] || {}).open || {}).realm;
@@ -1402,7 +1402,8 @@ G.module({
       const s = this.s, tab = this.exInfoTab(), x = tab === "cq" ? s.cq : s.explore, last = tab === "cq" ? s.lastCq : s.lastRun, run = x && !x.rest && x.ev;
       const list = run ? x.ev : last ? last.ev : [], src = run ? (tab === "cq" ? "cqcur" : "cur") : (tab === "cq" ? "cqlast" : "last");
       const title = x ? `${tab === "cq" ? "出窍中" : x.once ? "历练中" : "探索中"} · ${this.exName(x)}` : last ? last.title : tab === "cq" ? "出窍信息" : "探索信息";
-      const sub = x ? (x.rest ? "休养中" : x.cq ? `已完成 ${x.count} / ${x.cq} 次` : x.count !== undefined && !x.once ? `已完成 ${x.count} 次` : "") : "";
+      const T = x ? this.exCfg(x).TIME : 0, left = x && !x.rest ? Math.max(0, Math.ceil((x.start + T * (x.ms || 1000) - (x._pz != null ? x._pz : this.now())) / 1000 + (CFG.explore.END_WAIT || 0))) : 0;
+      const sub = x ? [x.rest ? "休养中" : `第 ${U.fix(Math.min(x.step, T))} / ${T} 步 · 剩余 ${U.cd(left, 1)}`, x.cq ? `已完成 ${x.count} / ${x.cq} 次` : x.count !== undefined && !x.once ? `已完成 ${x.count} 次` : ""].filter(Boolean).join(" · ") : "";
       const btn = (k, n) => `<button class="${tab === k ? "on" : ""}" onclick="G.setExInfo('${k}',1)">${n}</button>`;
       return `<div class="exov"><div class="exov-head"><div><b class="${!x && last && last.bad ? "q5" : ""}">${title}</b>${sub ? `<small>${sub}</small>` : ""}</div>
         <button class="sm${this.exFollow === false ? "" : " on"}" onclick="G.setExFollow()">${this.exFollow === false ? "☐" : "☑"} 跟随最新</button></div>
@@ -1644,8 +1645,8 @@ G.module({
       const ok = idx.filter(a => this.mapOpen(a));
       const sel = this.mapSel !== undefined && (this.mapSel === "mj" || this.mapSel === "shop" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : idx[0];
       if (!this.mapPage) return this.mapScroll(wid, idx, ex) + this.exOverlay() + fback("G.openAtlas()");   // 地图卷轴：不显示生命法力，点一张图进去
-      const mb = fback("G.setMapPage(false)");
-      if (sel === "shop") return `<div class="pghead">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</div>` + this.shopView() + mb;
+      const mb = fback("G.setMapPage(false)"), pg = h => `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">${h}${mb}</div>`;   // 点进去的页面也铺满（本界背景图）
+      if (sel === "shop") return pg(`<div class="pghead">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</div>` + this.shopView());
       const mback = `<div class="pghead">${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</div>`;
       const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
       if (halls && sel !== "mj") {
@@ -1656,13 +1657,13 @@ G.module({
           const page = hs === "tg" ? this.tgView(sel) : hs === "xj" ? this.xjView(sel)
             : hs === "lilian" ? bars + status + this.regionsCard(sel) : hs === "lingdi" ? bars + status + this.lingdiView()
             : hs === "shop" || hs === "gd" ? this.jieGfView(hs === "gd" ? "gd" : "jshop", sel) : `<div class="card"><h3>${hn(hs)}</h3></div>`;
-          return back + page + fback("G.setHall(null)");
+          return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">${back + page + fback("G.setHall(null)")}</div>`;
         }
         const ico = (id, cls) => halls[id] === undefined ? "" : `<button class="${cls || ""}" onclick="G.setHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${hn(id)}</span></button>`;
         const gxTag = this.xjGxOf ? `<div class="xs-gx">贡献<b>${U.fmt(this.xjGxOf(sel))}</b></div>` : "";   // 本图贡献：显示在天宫图片左边
-        return mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + mb;
+        return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">` + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "lilian", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + mb + "</div>";
       }
-      return mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)) + mb;
+      return pg(mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)));
     }
     if (wt === "battle") return `<div class="pghead">战斗</div>` + this.bsetView() + fback("G.setAtlasSub(null)");
 
