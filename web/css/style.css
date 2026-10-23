@@ -666,7 +666,7 @@ button.sm.pill{padding:4px 12px}
 .atl-r{position:absolute;right:2.5%;top:2%;padding:5px 12px;font-size:12px}
 .atl-bl{position:absolute;left:3%;bottom:1.2%}
 .atl-br{position:absolute;right:3%;bottom:1.2%}
-.fback{position:sticky;bottom:12px;height:56px;margin-top:-56px;display:flex;justify-content:flex-end;align-items:flex-end;z-index:5;pointer-events:none}
+.fback{position:sticky;bottom:12px;height:72px;margin-top:-72px;display:flex;justify-content:space-between;padding:0 2px;align-items:flex-end;z-index:5;pointer-events:none}
 .fback button{pointer-events:auto;width:52px;height:52px;min-width:0;padding:0;border-radius:50%!important;display:flex;align-items:center;justify-content:center;line-height:1;font-size:14px;letter-spacing:0;background:radial-gradient(circle at 35% 30%,rgba(96,72,40,.97),rgba(30,22,14,.97));border:1px solid rgba(232,200,120,.75);color:#f6e6bd;box-shadow:0 4px 12px rgba(0,0,0,.55)}
 .pghead{font-size:16px;font-weight:bold;letter-spacing:2px;color:var(--t-gold);margin:4px 2px 8px}
 .runlist{max-height:55vh;overflow-y:auto;margin:6px 0}
@@ -687,3 +687,7 @@ button.sm.pill{padding:4px 12px}
 .rgt>div,.rgt>button{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
 .rgt .sm{padding:3px 8px;border-radius:999px}
 .exov-st{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:12px;color:#d8c8a4}
+.fback .fl{display:flex;gap:8px;align-items:flex-end}
+.fback .fic{pointer-events:auto;background:none;border:0;padding:0;width:auto;height:auto;border-radius:0!important;box-shadow:none;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
+.fback .fic img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+.fback .fic span{font-size:12px;padding:0 7px;border-radius:9px;background:rgba(0,0,0,.55);border:1px solid rgba(232,200,120,.4);color:#f1e3c2;white-space:nowrap}

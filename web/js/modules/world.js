@@ -41,26 +41,28 @@ G.module({
     },
 
     setHall(h) { this.hallSel = h; this.render(); },
+    setWHall(h) { this.hallSel = h; this.render(); this.viewScroll(!h && this.mapRev(this.worldId || "fan") ? -1 : 0); },   // 地图卷轴左下角的 灵地 / 悟道碑
     // 一张地图的东西南北四域（历练 / 探索 / 出窍）
     regionsCard(sel) {
-      const s = this.s, map = DATA.maps[sel], lock = !this.realmOK(DATA.mapReq(sel)), unl = this.mapUnlocked(sel);
+      const s = this.s, map = DATA.maps[sel], lock = !this.realmOK(DATA.mapReq(sel)), unl = this.mapUnlocked(sel), tile = map.w !== "fan";   // 凡界保持列表；四界用图片格子
       const RG = ["dong", "xi", "nan", "bei"];   // 东西南北四域图 img/map/rg_*.webp
-      return `<div class="card rgcard"><h3>${map.name}</h3><div class="rggrid">` +
-          DATA.regionDirs.map((d, r) => {
-            const R = DATA.region(sel, r), ok = this.isTrained(sel, r), x = s.explore && s.explore.map === sel && (s.explore.reg || 0) === r ? s.explore : null, q = s.cq && s.cq.map === sel && (s.cq.reg || 0) === r ? s.cq : null;
-            return `<div class="rgt${x || q ? " cur" : ""}"><img src="img/map/rg_${RG[r] || "dong"}.webp" alt=""><b>${d}域</b><small>首领 ${DATA.regionBoss(sel, r)}<br>${ok ? "已通过历练" : "未历练"}</small>
-              ${lock ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(sel))}</button>` : !unl || !this.regionOpen(sel, r) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x && x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r},true)">${x && x.once ? "停止" : "历练"}</button>
-              <button class="sm ${x && !x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r})" ${ok ? "" : "disabled"}>${x && !x.once ? "停止" : "探索"}</button>
-              <button class="sm ${q ? "on" : ""}" onclick="G.${q ? "stopChuqiao" : "openChuqiao"}(${sel},${r})" ${q || ok && s.cqLearn ? "" : "disabled"}>${q ? "停止" : "出窍"}</button></div>`}</div>`;
-          }).join("") + `</div>` + (map.w === "fan" ? this.kuangLine(sel) : "") + `</div>`;
+      // 出窍不在这里开：统一用六界图左上「元婴出窍」（openRunList）；这里只显示历练 / 探索
+      const rows = DATA.regionDirs.map((d, r) => {
+        const R = DATA.region(sel, r), ok = this.isTrained(sel, r), x = s.explore && s.explore.map === sel && (s.explore.reg || 0) === r ? s.explore : null, q = s.cq && s.cq.map === sel && (s.cq.reg || 0) === r ? s.cq : null;
+        const btns = lock ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(sel))}</button>` : !unl || !this.regionOpen(sel, r) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x && x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r},true)">${x && x.once ? "停止" : "历练"}</button>
+              <button class="sm ${x && !x.once ? "on" : ""}" onclick="G.toggleExplore(${sel},${r})" ${ok ? "" : "disabled"}>${x && !x.once ? "停止" : "探索"}</button></div>`;
+        const info = `首领 ${DATA.regionBoss(sel, r)}${tile ? "<br>" : " · "}${ok ? "已通过历练" : "未历练"}${q ? " · 出窍中" : ""}`;
+        return tile ? `<div class="rgt${x || q ? " cur" : ""}"><img src="img/map/rg_${RG[r] || "dong"}.webp" alt=""><b>${d}域</b><small>${info}</small>${btns}</div>`
+          : `<div class="line"><div>${d}域<small>${info}</small></div>${btns}</div>`;
+      }).join("");
+      return `<div class="card${tile ? " rgcard" : ""}"><h3>${map.name}</h3>${tile ? `<div class="rggrid">${rows}</div>` : rows}${map.w === "fan" ? this.kuangLine(sel) : ""}</div>`;
     },
     /* ---------- 凡界灵矿（config/explore.js 的 KUANG）：不用历练，不遇怪，只挖灵石；探索中 x.kuang = 1、x.reg = -1 ---------- */
     kuangName(a) { return (CFG.explore.KUANG.NAME || "{map}灵矿").replace("{map}", DATA.maps[a].name); },
     kuangLine(a) {
       const s = this.s, K = CFG.explore.KUANG, x = s.explore && s.explore.kuang && s.explore.map === a ? s.explore : null, q = s.cq && s.cq.kuang && s.cq.map === a ? s.cq : null;
-      return `<div class="line"><div>${this.kuangName(a)}<small>${K.DESC}</small></div>
-        ${!this.realmOK(DATA.mapReq(a)) ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(a))}</button>` : !this.mapOpen(a) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x ? "on" : ""}" onclick="G.toggleKuang(${a})">${x ? "停止" : "探索"}</button>
-        <button class="sm ${q ? "on" : ""}" onclick="G.${q ? "stopChuqiao" : "openChuqiao"}(${a},-1)" ${q || s.cqLearn ? "" : "disabled"}>${q ? "停止" : "出窍"}</button></div>`}</div>`;
+      return `<div class="line"><div>${this.kuangName(a)}<small>${K.DESC}${q ? " · 出窍中" : ""}</small></div>
+        ${!this.realmOK(DATA.mapReq(a)) ? `<button class="sm" disabled>需${DATA.realmLabel(DATA.mapReq(a))}</button>` : !this.mapOpen(a) ? `<button class="sm" disabled>未开启</button>` : `<div><button class="sm ${x ? "on" : ""}" onclick="G.toggleKuang(${a})">${x ? "停止" : "探索"}</button></div>`}</div>`;
     },
     kuangPlan() { return "k".repeat(CFG.explore.KUANG.TIME); },
     // 每步灵石 = (当前地图东域灵石 × KUANG.SHARE% + 随机 RAND) ÷ TIME × 随机(0.5 ~ 1.5)（随机取整）；不掉药材矿石
@@ -1648,11 +1650,16 @@ G.module({
       const ex = s.explore ? (s.explore.mj !== undefined ? (fan && s.explore.mk !== "ld" ? "mj" : undefined) : idx.includes(s.explore.map) ? s.explore.map : undefined) : undefined;
       const ok = idx.filter(a => this.mapOpen(a));
       const sel = this.mapSel !== undefined && (this.mapSel === "mj" || this.mapSel === "shop" ? fan : idx.includes(this.mapSel)) ? this.mapSel : ex !== undefined ? ex : idx[0];
-      if (!this.mapPage) return this.mapScroll(wid, idx, ex) + this.exOverlay() + fback("G.openAtlas()");   // 地图卷轴：不显示生命法力，点一张图进去
+      const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
+      if (!this.mapPage) {   // 地图卷轴：不显示生命法力，点一张图进去；四界左下角固定 灵地 / 悟道碑（不跟着地图滑动）
+        const wh = halls && (this.hallSel === "lingdi" || this.hallSel === "wudao") && halls[this.hallSel] !== undefined ? this.hallSel : null;
+        if (wh) return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)"><div class="pghead">${halls[wh]}</div>${wh === "lingdi" ? this.lingdiView() : `<div class="card"><h3>${halls[wh]}</h3></div>`}${fback("G.setWHall(null)")}</div>` + this.exOverlay();
+        const fl = halls ? ["lingdi", "wudao"].filter(id => halls[id] !== undefined).map(id => `<button class="fic" onclick="G.setWHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${halls[id]}</span></button>`).join("") : "";
+        return this.mapScroll(wid, idx, ex) + this.exOverlay() + `<div class="fback"><div class="fl">${fl}</div><button onclick="G.openAtlas()">返回</button></div>`;
+      }
       const mb = fback("G.setMapPage(false)"), pg = h => `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">${h}${mb}</div>`;   // 点进去的页面也铺满（本界背景图）
       if (sel === "shop") return pg(`<div class="pghead">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</div>` + this.shopView());
       const mback = `<div class="pghead">${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</div>`;
-      const halls = ((CFG.worldMaps || {})[wid] || {}).halls;
       if (halls && sel !== "mj") {
         // v49：仙冥魔神每张地图 7 处地点（config/worldmaps.js 的 halls，图片 img/hall_<id>.png），点进去是各自的页面
         const hn = id => this.xjHallName(sel, id), hs = halls[this.hallSel] ? this.hallSel : null;
@@ -1665,7 +1672,7 @@ G.module({
         }
         const ico = (id, cls) => halls[id] === undefined ? "" : `<button class="${cls || ""}" onclick="G.setHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${hn(id)}</span></button>`;
         const gxTag = this.xjGxOf ? `<div class="xs-gx">贡献<b>${U.fmt(this.xjGxOf(sel))}</b></div>` : "";   // 本图贡献：显示在天宫图片左边
-        return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">` + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop", "wudao", "lingdi"].map(id => ico(id)).join("")}</div>` + bars + status + this.regionsCard(sel) + mb + "</div>";   // 历练去掉：东西南北四域直接显示在下面
+        return `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">` + mback + `<div class="xscene xs-${wid}"><div class="tgrow">${gxTag}${ico("tg", "tg")}</div>${["xj", "gd", "shop"].map(id => ico(id)).join("")}</div>` + this.regionsCard(sel) + this.exOverlay() + mb + "</div>";   // 四界：不显示生命法力 / 探索中；东西南北四域直接显示在下面（灵地、悟道碑在地图卷轴左下角）
       }
       return pg(mback + bars + status + (sel === "mj" ? this.mijingView() : this.regionsCard(sel)));
     }
