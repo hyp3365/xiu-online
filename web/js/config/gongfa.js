@@ -90,8 +90,8 @@ CFG.gongfa.sect = {
 /* 凡界坊市功法 & 法术（1~5 星，灵石购买，境界要求同门派 REQ_REALM）
  * 售价 = price × PRICE_TYPE[类别] × PRICE_STAR[星级-1] × EFFECT_PRICE（取整） */
 CFG.gongfa.shop = {
-  PCT: 90,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
-  BOOKS: { mijue: 2 },   // 每类几本（没写 1 本，最多同宗门第 5 阶段本数），加了本数每本效果不变
+  PCT: 36,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
+  BOOKS: {xinfa: 5, gongjue: 5, zhenjing: 5, fajue: 5, spell: 5, tijue: 5, mijue: 5 },   // 每类几本（没写 1 本，最多同宗门第 5 阶段本数），加了本数每本效果不变
   price: 5000,       // 售价基础值（灵石）
   PRICE_TYPE: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 2, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1 },   // 售价类别倍率
   PRICE_STAR: [1, 8, 20, 40, 80],   // 售价星级倍率：1 星 ~ 5 星
@@ -109,8 +109,8 @@ CFG.gongfa.tianwai = {
 //   神界：  学习 = 灵石 SHEN_STONE[星级-11] × TYPE[类别] + 本图贡献 SHEN_GX[星级-11] × TYPE[类别]
 //   真经（抗性）每处 6 本，金木水火土雷各一本（BOOKS 的 zhenjue: 6）
 CFG.gongfa.jshop = {
-  PCT: 120,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
-  BOOKS: { mijue: 2, zhenjue: 6 },   // 每类几本（没写 1 本），加了本数每本效果不变；真经 6 本 = 六种抗性各一本
+  PCT: 72,           // 每本效果 = 宗门同星级每本 × %（跟坊市有几本无关）
+  BOOKS: { xinfa: 5, gongjue: 5, zhenjing: 5, fajue: 5, spell: 5, tijue: 5, mijue: 5 },   // 每类几本（没写 1 本），加了本数每本效果不变；真经 6 本 = 六种抗性各一本
   STONE: [600000, 1000000, 1500000, 2200000, 3000000],   // 仙冥魔：6 星 ~ 10 星
   GX: [6000, 8000, 10000, 12000, 15000],                   // 仙冥魔：6 星 ~ 10 星
   SHEN_STONE: [4500000, 6000000],   // 神界：11 星、12 星
@@ -120,7 +120,7 @@ CFG.gongfa.jshop = {
 
 // 四界功德司功法（data/jiegf.js；仙冥魔 6~10 星，神界 11、12 星）：学习功德 = 仙冥魔 MERIT[星级-6] / 神界 SHEN_MERIT[星级-11] × TYPE[类别]
 CFG.gongfa.gd = {
-  PCT: 140,          // 每本效果 = 宗门同星级每本 × %（跟功德司有几本无关）
+  PCT: 130,          // 每本效果 = 宗门同星级每本 × %（跟功德司有几本无关）
   BOOKS: { mijue: 2, zhenjue: 6 },   // 每类几本（没写 1 本），加了本数每本效果不变；真经 6 本 = 六种抗性各一本
   MERIT: [6000, 7000, 8000, 9000, 10000],   // 仙冥魔：6 星 ~ 10 星
   SHEN_MERIT: [20000, 25000],               // 神界：11 星、12 星
