@@ -32,8 +32,8 @@ CFG.battle = {
 };
 
 // 属性抗性（法术 / 法宝减免，双方相同）
-CFG.battle.RES_RATE = 0.502;      // 对方防御 × 此值
-CFG.battle.RES_EL_RATE = 0.558;   // 对方该系抗性 × 此值
+CFG.battle.RES_RATE = 0.498;      // 对方防御 × 此值
+CFG.battle.RES_EL_RATE = 0.503;   // 对方该系抗性 × 此值
 // 以上 DEF_RATE / RES_RATE / RES_EL_RATE 只在旧公式（FORMULA: "sub"，直接相减）用
 
 /* 伤害公式（FORMULA: "ratio" 按比例减免，"sub" 旧的直接相减）
