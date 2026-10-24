@@ -58,6 +58,19 @@ DATA.realmStat = (L, k) => (k === "res" ? _P.RES_BASE || 0 : _P.base[k] || 0) + 
 // 肉身突破属性：突破 n 层的合计 × 倍率
 DATA.bodyStat = (n, k) => (DATA.brSum(_R.BODY_GAIN, n, "rs")[k] || 0) * DATA.gainRate(true, k);
 DATA.plRealmStat = DATA.realmStat; DATA.plBodyStat = DATA.bodyStat;
+// 按比例减免（config/battle.js FORMULA / RATIO）：L = 攻击方层序；标准值 = 该层修为突破 + 肉身突破的防御 / 抗性
+DATA.ratioOn = () => (CFG.battle || {}).FORMULA === "ratio";
+DATA.ratioCfg = () => Object.assign({ DEF_K: 1, RES_K: 1, DEF_CAP: 75, RES_CAP: 75, SP_DEF: 0.7 }, (CFG.battle || {}).RATIO || {});
+DATA.refK = (L, k) => {
+  L = Math.max(0, Math.floor(L || 0));
+  if (!DATA._rk || DATA._rk.r !== CFG.realm) DATA._rk = { r: CFG.realm, m: {} };
+  const key = k + L; if (DATA._rk.m[key] === undefined) DATA._rk.m[key] = Math.max(1, DATA.realmStat(L, k) + DATA.bodyStat(L + 1, k));
+  return DATA._rk.m[key];
+};
+DATA.cutPct = (v, K, cap) => Math.min((cap === undefined ? 75 : cap) / 100, Math.max(0, v) / (Math.max(0, v) + K));
+DATA.cutAtk = (p, def, L) => { const C = DATA.ratioCfg(); return p * (1 - DATA.cutPct(def, DATA.refK(L, "def") * C.DEF_K, C.DEF_CAP)); };
+DATA.cutEl = (p, def, res, L, ign) => { const C = DATA.ratioCfg();
+  return p * (1 - DATA.cutPct((def || 0) * C.SP_DEF, DATA.refK(L, "def") * C.DEF_K, C.DEF_CAP)) * (1 - DATA.cutPct((res || 0) - (ign || 0), DATA.refK(L, "res") * C.RES_K, C.RES_CAP)); };
 
 // 人物属性：base = 凡人基础（再加修为突破合计，见 DATA.realmStat）；fixed 不随境界
 DATA.playerFixed = _P.fixed;

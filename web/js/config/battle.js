@@ -34,6 +34,17 @@ CFG.battle = {
 // 属性抗性（法术 / 法宝减免，双方相同）
 CFG.battle.RES_RATE = 0.661;      // 对方防御 × 此值
 CFG.battle.RES_EL_RATE = 0.898;   // 对方该系抗性 × 此值
+// 以上 DEF_RATE / RES_RATE / RES_EL_RATE 只在旧公式（FORMULA: "sub"，直接相减）用
+
+/* 伤害公式（FORMULA: "ratio" 按比例减免，"sub" 旧的直接相减）
+ * 按比例（类似魔兽世界）：标准值 = 攻击方所在境界、层数的修为突破 + 肉身突破的防御（抗性同理，用抗性）
+ *   防御减免% = 防御 ÷ (防御 + 标准防御 × DEF_K)，最多 DEF_CAP%；DEF_K = 1 时，防御等于同层标准值就减一半
+ *   抗性减免% = 抗性 ÷ (抗性 + 标准抗性 × RES_K)，最多 RES_CAP%（无视抗性先从抗性里扣）
+ *   普攻 = 攻击 × (1 − 防御减免%)
+ *   法术 / 法宝 / 雷劫 = 威力 × (1 − 防御减免%，防御先 × SP_DEF) × (1 − 抗性减免%)
+ * 越级打人：攻击方境界高，标准值大，对方减免自动变小；反过来很难破防。保底伤害照旧 */
+CFG.battle.FORMULA = "ratio";
+CFG.battle.RATIO = { DEF_K: 1, RES_K: 1, DEF_CAP: 75, RES_CAP: 75, SP_DEF: 0.7 };
 
 // 战斗画面播放（结果已算好，只是播放）
 CFG.battle.ACT_SEC = 1.5;   // 每次出手播放间隔（秒）

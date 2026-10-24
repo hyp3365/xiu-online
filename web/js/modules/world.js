@@ -236,7 +236,10 @@ G.module({
       let si = 0, act = null;   // act：这一下出手的方式 { k: 0 普通攻击 / 1 法术 / 2 法宝, sp 法术名序号, f: 0 命中 / 1 被闪避 / 2 暴击 }
       const BT = CFG.battle, myL = s.mortal ? 0 : s.L, mL = m.L === undefined ? myL : m.L, MIN = A => A === st ? DATA.minDmg(myL, mL) : DATA.minDmg(A.L === undefined ? myL : A.L, myL), rnd = () => BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN);
       // 某系抗性 = 防御 × RES_RATE + 该系抗性（config/battle.js）
-      const RR = BT.RES_RATE === undefined ? BT.DEF_RATE : BT.RES_RATE, ER = BT.RES_EL_RATE === undefined ? 1 : BT.RES_EL_RATE, resOf = (D, el) => D.def * RR + ((D.res || {})[el] || 0) * ER;   // v235 法术 / 法宝减免 = 防御 × RES_RATE(0.9) + 该系抗性（抗性不再 × DEF_RATE）
+      const RR = BT.RES_RATE === undefined ? BT.DEF_RATE : BT.RES_RATE, ER = BT.RES_EL_RATE === undefined ? 1 : BT.RES_EL_RATE, resOf = (D, el) => D.def * RR + ((D.res || {})[el] || 0) * ER;
+      // 伤害减免（config/battle.js FORMULA）：ratio 按比例，sub 旧的直接相减；L = 攻击方层序
+      const RAT = DATA.ratioOn(), ATK = (p, D, L) => RAT ? DATA.cutAtk(p, D.def, L) : p - D.def * BT.DEF_RATE,
+        EL = (p, D, el, L, ign = 0) => RAT ? DATA.cutEl(p, D.def, (D.res || {})[el] || 0, L, ign) : p - Math.max(0, resOf(D, el) - ign);   // v235 法术 / 法宝减免 = 防御 × RES_RATE(0.9) + 该系抗性（抗性不再 × DEF_RATE）
       // 护盾破碎时溢出的伤害要按本身防御算：rawFn 是「按某个防御方算的基础伤害」，altD = 不带盾的防御方，act.altR = 不带盾 / 带盾 的伤害比
       let altD = null;
       const roll = (A, D, rawFn, k, sp) => {
@@ -247,7 +250,7 @@ G.module({
         if (!tfOf(D, "xingyun") && Math.random() * 100 < Math.min(DATA.CRIT_CAP, A.crit + (k === 0 && tfOf(A, "baoji") ? TL.BAOJI || 0 : 0))) { d *= BT.CRIT_MULT; act.f = 2; } // 暴击（天赋：幸运不被暴击、暴击加普攻暴击率）
         return d;
       };
-      const hit = (A, D) => roll(A, D, X => Math.max(MIN(A), A.atk - X.def * BT.DEF_RATE), 0);
+      const hit = (A, D) => roll(A, D, X => Math.max(MIN(A), ATK(A.atk, X, A === st ? myL : mL)), 0);
       // v57：鼎 → 对方速度 / 命中 / 闪避降低（m.deb，剩 left 回合）；印 → 对方眩晕（m.stun 回合）；盾 → 护盾（shield，打光为止）
       const mE = () => m.deb ? Object.assign({}, m, { speed: m.speed * (1 - m.deb.speed / 100), hit: m.hit * (1 - m.deb.hit / 100), dodge: m.dodge * (1 - m.deb.dodge / 100) }) : m;
       let shield = null;
@@ -259,7 +262,7 @@ G.module({
       const spNames = [...spells.map(sp => sp.name), ...fabaos.map(fb => fb.name)];
       // 法宝伤害：攻击 × 伤害%，按「防御×RES_RATE + 该系抗性 − 无视抗性」减免；再加附加伤害 = 主伤害 × %
       const fabaoDmg = (fb, D = m) => {
-        let d = Math.max(MIN(st), fb.atk * fb.pct / 100 - Math.max(0, resOf(D, fb.el) - fb.ign));
+        let d = Math.max(MIN(st), EL(fb.atk * fb.pct / 100, D, fb.el, myL, fb.ign));
         let ex = 0; for (const x of fb.extra) ex += d * x.pct / 100;   // 附加伤害：主伤害 × %
         return (d + ex + (fb.addDmg || 0)) * (1 + (fb.fuPct || 0) / 100);   // v152 强化附加伤害（固定数字）；融合：伤害结果 +%
       };
@@ -277,7 +280,7 @@ G.module({
         if ((usedN[j] || 0) >= ((a.k === 1 ? a.sp.uses : a.fb.uses) || 1)) return null;   // v152 每场战斗使用次数用完
         usedN[j] = (usedN[j] || 0) + 1;
         s.mana -= cost;
-        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0) - resOf(X, sp.el.id)) * (1 + (sp.fuPct || 0) / 100), 1, j);   // 融合：伤害结果 +%
+        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), EL(sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0), X, sp.el.id, myL)) * (1 + (sp.fuPct || 0) / 100), 1, j);   // 融合：伤害结果 +%
           if (!opt.test) { const xd = CFG.gongfa.XD_GAIN === undefined ? 1 : CFG.gongfa.XD_GAIN; if (xd > 0) { const X = this.s.spXd = this.s.spXd || {}; X[sp.el.id] = (X[sp.el.id] || 0) + xd; act.x = (act.x || 0) | 256; } }   // v239 法术心得
           return d; }
         const fb = a.fb;
@@ -290,7 +293,7 @@ G.module({
         }
         return d;
       };
-      const est = a => a.k === 1 ? Math.max(MIN(st), a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0) - resOf(m, a.sp.el.id)) * (1 + (a.sp.fuPct || 0) / 100) : a.fb.shield ? -1 : fabaoDmg(a.fb);
+      const est = a => a.k === 1 ? Math.max(MIN(st), EL(a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0), m, a.sp.el.id, myL)) * (1 + (a.sp.fuPct || 0) / 100) : a.fb.shield ? -1 : fabaoDmg(a.fb);
       const costOf = a => a.k === 1 ? a.sp.mana : a.fb.mana;
       const jOf = key => acts.findIndex(a => a.key === key);
       const useJ = acts.map((a, j) => j).filter(j => !off.includes(acts[j].key));
@@ -357,7 +360,7 @@ G.module({
         const c = m[k], P = c && c.mana || [0, 1], cost = c ? (m.manaBr || 0) * P[0] * (P[1] === undefined ? 1 : P[1]) * (m.manaK ?? 1) : 0;   // 耗法力 = 修为突破法力 × 比例 × 倍率 × 境界倍率
         if (!c || m.mana < cost || Math.random() * 100 >= c.chance) return -1;
         m.mana -= cost; k === "spell" ? mSp++ : mFb++;
-        const d = roll(mE(), st, X => Math.max(MIN(m), m.atk * c.pct / 100 - (el ? resOf(X, el) : X.def * BT.DEF_RATE)), k === "spell" ? 1 : 2);
+        const d = roll(mE(), st, X => Math.max(MIN(m), el ? EL(m.atk * c.pct / 100, X, el, mL) : ATK(m.atk * c.pct / 100, X, mL)), k === "spell" ? 1 : 2);
         return el && d > 0 && tf("lingxing") ? d * (1 + (TL.LINGXING || 0) / 100) : d;   // 天赋灵性：金木水火土雷属性伤害都增加
       };
       const mobHit = () => { let d = mCast("spell", m.el); if (d < 0) d = mCast("fabao", m.el); return d < 0 ? hit(mE(), st) : d; };   // v25：怪物法宝也是属性伤害

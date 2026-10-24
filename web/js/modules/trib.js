@@ -50,6 +50,8 @@ G.module({
       const RR = BT.RES_RATE === undefined ? BT.DEF_RATE : BT.RES_RATE, ER = BT.RES_EL_RATE === undefined ? 1 : BT.RES_EL_RATE, res = ((st.res || {})[el] || 0) * ER;
       const mn = DATA.minDmg(this.s.mortal ? 0 : this.s.L), r = (BT.RAND_MIN + Math.random() * (BT.RAND_MAX - BT.RAND_MIN));
       const c = Math.random() * 100 < Math.min(DATA.CRIT_CAP || 100, x.crit), k = r * (c ? BT.CRIT_MULT : 1);
+      if (DATA.ratioOn()) { const L = this.s.mortal ? 0 : this.s.L, rv = (st.res || {})[el] || 0;   // 按比例减免（config/battle.js FORMULA）
+        return [Math.max(mn, DATA.cutEl(x.atk, def, rv, L)) * k, c, Math.max(mn, DATA.cutEl(x.atk, body, rv, L)) * k]; }
       return [Math.max(mn, x.atk - def * RR - res) * k, c, Math.max(mn, x.atk - body * RR - res) * k];   // 第三项：按本身防御算的伤害（盾碎溢出用）
     },
 
