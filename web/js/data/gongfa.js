@@ -306,7 +306,7 @@ DATA.spellInfo = (id, lv = 1, own) => {
 DATA.jyStep = (star, k) => { const A = _GF[k] || [0]; return A[Math.min(Math.max(0, star - 1), A.length - 1)] || 0; };
 DATA.spellJy = id => (typeof G !== "undefined" && G.s && G.s.spJy && G.s.spJy[id]) || 0;
 // 融合（config/gongfa.js FUSE）：fu = { 星级: 个数 }，返回伤害结果 +%
-DATA.fuseCfg = () => Object.assign({ PER_STAR: 5, PCT: [0.5, 0.5, 0.5, 1, 1, 1, 1.5, 1.5, 1.5], FB_RJ: 5 }, _GF.FUSE || {});
+DATA.fuseCfg = () => Object.assign({ PER_STAR: 5, PCT: [0.5, 0.5, 0.5, 0.7, 0.7, 0.7, 0.9, 0.9, 0.9, 1.15, 1.15, 1.15, 1.5, 1.5, 1.5], FB_RJ: 5 }, _GF.FUSE || {});
 DATA.fusePct = fu => { const P = DATA.fuseCfg().PCT || [0]; let t = 0; for (const k in fu || {}) t += (+fu[k] || 0) * (P[Math.min(+k - 1, P.length - 1)] || 0); return t; };
 DATA.fuseTxt = fu => Object.keys(fu || {}).filter(k => fu[k] > 0).sort((a, b) => a - b).map(k => `${k}星×${fu[k]}`).join("、");
 DATA.spellFu = id => (typeof G !== "undefined" && G.s && G.s.spFuse && G.s.spFuse[id]) || null;
