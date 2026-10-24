@@ -160,11 +160,20 @@ G.module({
       const MG = CFG.mobs.magic || {}, M = MG[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] || {};
       m.el = b.el || (m.elKey && this.mobElOf(m.elKey)) || U.pick(DATA.elements).id;   // 首领 / 天将 / 星君 / 界主：存档里定死的属性（mobElInit）
       const fx = m.elKey && this.mobFixOf(m.elKey); if (fx) { m.mf = (fx.mf || []).slice(); m.tfFix = fx.tf || []; }   // 定死的秘法、天赋
-      const OR = MG.OWN_RES, O = typeof OR === "object" ? (OR[{ normal: "普通", elite: "精英", boss: "首领", tower: "试炼塔" }[kind] || kind] ?? 1) : (OR || 1);
+      const O = 1;   // 本属性抗性改为进战斗随机 +%（下面 ELRES），不再按种类乘 OWN_RES
       m.mana = m.maxMana = b.mana !== undefined ? b.mana : m.mana || 0;   // 法力 = 修为突破 + 肉身突破的法力 × 倍率（同其他属性）
       const r0 = m.res, rv = typeof r0 === "number" ? r0 : 0;   // 数字 = 六系一样；对象 = 每系单独（真经按系分开算）
       m.res = {};
       for (const e of DATA.elements) m.res[e.id] = b.res && b.res[e.id] !== undefined ? b.res[e.id] : (r0 && typeof r0 === "object" ? +r0[e.id] || 0 : rv) * DATA.mobRnd("res_" + e.id) * (e.id === m.el ? O : 1);   // v227 每系单独随机；每系抗性 = 怪物抗性（修为 + 肉身 + 真诀）× 倍率，本属性再 × OWN_RES
+      // 进战斗：本属性那系抗性 +UP%，克它的那系 −DOWN%（金克木 木克土 土克水 水克火 火克金；雷随机一系），都在范围内随机
+      if (!b.res) {
+        const ER = Object.assign({ UP: [15, 25], DOWN: [15, 22], KE: { mu: "jin", tu: "mu", shui: "tu", huo: "shui", jin: "huo" } }, MG.ELRES || {});
+        const rr = a => a[0] + Math.random() * ((a[1] ?? a[0]) - a[0]);
+        const ke = ER.KE[m.el] || U.pick(DATA.elements.filter(e => e.id !== m.el)).id;
+        if (m.res[m.el] !== undefined) m.res[m.el] *= 1 + rr(ER.UP) / 100;
+        if (m.res[ke] !== undefined) m.res[ke] *= Math.max(0, 1 - rr(ER.DOWN) / 100);
+        m.weakEl = ke;
+      }
       const cv = c => c ? { chance: c.几率 || 0, pct: c.伤害 || 0, mana: c.消耗 || [0, 1] } : null;
       m.spell = cv(M.法术); m.fabao = cv(M.法宝);
       m.manaK = DATA.manaRealmK(m.L);   // 法术、法宝法力消耗的境界倍率（config/mobs.js magic.MANA_REALM）
