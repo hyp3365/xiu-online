@@ -43,7 +43,7 @@ CFG.battle.RES_EL_RATE = 0.898;   // 对方该系抗性 × 此值
  *     减免% = 减伤值 ÷ (减伤值 + 标准减伤值 × RES_K)，最多 RES_CAP%；标准减伤值 = 标准防御 × SP_DEF + 标准抗性
  *   对方防御、抗性正好是标准值时，普攻和法术都减一半；K 调大 = 减得少
  * 越级打人：攻击方境界高，标准值大，对方减免自动变小；反过来很难破防。保底伤害照旧 */
-CFG.battle.FORMULA = "ratio";
+CFG.battle.FORMULA = "sub";   // 现用旧公式（直接相减）；"ratio" = 按比例
 CFG.battle.RATIO = { DEF_K: 1, RES_K: 1, DEF_CAP: 75, RES_CAP: 75, SP_DEF: 0.5 };
 
 // 战斗画面播放（结果已算好，只是播放）
