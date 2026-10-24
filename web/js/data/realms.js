@@ -60,7 +60,7 @@ DATA.bodyStat = (n, k) => (DATA.brSum(_R.BODY_GAIN, n, "rs")[k] || 0) * DATA.gai
 DATA.plRealmStat = DATA.realmStat; DATA.plBodyStat = DATA.bodyStat;
 // 按比例减免（config/battle.js FORMULA / RATIO）：L = 攻击方层序；标准值 = 该层修为突破 + 肉身突破的防御 / 抗性
 DATA.ratioOn = () => (CFG.battle || {}).FORMULA === "ratio";
-DATA.ratioCfg = () => Object.assign({ DEF_K: 1, RES_K: 1, DEF_CAP: 75, RES_CAP: 75, SP_DEF: 0.7 }, (CFG.battle || {}).RATIO || {});
+DATA.ratioCfg = () => Object.assign({ DEF_K: 1, RES_K: 1, DEF_CAP: 75, RES_CAP: 75, SP_DEF: 0.5 }, (CFG.battle || {}).RATIO || {});
 DATA.refK = (L, k) => {
   L = Math.max(0, Math.floor(L || 0));
   if (!DATA._rk || DATA._rk.r !== CFG.realm) DATA._rk = { r: CFG.realm, m: {} };
@@ -69,8 +69,9 @@ DATA.refK = (L, k) => {
 };
 DATA.cutPct = (v, K, cap) => Math.min((cap === undefined ? 75 : cap) / 100, Math.max(0, v) / (Math.max(0, v) + K));
 DATA.cutAtk = (p, def, L) => { const C = DATA.ratioCfg(); return p * (1 - DATA.cutPct(def, DATA.refK(L, "def") * C.DEF_K, C.DEF_CAP)); };
-DATA.cutEl = (p, def, res, L, ign) => { const C = DATA.ratioCfg();
-  return p * (1 - DATA.cutPct((def || 0) * C.SP_DEF, DATA.refK(L, "def") * C.DEF_K, C.DEF_CAP)) * (1 - DATA.cutPct((res || 0) - (ign || 0), DATA.refK(L, "res") * C.RES_K, C.RES_CAP)); };
+// 属性伤害：防御 × SP_DEF 和抗性合成一个「减伤值」，只算一次减免（不是两次相乘）
+DATA.cutEl = (p, def, res, L, ign) => { const C = DATA.ratioCfg(), v = (def || 0) * C.SP_DEF + Math.max(0, (res || 0) - (ign || 0));
+  return p * (1 - DATA.cutPct(v, (DATA.refK(L, "def") * C.SP_DEF + DATA.refK(L, "res")) * C.RES_K, C.RES_CAP)); };
 
 // 人物属性：base = 凡人基础（再加修为突破合计，见 DATA.realmStat）；fixed 不随境界
 DATA.playerFixed = _P.fixed;
