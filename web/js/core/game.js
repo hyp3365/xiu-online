@@ -217,6 +217,13 @@ const G = {
   after() { this.dirty(); this.render(); },
 
   /* ---------- 界面 ---------- */
+  // 探索信息浮层：夹在最顶部花纹和底部 6 个按钮之间，不挡住它们
+  exovFit() {
+    const o = document.querySelector(".exov"); if (!o) return;
+    const t = document.querySelector(".bar-top"), n = document.getElementById("tabs");
+    o.style.top = (t ? Math.max(0, t.getBoundingClientRect().bottom) : 0) + "px";
+    o.style.bottom = (n ? Math.max(0, window.innerHeight - n.getBoundingClientRect().top) : 0) + "px";
+  },
   render() {
     const s = this.s; if (!s || this.silent) return;
     $("#p-name").textContent = s.name;
@@ -238,7 +245,8 @@ const G = {
     if (this.editing(v)) { this._renderDeferred = true; return; }
     const lg0 = document.getElementById("exov-log"), lgTop = lg0 ? lg0.scrollTop : -1;   // 探索信息浮层：重绘后保持位置，或「跟随最新」滚到底
     try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html;
-      const lg = document.getElementById("exov-log"); if (lg) lg.scrollTop = this.exFollow === false && lgTop >= 0 ? lgTop : 0; } }   // 最新一条在最上面
+      const lg = document.getElementById("exov-log"); if (lg) lg.scrollTop = this.exFollow === false && lgTop >= 0 ? lgTop : 0; }
+      this.exovFit(); }   // 最新一条在最上面
     catch (err) { console.error(err); this._viewHtml = null; v.innerHTML = `<div class="card"><h3>页面出错</h3><p class="desc">${String(err && err.message || err)}<br>如果刚改过 js/config/ 里的数值，请检查有没有写错（例如少了小数点、多了问号）。</p></div>`; }
     v.scrollTop = top;
   },

@@ -315,7 +315,7 @@ G.module({
     prevEquipIndex(slot, g, r, el) {
       let best = -1;
       const same = e => r === undefined || (slot === "fabao" ? e.ft === r && (!el || e.el === el) : e.r === r);
-      const score = e => (e.enh || 0) * 10 + e.q;
+      const score = e => (e.enh || 0) * 10 + e.q + Object.values(e.fu || {}).reduce((t, n) => t + n, 0) * 1000;   // 融合过的优先拿去升星（融合效果保留）
       this.s.bag.forEach((it, i) => { if (it.t === "eq" && it.e.attrs && it.e.slot === slot && it.e.g === g - 1 && DATA.rjTop(it.e) && same(it.e) && (best < 0 || score(it.e) > score(this.s.bag[best].e))) best = i; });
       return best;
     },

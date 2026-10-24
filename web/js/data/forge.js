@@ -244,7 +244,7 @@ DATA.fbRef = g => DATA._fbRef[g] || (DATA._fbRef[g] = (() => { const r = (_FG.fa
 // 法宝战斗数值（atk 已含剑 / 刀的专属攻击；hit、critAdd = 刀 / 锤攻击时额外命中、暴击%）：{ el, atk, pct, mana, ign, cutPct, extra: [{ el, pct }], crit（锤暴击伤害%）, shield, ding, yin }
 DATA.fabaoInfo = (e, own) => {
   const F = _FG.fabao, T = DATA.fabaoTypes[e.ft] || {}, ref = DATA.fbRef(e.g);
-  const o = { name: DATA.fabaoName(e.ft, e.g, e.name), el: e.el, ft: e.ft, atk: DATA.capAtk(ref.atk, own), pct: 0, ign: 0, cutPct: 0, extra: [] };
+  const o = { name: DATA.fabaoName(e.ft, e.g, e.name), el: e.el, ft: e.ft, atk: DATA.capAtk(ref.atk, own), pct: 0, ign: 0, cutPct: 0, extra: [], fuPct: DATA.fusePct ? DATA.fusePct(e.fu) : 0 };   // fuPct 融合：伤害结果 +%
   let shHp = 0, shDef = 0, red = 0, ding = 0, yin = 0, yinC = 0;
   o.uses = F.USES === undefined ? 1 : F.USES;   // 每场战斗最多祭出几次
   if (T.shield) shHp += DATA.fbEnh(e); else o.addDmg = DATA.fbEnh(e);   // 强化：护盾值 / 附加伤害

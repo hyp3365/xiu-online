@@ -261,7 +261,7 @@ G.module({
       const fabaoDmg = (fb, D = m) => {
         let d = Math.max(MIN(st), fb.atk * fb.pct / 100 - Math.max(0, resOf(D, fb.el) - fb.ign));
         let ex = 0; for (const x of fb.extra) ex += d * x.pct / 100;   // 附加伤害：主伤害 × %
-        return d + ex + (fb.addDmg || 0);   // v152 强化附加伤害（固定数字）
+        return (d + ex + (fb.addDmg || 0)) * (1 + (fb.fuPct || 0) / 100);   // v152 强化附加伤害（固定数字）；融合：伤害结果 +%
       };
       const BS = this.bsetGet(), onlyAtk = !!opt.foe && (BS.foe || {})[opt.foe] === "atk", off = BS.off || [],   // v241 按对手类型：只能普通攻击（优先于回合设置）
        keepMp = 0, rKeys = BS.r || [];
@@ -277,7 +277,7 @@ G.module({
         if ((usedN[j] || 0) >= ((a.k === 1 ? a.sp.uses : a.fb.uses) || 1)) return null;   // v152 每场战斗使用次数用完
         usedN[j] = (usedN[j] || 0) + 1;
         s.mana -= cost;
-        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0) - resOf(X, sp.el.id)), 1, j);
+        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0) - resOf(X, sp.el.id)) * (1 + (sp.fuPct || 0) / 100), 1, j);   // 融合：伤害结果 +%
           if (!opt.test) { const xd = CFG.gongfa.XD_GAIN === undefined ? 1 : CFG.gongfa.XD_GAIN; if (xd > 0) { const X = this.s.spXd = this.s.spXd || {}; X[sp.el.id] = (X[sp.el.id] || 0) + xd; act.x = (act.x || 0) | 256; } }   // v239 法术心得
           return d; }
         const fb = a.fb;
@@ -290,7 +290,7 @@ G.module({
         }
         return d;
       };
-      const est = a => a.k === 1 ? Math.max(MIN(st), a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0) - resOf(m, a.sp.el.id)) : a.fb.shield ? -1 : fabaoDmg(a.fb);
+      const est = a => a.k === 1 ? Math.max(MIN(st), a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0) - resOf(m, a.sp.el.id)) * (1 + (a.sp.fuPct || 0) / 100) : a.fb.shield ? -1 : fabaoDmg(a.fb);
       const costOf = a => a.k === 1 ? a.sp.mana : a.fb.mana;
       const jOf = key => acts.findIndex(a => a.key === key);
       const useJ = acts.map((a, j) => j).filter(j => !off.includes(acts[j].key));
@@ -1400,7 +1400,7 @@ G.module({
       const list = this.mapRev(wid) ? rows.slice().reverse() : rows;
       return `<div class="wscroll ws-${wid}" style="background-image:url(img/map/bg_${wid}.webp)">${list.join("")}${mj}${shop}</div>`;
     },
-    // 探索信息浮层：盖住整个画面，底部 出窍信息 / 探索信息 / 全部信息 / 关闭；「跟随最新」时停在最上面的最新一条（game.js render）
+    // 探索信息浮层：夹在顶部花纹和底部 6 个按钮之间（game.js exovFit），底部 出窍信息 / 探索信息 / 全部信息 / 关闭；「跟随最新」时停在最上面的最新一条（game.js render）
     exOverlay() {
       if (!this.exploreOpen) return "";
       const s = this.s, tab = this.exInfoTab(), x = tab === "cq" ? s.cq : s.explore, last = tab === "cq" ? s.lastCq : s.lastRun, run = x && !x.rest && x.ev;
@@ -1412,7 +1412,8 @@ G.module({
       const vit = `<div class="exov-st"><span>生命 ${U.fmt(s.hp)} / ${U.fmt(st.hp)}</span><span>法力 ${U.fmt(s.mana)} / ${U.fmt(st.mana)}</span><span>每步恢复 生命 ${U.fmt(Math.floor(hpR))} · 法力 ${U.fmt(Math.floor(mpR))}</span></div>`;
       const btn = (k, n) => `<button class="${tab === k ? "on" : ""}" onclick="G.setExInfo('${k}',1)">${n}</button>`;
       return `<div class="exov"><div class="exov-head"><div><b class="${!x && last && last.bad ? "q5" : ""}">${title}</b>${sub ? `<small>${sub}</small>` : ""}${vit}</div>
-        <button class="sm${this.exFollow === false ? "" : " on"}" onclick="G.setExFollow()">${this.exFollow === false ? "☐" : "☑"} 跟随最新</button></div>
+        <div class="exov-r"><button class="sm${this.exFollow === false ? "" : " on"}" onclick="G.setExFollow()">${this.exFollow === false ? "☐" : "☑"} 跟随最新</button>
+        ${x ? `<button class="sm" onclick="${tab === "cq" ? "G.stopCqNow()" : "G.stopNow()"}">${tab === "cq" ? "停止出窍" : x.once ? "放弃历练" : x.kuang ? "停止挖矿" : "停止探索"}</button>` : ""}</div></div>
         <div class="exov-log explore-log" id="exov-log">${list.map((e, i) => this.evLine(e, src, i)).join("") || `<p>${x ? "出发……" : tab === "cq" ? "还没有出窍结果。" : "还没有探索结果。"}</p>`}</div>
         <div class="exov-tabs">${btn("cq", "出窍信息")}${btn("ex", "探索信息")}<button onclick="G.openExHist()">全部信息</button><button onclick="G.setExploreOpen(false)">关闭</button></div></div>`;
     },

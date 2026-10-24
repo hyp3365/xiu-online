@@ -55,7 +55,7 @@ G.module({
         let head = "";
         if (e.slot === "fabao") {
           const f = DATA.fabaoInfo(e);
-          head = `${DATA.elById[e.el].name}属性${e.name} · 每次祭出消耗法力 ${U.fmt(f.mana)}<br>`;
+          head = `${DATA.elById[e.el].name}属性${e.name} · 每次祭出消耗法力 ${U.fmt(f.mana)}<br>${f.fuPct ? `<span class="q4">融合 ${DATA.fuseTxt(e.fu)} · 伤害 +${U.dec(f.fuPct)}%</span><br>` : ""}`;
           // 合计（攻击 / 护盾 / 鼎）单独一块，和下面的属性条隔开
           let sum = f.shield ? `护盾值 ${U.fmt(f.shield.hp)} · 防御 ${U.fmt(f.shield.def)}` : `攻击 ${U.fmt(f.atk)}`;
           sum += `<br>每场战斗最多祭出 ${f.uses} 次`;
@@ -245,7 +245,7 @@ G.module({
           <div class="btns"><button class="primary" onclick="G.useStone(${i},1)" ${left > 0 ? "" : "disabled"}>使用</button>
           <button onclick="G.useStone(${i},${it.n})" ${left > 0 && it.n > 1 ? "" : "disabled"}>全部使用</button></div>`;
       } else if (it.t === "hx") {
-        h += `<p>用来洗练装备、戒指、法宝的属性（详情里的「洗练」，法宝的紫色、金色属性只能这样得到），也是强化的材料。可以锁定属性，每锁定一条消耗翻一倍。</p><div class="btns">${sell}</div>`;
+        h += `<div class="btns">${sell}</div>`;
       } else if (it.t === "sm") {
         h += `<p>${(CFG.mijing.items[it.k] || {}).desc || ""}</p><div class="btns">${sell}</div>`;
       } else if (it.t === "book") {
@@ -270,7 +270,7 @@ G.module({
         h += `<img class="item-img" src="${DATA.matImg(it.kind, it.g)}" alt=""><p>${{ herb: "药材，可用于炼丹。", ore: "矿石，可用于炼器。" }[it.kind] || ""}</p><div class="btns">${sell}</div>`;
       } else {
         h += `<p>${DATA.slots[it.e.slot]} · ${this.equipDesc(it.e)}</p>
-          <div class="btns"><button class="primary" onclick="G.equipItem(${i})">${it.e.slot === "fabao" ? "放入法宝栏" : "装备"}</button>${it.e.attrs ? `<button onclick="G.openReset('b${i}')">洗练</button>` : ""}${this.canEnhance(it.e) ? `<button onclick="G.openEnhance('b${i}')">强化</button>` : ""}${sell}</div>`;
+          <div class="btns"><button class="primary" onclick="G.equipItem(${i})">${it.e.slot === "fabao" ? "放入法宝栏" : "装备"}</button>${it.e.attrs ? `<button onclick="G.openReset('b${i}')">洗练</button>` : ""}${this.canEnhance(it.e) ? `<button onclick="G.openEnhance('b${i}')">强化</button>` : ""}${this.fbFusable(it.e) ? `<button onclick="G.openFbFuse('b${i}')">融合</button>` : ""}${sell}</div>`;
       }
       this.modal(h + `<div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
@@ -279,7 +279,7 @@ G.module({
       const e = key.startsWith("fb") ? this.s.fabao[+key.slice(2)] : this.s.equip[key]; if (!e) return;
       const src = DATA.eqIcon(e);
       this.modal(`${src ? `<img class="item-img${DATA.eqCls(e)}" src="${src}" alt="">` : ""}<h2 class="q${e.q}${DATA.fbElCls(e)}">${this.itemName({ t: "eq", e })}${e.attrs ? `<br><small>${DATA.rjName(e)}</small>` : ""}</h2><p>${DATA.slots[e.slot]} · ${this.equipDesc(e)}</p>
-        <div class="btns"><button onclick="G.unequip('${key}')">卸下</button>${key.startsWith("fb") ? `<button onclick="G.openFabaoSwap(${+key.slice(2)})">更换</button>` : ""}${e.attrs ? `<button onclick="G.openReset('${key}')">洗练</button>` : ""}${this.canEnhance(e) ? `<button onclick="G.openEnhance('${key}')">强化</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
+        <div class="btns"><button onclick="G.unequip('${key}')">卸下</button>${key.startsWith("fb") ? `<button onclick="G.openFabaoSwap(${+key.slice(2)})">更换</button>` : ""}${e.attrs ? `<button onclick="G.openReset('${key}')">洗练</button>` : ""}${this.canEnhance(e) ? `<button onclick="G.openEnhance('${key}')">强化</button>` : ""}${this.fbFusable(e) ? `<button onclick="G.openFbFuse('${key}')">融合</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
     },
 
     /* ---------- 强化（config/forge.js 的 forge.enhance）：每条属性分别强化 ---------- */
@@ -462,8 +462,94 @@ G.module({
     // 点法术栏：显示详细，可卸下
     openSpellSlot(i) {
       const id = this.s.spellSlots[i], g = id && DATA.spellInfo(id, this.s.gongfa[id]); if (!g) return;
-      this.modal(`<h2 class="q1">《${g.name}》</h2><p>${g.el.name}系 · ${g.lv} 层<br>${this.spellDmgTxt(g)}<br>耗法力 ${U.fmt(g.mana)} · 每场战斗最多 ${g.uses} 次</p>
-        <div class="btns"><button onclick="G.openSpellJy('${id}')">精研</button><button onclick="G.unslotSpell(${i})">卸下</button><button onclick="G.openSpellPick(${i})">更换</button><button onclick="G.closeModal()">关闭</button></div>`);
+      this.modal(`<h2 class="q1">《${g.name}》</h2><p>${g.star}星 · ${g.el.name}系 · ${g.lv} 层<br>${this.spellDmgTxt(g)}<br>耗法力 ${U.fmt(g.mana)} · 每场战斗最多 ${g.uses} 次${g.fuPct ? `<br><span class="q4">融合 ${DATA.fuseTxt(g.fu)} · 伤害 +${U.dec(g.fuPct)}%</span>` : ""}</p>
+        <div class="btns g3"><button onclick="G.openSpellJy('${id}')">精研</button><button onclick="G.openSpellFuse('${id}')">融合</button><button onclick="G.openSpellAdv('${id}')">进阶</button>
+        <button onclick="G.unslotSpell(${i})">卸下</button><button onclick="G.openSpellPick(${i})">更换</button><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+
+    /* ---------- 法术融合 / 进阶、法宝融合（config/gongfa.js FUSE）---------- */
+    spMax() { return DATA.GONGFA_MAX || 10; },
+    spOwned() { return Object.keys(this.s.gongfa).filter(id => DATA.isSpell(id) && DATA.spellInfo(id, this.s.gongfa[id])); },
+    // 法术从各处拿掉（被融合 / 进阶用掉）；to = 换成哪本（进阶）
+    spDrop(id, to) {
+      const s = this.s;
+      delete s.gongfa[id]; if (s.spJy) delete s.spJy[id]; if (s.spFuse) delete s.spFuse[id];
+      s.spellSlots = s.spellSlots.map(x => x === id ? to || null : x).filter((x, i, a) => x && a.indexOf(x) === i);
+      (s.tribSlots || []).forEach((x, i, a) => { if (x && x.k === "sp" && x.id === id) a[i] = to ? { k: "sp", id: to } : null; });
+    },
+    fuseRow(fu, maxStar) {
+      const C = DATA.fuseCfg(), out = [];
+      for (let k = 1; k < maxStar; k++) out.push(`${k}星 ${(fu || {})[k] || 0}/${C.PER_STAR}`);
+      return out.join(" · ");
+    },
+    openSpellFuse(id) {
+      const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]); if (!g) return;
+      const C = DATA.fuseCfg(), fu = g.fu || {}, M = this.spMax(), P = C.PCT || [];
+      let h = `<p>融合星级更低、已修炼到 ${M} 层的法术，被融合的法术消失，百分百成功。每个星级最多融合 ${C.PER_STAR} 本。<br>当前伤害 +${U.dec(g.fuPct)}%<br><small>${g.star > 1 ? this.fuseRow(fu, g.star) : "1 星法术没有可融合的"}</small></p>`;
+      if (g.lv < M) h += `<p class="desc q5">本法术修炼到 ${M} 层才能融合。</p>`;
+      else {
+        const L = this.spOwned().filter(x => x !== id).map(x => DATA.spellInfo(x, s.gongfa[x])).filter(x => x.star < g.star && x.lv >= M).sort((a, b) => b.star - a.star);
+        h += L.length ? L.map(x => { const full = (fu[x.star] || 0) >= C.PER_STAR;
+          return `<div class="line"><div>《${x.name}》<small>${x.star}星 · ${x.el.name}系 · 伤害 +${U.dec(P[Math.min(x.star - 1, P.length - 1)] || 0)}%</small></div><button class="sm" onclick="G.spellFuse('${id}','${x.id}')" ${full ? "disabled" : ""}>${full ? "已满" : "融合"}</button></div>`; }).join("")
+          : `<p class="desc">没有可融合的法术（要比本法术星级低、修炼到 ${M} 层）。</p>`;
+      }
+      this.modal(`<h2 class="q1">《${g.name}》融合</h2>${h}<div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+    spellFuse(id, fid) {
+      const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]), f = fid !== id && s.gongfa[fid] && DATA.spellInfo(fid, s.gongfa[fid]), C = DATA.fuseCfg(), M = this.spMax();
+      if (!g || !f || g.lv < M || f.lv < M || f.star >= g.star) return;
+      const fu = (s.spFuse = s.spFuse || {})[id] = s.spFuse[id] || {};
+      if ((fu[f.star] || 0) >= C.PER_STAR) return this.log(`${f.star}星法术已融合 ${C.PER_STAR} 本。`, "sys");
+      this.spDrop(fid); fu[f.star] = (fu[f.star] || 0) + 1;
+      this.log(`《${g.name}》融合了《${f.name}》，伤害 +${U.dec(DATA.fusePct(fu))}%。`, "good");
+      this.dirty(); this.after(); this.openSpellFuse(id);
+    },
+    openSpellAdv(id) {
+      const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]); if (!g) return;
+      const M = this.spMax();
+      let h = `<p>修炼到 ${M} 层后，用一本高一星、同属性、也修炼到 ${M} 层的法术进阶：本法术升一星，精研、融合效果和层数保留，用掉的那本消失。</p>`;
+      if (g.lv < M) h += `<p class="desc q5">本法术修炼到 ${M} 层才能进阶。</p>`;
+      else {
+        const L = this.spOwned().map(x => DATA.spellInfo(x, s.gongfa[x])).filter(x => x.id !== id && x.star === g.star + 1 && x.el.id === g.el.id && x.lv >= M);
+        h += L.length ? L.map(x => `<div class="line"><div>《${x.name}》<small>${x.star}星 · ${x.el.name}系 · ${x.lv} 层</small></div><button class="sm" onclick="G.spellAdv('${id}','${x.id}')">进阶</button></div>`).join("")
+          : `<p class="desc">没有可用的法术（要${g.star + 1}星、${g.el.name}系、修炼到 ${M} 层）。</p>`;
+      }
+      this.modal(`<h2 class="q1">《${g.name}》进阶</h2>${h}<div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+    spellAdv(id, tid) {
+      const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]), t = tid !== id && s.gongfa[tid] && DATA.spellInfo(tid, s.gongfa[tid]), M = this.spMax();
+      if (!g || !t || g.lv < M || t.lv < M || t.star !== g.star + 1 || t.el.id !== g.el.id) return;
+      const jy = (s.spJy || {})[id] || 0, fu = (s.spFuse || {})[id] || null, lv = Math.max(g.lv, t.lv);
+      this.spDrop(id, tid);
+      s.gongfa[tid] = lv;
+      s.spJy = s.spJy || {}; if (jy) s.spJy[tid] = jy; else delete s.spJy[tid];
+      s.spFuse = s.spFuse || {}; if (fu) s.spFuse[tid] = fu; else delete s.spFuse[tid];
+      this.log(`《${g.name}》进阶为${t.star}星《${t.name}》，精研、融合效果保留。`, "gold");
+      this.closeModal(); this.dirty(); this.after();
+    },
+    // 法宝融合：src = "fbN"（法宝栏）或 "bN"（背包）；被融合的只从背包里选
+    fbFusable(e) { return !!(e && e.attrs && e.slot === "fabao" && !(DATA.fabaoTypes[e.ft] || {}).shield); },
+    openFbFuse(src) {
+      const s = this.s, e = this.resetTarget(src); if (!this.fbFusable(e)) return;
+      const C = DATA.fuseCfg(), fu = e.fu || {}, P = C.PCT || [], star = e.g + 1, rj = Math.max(1, C.FB_RJ || 5);
+      let h = `<p>融合星级更低、精炼到${DATA.JIE[rj - 1]}以上的法宝（背包里的），被融合的法宝消失，百分百成功；升星后融合效果保留。每个星级最多融合 ${C.PER_STAR} 件。<br>当前伤害 +${U.dec(DATA.fusePct(fu))}%<br><small>${star > 1 ? this.fuseRow(fu, star) : "一星法宝没有可融合的"}</small></p>`;
+      const L = s.bag.map((it, i) => ({ it, i })).filter(({ it }) => it.t === "eq" && it.e !== e && it.e.slot === "fabao" && it.e.attrs && it.e.g < e.g && DATA.rjOf(it.e) >= rj - 1).sort((a, b) => b.it.e.g - a.it.e.g);
+      h += L.length ? L.map(({ it, i }) => { const x = it.e, full = (fu[x.g + 1] || 0) >= C.PER_STAR;
+        return `<div class="line"><div class="q${x.q}">${this.itemName(it)}<small>${DATA.rjName(x)} · 伤害 +${U.dec(P[Math.min(x.g, P.length - 1)] || 0)}%</small></div><button class="sm" onclick="G.fbFuse('${src}',${i})" ${full ? "disabled" : ""}>${full ? "已满" : "融合"}</button></div>`; }).join("")
+        : `<p class="desc">背包里没有可融合的法宝（要比它星级低、精炼到${DATA.JIE[rj - 1]}以上）。</p>`;
+      this.modal(`<h2 class="q${e.q}">${this.itemName({ t: "eq", e })} · 融合</h2>${h}<div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+    fbFuse(src, i) {
+      const s = this.s, e = this.resetTarget(src), it = s.bag[i], C = DATA.fuseCfg(), rj = Math.max(1, C.FB_RJ || 5);
+      if (!this.fbFusable(e) || !it || it.t !== "eq" || it.e === e || it.e.slot !== "fabao" || !it.e.attrs || it.e.g >= e.g || DATA.rjOf(it.e) < rj - 1) return;
+      const fu = e.fu = e.fu || {}, k = it.e.g + 1;
+      if ((fu[k] || 0) >= C.PER_STAR) return this.log(`${DATA.XING[k - 1]}法宝已融合 ${C.PER_STAR} 件。`, "sys");
+      const name = this.itemName(it);
+      s.bag.splice(i, 1); fu[k] = (fu[k] || 0) + 1;
+      (s.tribSlots || []).forEach((x, j, a) => { if (x && x.k === "fb" && x.uid === it.e.uid) a[j] = null; });
+      if (src[0] === "b" && +src.slice(1) > i) src = "b" + (+src.slice(1) - 1);   // 背包里的法宝：前面少了一格
+      this.log(`${e.name}融合了${name}，伤害 +${U.dec(DATA.fusePct(fu))}%。`, "good");
+      this.dirty(); this.after(); this.openFbFuse(src);
     },
   },
 

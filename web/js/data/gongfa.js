@@ -299,11 +299,17 @@ DATA.spellInfo = (id, lv = 1, own) => {
     cost: DATA.gfLearnCost(sect, "spell"),
     // v239 精研：jy 次数，jyDmg 属性伤害（加在法术伤害上）
     jy: DATA.spellJy(id), jyDmg: DATA.spellJy(id) * DATA.jyStep(sect.star, "JY_DMG"),
+    fu: DATA.spellFu(id), fuPct: DATA.fusePct(DATA.spellFu(id)),   // 融合：伤害结果 +%
   };
 };
 // v239 法术精研：每星的参数（config/gongfa.js 的 JY_DMG / JY_COST），玩家某法术已精研次数
 DATA.jyStep = (star, k) => { const A = _GF[k] || [0]; return A[Math.min(Math.max(0, star - 1), A.length - 1)] || 0; };
 DATA.spellJy = id => (typeof G !== "undefined" && G.s && G.s.spJy && G.s.spJy[id]) || 0;
+// 融合（config/gongfa.js FUSE）：fu = { 星级: 个数 }，返回伤害结果 +%
+DATA.fuseCfg = () => Object.assign({ PER_STAR: 5, PCT: [0.5, 0.5, 0.5, 1, 1, 1, 1.5, 1.5, 1.5], FB_RJ: 5 }, _GF.FUSE || {});
+DATA.fusePct = fu => { const P = DATA.fuseCfg().PCT || [0]; let t = 0; for (const k in fu || {}) t += (+fu[k] || 0) * (P[Math.min(+k - 1, P.length - 1)] || 0); return t; };
+DATA.fuseTxt = fu => Object.keys(fu || {}).filter(k => fu[k] > 0).sort((a, b) => a - b).map(k => `${k}星×${fu[k]}`).join("、");
+DATA.spellFu = id => (typeof G !== "undefined" && G.s && G.s.spFuse && G.s.spFuse[id]) || null;
 
 // 通用：功法、法术或秘法
 // 法宝、法术攻击 = min(使用者修为 + 肉身突破的攻击, 上限 cap) + 其余全部攻击（v235：功法、装备、戒指、法宝、丹药、练体池等都算）

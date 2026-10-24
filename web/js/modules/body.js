@@ -44,8 +44,9 @@ G.module({
       const M = this.mifaBonus(), gf = this.gongfaBonus().body || 0, mf = M.bodySpeed || 0;
       // 修炼室加成同样作用于肉身修炼（免费修炼室优先，和修为修炼一致）
       const room = this.freeCultOn && this.freeCultOn() ? this.freeCultPct() : s.room >= 0 && s.sect && this.roomPct ? this.roomPct(s.room) : 0;
-      const pct = (M.bodySpeedPct || 0) + (this.servantPct ? this.servantPct("cult") : 0) + room;   // 炼体秘法圆满额外 % + 道童辅助修炼 % + 修炼室 %
-      return { base, gf, mf, room, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100)) };
+      const arr = this.arrayFactor ? Math.max(0, (this.arrayFactor() - 1) * 100) : 0;   // 聚灵阵效率 %，同修为修炼
+      const pct = (M.bodySpeedPct || 0) + (this.servantPct ? this.servantPct("cult") : 0) + room + arr;   // 炼体秘法圆满额外 % + 道童辅助修炼 % + 修炼室 % + 聚灵阵 %
+      return { base, gf, mf, room, arr, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100)) };
     },
     // 突破到第 T 层的消耗
     bodyCost(T) {
@@ -104,7 +105,7 @@ G.module({
       return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}</h3>
         ${has ? "" : `<p class="desc q5">需要先学会一本肉身秘诀（宗门 → 功法殿）。</p>`}
         <div class="row small"><span>肉身修炼速度 <b class="q4">${U.num(sp.total)}</b> / 10秒</span><span>${status}</span></div>
-        <p class="desc">基础 ${U.num(sp.base)} + 肉身秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}</p>
+        <p class="desc">基础 ${U.num(sp.base)} + 肉身秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}${sp.arr ? `，聚灵阵 +${Math.round(sp.arr)}%` : ""}</p>
         <div class="bar tick"><div id="body-bar"></div></div>
         <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
         <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>

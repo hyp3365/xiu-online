@@ -269,7 +269,7 @@ G.module({
     // 法术伤害文字：法术攻击 × 伤害%（有灵根加成时注明）
     spellDmgTxt(g) {
       const lg = (this.s.lingen || {})[g.el.id] || 0;
-      return `伤害 = 攻击×<b class="gf-base">${U.dec(g.pct)}%</b>${g.jyDmg ? ` + 属性伤害 ${U.fmt(g.jyDmg)}` : ""}${lg ? `（${g.el.name}灵根伤害 +${U.dec(this.lingenPct(lg, "sp"))}%）` : ""}`;
+      return `伤害 = ${g.fuPct ? "(" : ""}攻击×<b class="gf-base">${U.dec(g.pct)}%</b>${g.jyDmg ? ` + 属性伤害 ${U.fmt(g.jyDmg)}` : ""}${g.fuPct ? `) × ${U.dec(100 + g.fuPct)}%（融合）` : ""}${lg ? `（${g.el.name}灵根伤害 +${U.dec(this.lingenPct(lg, "sp"))}%）` : ""}`;
     },
     // 一行：功法或法术，带修炼按钮
     skillLine(g) {
@@ -315,18 +315,20 @@ G.module({
       <button class="sm active" onclick="G.setGfSort('star')">按星级 ${P.starUp ? "低→高" : "高→低"}</button>
       <button class="sm ${hide ? "active" : ""}" onclick="G.toggleGfHideMax()">${hide ? "显示满级" : "隐藏满级"}</button></div>`;
 
-    const all = ids.map(id => DATA.skillInfo(id, s.gongfa[id])).filter(Boolean).filter(g => !hide || g.lv < (g.max || DATA.GONGFA_MAX));
-    const groups = [...DATA.gongfaTypes.filter(t => !t.base).map(t => ({ key: t.id, title: t.name, sub: t.catLabel || t.label, items: all.filter(g => g.kind === "gf" && (g.type.base || g.type.id) === t.id) })),
-                    { key: "spell", title: "法术", sub: "放入背包法术栏后战斗中施放", items: all.filter(g => g.kind === "sp") },
-                    { key: "mifa", title: "秘法", sub: "宗门秘法殿学习 · 修炼消耗灵气和灵石", items: all.filter(g => g.kind === "mf") }];
+    const full = ids.map(id => DATA.skillInfo(id, s.gongfa[id])).filter(Boolean), all = full.filter(g => !hide || g.lv < (g.max || DATA.GONGFA_MAX));
+    // 右上角数量统计全部已学的（隐藏满级的也算）
+    const mk = (key, title, sub, f) => ({ key, title, sub, items: all.filter(f), total: full.filter(f).length });
+    const groups = [...DATA.gongfaTypes.filter(t => !t.base).map(t => mk(t.id, t.name, t.catLabel || t.label, g => g.kind === "gf" && (g.type.base || g.type.id) === t.id)),
+                    mk("spell", "法术", "放入背包法术栏后战斗中施放", g => g.kind === "sp"),
+                    mk("mifa", "秘法", "宗门秘法殿学习 · 修炼消耗灵气和灵石", g => g.kind === "mf")];
     // 先按等级，同等级再按星级；同星级 天 → 黄
     const sortFn = (a, b) => (P.lvUp ? a.lv - b.lv : b.lv - a.lv) || (P.starUp ? a.star - b.star : b.star - a.star);
     // v195「全部」：不分类型，一张卡片按排序显示（元婴出窍秘法放最前）
-    const body = filter === "all" ? (all.length ? `<div class="card"><h3>全部功法<small>${all.length} 部</small></h3>${all.sort(sortFn).map(g => this.skillLine(g)).join("")}</div>` : "") :
+    const body = filter === "all" ? (all.length ? `<div class="card"><h3>全部功法<small>${full.length} 部</small></h3>${all.sort(sortFn).map(g => this.skillLine(g)).join("")}</div>` : "") :
       groups.filter(gr => gr.key === filter).map(gr => {
-      if (!gr.items.length) return filter === "all" ? "" : `<div class="card"><p class="desc">${hide ? "没有未满级的" : "尚未学会任何"}${gr.title}。</p></div>`;
+      if (!gr.items.length) return filter === "all" ? "" : `<div class="card"><p class="desc">${hide && gr.total ? `${gr.title}共 ${gr.total} 部，都已满级（已隐藏）` : `尚未学会任何${gr.title}`}。</p></div>`;
       gr.items.sort(sortFn);
-      return `<div class="card"><h3>${gr.title}<small>${gr.items.length} 部</small></h3>${gr.items.map(g => this.skillLine(g)).join("")}</div>`;
+      return `<div class="card"><h3>${gr.title}<small>${gr.total} 部</small></h3>${gr.items.map(g => this.skillLine(g)).join("")}</div>`;
     }).join("");
     return tabs + tools + (body || `<div class="card"><p class="desc">没有可显示的功法。</p></div>`);
   },
