@@ -1,7 +1,7 @@
 /* =====================================================================
  * 模块：修炼肉身（数值在 config/body.js）
  * ---------------------------------------------------------------------
- * 需要学会肉身秘诀（宗门功法殿，gongfa 类型 tijue）。每 10 秒消耗灵气转化肉身修为，可开关自动修炼。
+ * 需要学会练体秘诀（宗门功法殿，gongfa 类型 tijue）。每 10 秒消耗灵气转化肉身修为，可开关自动修炼。
  * 肉身境界 bodyL：-1 = 凡体，0 = 第一境界一层 …… 29 境界 × 10 层。每层手动突破，不需要雷劫。
  * 突破扣除攒够的气血（肉身修为），另消耗灵石、药材；每突破一层增加属性（bodyBonus，加进 player.js computeStats）。
  * ===================================================================== */
@@ -31,7 +31,7 @@ G.module({
   api: {
     // 肉身此刻是否在自动修炼（进度条用）
     bodyActive() { return !!this.s.bodyAuto && this.hasTijue() && !this.exBlocksCult() && !this.bodyMax() && this.s.ling >= 1; },
-    hasTijue() { return this.hasGfStat("body"); },   // 任意一本肉身秘诀（tijue / tijue2 / tijue3 …）
+    hasTijue() { return this.hasGfStat("body"); },   // 任意一本练体秘诀（tijue / tijue2 / tijue3 …）
     bodyMaxL() { return CFG.body.names.length * DATA.LAYERS - 1; },
     bodyMax() { return this.s.bodyL >= this.bodyMaxL(); },
     // 肉身境界名：凡体 / 淬皮一层
@@ -97,15 +97,15 @@ G.module({
     bodyView() {
       const s = this.s, B = CFG.body, sp = this.bodySpeed(), has = this.hasTijue(), max = this.bodyMax(), cap = this.lingCap();
       const need = this.bodyNeed(), c = max ? null : this.bodyCost(), why = this.bodyBlock(), bb = this.bodyBonus();
-      const status = !s.bodyAuto ? "未修炼" : !has ? "<b class='q5'>未学肉身秘诀</b>" : this.exBlocksCult() ? "<b class='q5'>历练 / 探索中，无法修炼</b>" : max ? "已达极境" : s.ling < 1 ? "<b class='q5'>灵气耗尽</b>" : "自动修炼中";
+      const status = !s.bodyAuto ? "未修炼" : !has ? "<b class='q5'>未学练体秘诀</b>" : this.exBlocksCult() ? "<b class='q5'>历练 / 探索中，无法修炼</b>" : max ? "已达极境" : s.ling < 1 ? "<b class='q5'>灵气耗尽</b>" : "自动修炼中";
       const names = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", speed: "速度", hit: "命中", dodge: "闪避", crit: "暴击%" };
       // 抗性：每系（金木水火土雷）单独一行
       const bonus = Object.keys(names).filter(k => bb[k]).map(k => `<div><span>${names[k]}</span>+${k === "crit" ? U.num(bb[k]) : U.fmt(bb[k])}</div>`).join("")
         + (bb.res ? DATA.elements.map(e => `<div><span>${e.name}抗性</span>+${U.fmt(bb.res + (bb.resEl[e.id] || 0))}</div>`).join("") : "");
       return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}</h3>
-        ${has ? "" : `<p class="desc q5">需要先学会一本肉身秘诀（宗门 → 功法殿）。</p>`}
+        ${has ? "" : `<p class="desc q5">需要先学会一本练体秘诀（宗门 → 功法殿）。</p>`}
         <div class="row small"><span>肉身修炼速度 <b class="q4">${U.num(sp.total)}</b> / 10秒</span><span>${status}</span></div>
-        <p class="desc">基础 ${U.num(sp.base)} + 肉身秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}${sp.arr ? `，聚灵阵 +${Math.round(sp.arr)}%` : ""}</p>
+        <p class="desc">基础 ${U.num(sp.base)} + 练体秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}${sp.arr ? `，聚灵阵 +${Math.round(sp.arr)}%` : ""}</p>
         <div class="bar tick"><div id="body-bar"></div></div>
         <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
         <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>

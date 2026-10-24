@@ -36,7 +36,7 @@ DATA.gongfaTypes = [
   { id: "dunshu",   name: "遁术", suffix: "遁术", stat: "dodge",     label: "闪避" },
   { id: "fajue",    name: "法诀", suffix: "法诀", stat: "mana",      label: "法力上限" },
   { id: "zhenjue",  name: "真经", suffix: "真经", stat: "res",       label: "抗性" }, // 抗性属性 = 来源属性
-  { id: "tijue",    name: "肉身秘诀", suffix: "炼体诀", stat: "body", label: "肉身修炼速度", sectOnly: true }, // 修炼肉身的前提；只在宗门功法殿学习
+  { id: "tijue",    name: "练体秘诀", suffix: "炼体诀", stat: "body", label: "肉身修炼速度", sectOnly: true }, // 修炼肉身的前提；只在宗门功法殿学习
 ];
 
 DATA.gongfaTypes.forEach(t => { const n = (_NM.gfType || {})[t.id]; if (n) { t.name = DATA.nmPick(n, 0, t.name); t.suffix = DATA.nmPick(n, 1, t.suffix); } });
@@ -213,7 +213,7 @@ DATA.gfUnitOld = key => {
 DATA.gfRand = id => { const R = _GF.sect.RAND || 0; let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return 1 + R * ((h % 20001) / 10000 - 1); };
 DATA.gfCalc = (o, typeId, key) => {
   const C = DATA.srcCfg(o), tm = (C.TYPE_MULT || {})[DATA.gfTypeKey(typeId)];
-  if (!C.TOTAL || C.TOTAL[key] === undefined || typeId === "spell") return 0;   // v121：只按 TOTAL 分配（v125 起秘诀、肉身秘诀也是）
+  if (!C.TOTAL || C.TOTAL[key] === undefined || typeId === "spell") return 0;   // v121：只按 TOTAL 分配（v125 起秘诀、练体秘诀也是）
   const ek = o.floor ? 1 : C.GF_K === undefined ? 1 : C.GF_K;   // v223 新版试炼塔秘诀：只看每本 mult   // 坊市 / 功德司 = 宗门 × PCT%
   const nw = DATA.GF_NEW_SRC.includes(DATA.srcType(o)) && !o.floor;   // 宗门、坊市、功德司按新算法（宗门每本 × PCT%）；其他按旧算法
   return (nw ? DATA.gfUnit(key) : DATA.gfUnitOld(key)) * ((nw ? C.STAT_STAR : C.STAT_STAR_OTHER || C.STAT_STAR)[o.star - 1] || 0) * (tm === undefined ? 1 : tm) * ek * (o.mult || DATA.gfRand((o.src === "cc" ? o.sectId : o.id) + ":" + typeId));   // 宗门传承：随机倍率同本门同类功法 → 正好 PCT%   // 悟道秘诀：固定倍率 o.mult

@@ -68,14 +68,14 @@ CFG.gongfa = {
 /* 宗门功法 & 法术（门派功法殿）
  * 每本每层 = TOTAL[属性] ÷ (Σ 1~10 星 STAT_STAR × 该星宗门数 × 该属性功法本数 × LV_MULT[MAX-1]) × STAT_STAR[星级-1] × 随机(1 ± RAND)
  * 学习贡献 = learn × LEARN_TYPE[类别] × LEARN_STAR[星级-1] × EFFECT_LEARN（取整）
- * 类别：xinfa 心法 gongjue 功诀 zhenjing 真诀（生命） mijue 秘诀 shenfa 身法 dunshu 遁术 fajue 法诀 zhenjue 真经（抗性） tijue 肉身秘诀 spell 法术
+ * 类别：xinfa 心法 gongjue 功诀 zhenjing 真诀（生命） mijue 秘诀 shenfa 身法 dunshu 遁术 fajue 法诀 zhenjue 真经（抗性） tijue 练体秘诀 spell 法术
  *   sufa 身法·速度（倍率 / 价格同 shenfa） */
 CFG.gongfa.sect = {
   TYPE_MULT: { xinfa: 1, gongjue: 1, zhenjing: 1, mijue: 1, shenfa: 1, dunshu: 1, fajue: 1, zhenjue: 1, spell: 1, tijue: 1 },   // 类别效果倍率
   // 1~10 星宗门功法（含各阶段多出来的书）全学满后每项属性合计（不算灵根）；res 按所有真经合计
   TOTAL: { def: 1997600, atk: 2017950, hp: 7496000, mana: 5389000, speed: 999390, dodge: 1017000, res: 2478680, hit: 1029800,
     cultivate: 7586300,   // 秘诀 → 修炼速度
-    body: 7595800 },      // 肉身秘诀 → 肉身修炼速度
+    body: 7595800 },      // 练体秘诀 → 肉身修炼速度
   RAND: 0.05,        // 每本效果随机幅度（±5%，按书固定）
   STAT_STAR: [1, 1.29, 1.67, 2.15, 2.78, 3.59, 4.64, 5.99, 7.74, 10, 11, 12, 13, 14, 15],   // 功法效果星级倍率（每本）：1 星 ~ 15 星（10 星 = 1 星 × 10，11~15 星 = 1 星 × 11~15；宗门、坊市、功德司、天外天用；法术不用）
   STAT_STAR_OTHER: [1, 1.48, 2.2, 3.27, 4.86, 7.21, 10.7, 15.88, 23.58, 35],   // 旧星级倍率：宗门传承、悟道室、试炼塔秘诀仍按旧算法（不受分阶段影响）

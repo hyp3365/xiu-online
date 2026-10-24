@@ -726,7 +726,7 @@ CFG.names.gfType = {
   dunshu: ["遁术", "遁术"],         // 加闪避
   fajue: ["法诀", "法诀"],          // 加法力上限
   zhenjue: ["真经", "真经"],        // 加抗性
-  tijue: ["肉身秘诀", "炼体诀"],    // 加肉身修炼速度
+  tijue: ["练体秘诀", "炼体诀"],    // 加肉身修炼速度
 };
 CFG.names.spellSuffix = "术";   // 法术名后缀（青阳 + 赤炎 + 术）
 CFG.names.gfCat = {   // 功法大类（功法页显示）
