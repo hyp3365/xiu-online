@@ -312,32 +312,48 @@ G.module({
   },
 
   view() {
-    const s = this.s, st = this.stats(), sp = this.speed(), cap = this.lingCap();
+    const s = this.s, sp = this.speed(), cap = this.lingCap();
     if (this.cultView === "body") return this.bodyView();   // 修炼肉身（modules/body.js）
     if (this.cultView === "shenshi") return this.shenshiView();   // 神识（modules/shenshi.js）
-    const can = this.canBreak(), major = this.isMajor();
-    const next = s.mortal ? "引气入体（突破至练气期）" : major ? `突破至${DATA.realmLabel(this.r() + 1)}` : "突破";
+    const can = this.canBreak(), need = this.needExp(), bodyMax = this.bodyMax(), bodyNeed = bodyMax ? 0 : this.bodyNeed();
     const block = this.isCultivating() ? this.cultivateBlock() : "";
-    const boost = sp.pill || sp.room || this.arrayFactor() > 1 || sp.mifa;
+    const brk = s.trib ? (s.trib.result ? "查看结果" : "渡劫中…") : can ? (this.needTrib() ? "渡劫" : "突破") : "修为未满";
+    // 参考布局：人物打坐居中，左右圆按钮（神识 / 修炼增幅），下方效率与修为，再下面境界 / 肉身两行
     return `
-    <div class="cult-stage"><div class="ys-aura"></div><img class="ys-hero" src="img/wd_hero.webp?v=${DATA.IMG_V}" alt=""></div>
-    <div class="card">
-      <h3>${this.realmName()}<small>${this.needTrib() ? "下次突破需渡劫" : ""}</small></h3>
-      <div class="row small"><span>修炼速度 <b class="q4">${U.num(sp.total)}</b> 修为 / 10秒</span>
-        <div class="cult-sbtn"><button class="sm ${boost ? "on" : ""}" onclick="G.openBoost()">修炼加成</button></div></div>
-      <div class="row small"><span>本次修炼</span><span>${!this.isCultivating() ? "未修炼" : block ? `<b class='q5'>${block}</b>` : `${s.auto ? "自动修炼中" : "修炼中"} · <b id="tick-left"></b>`}</span></div>
+    <div class="cult-stage">
+      <div class="ys-aura"></div>
+      <img class="ys-hero" src="img/wd_hero.webp?v=${DATA.IMG_V}" alt="">
+      <button class="cult-orb l" onclick="G.openShenshi(true)">神识</button>
+      <button class="cult-orb r" onclick="G.openBoost()">修炼增幅</button>
+    </div>
+    <div class="cult-info">
+      <div class="cult-eff">当前修炼效率：<b>${U.num(sp.total)}</b> / 10秒${block ? "" : `<span id="tick-left" class="cult-cd"></span>`}</div>
       <div class="bar tick"><div id="tick-bar"></div></div>
-      <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
-      <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
-      <div class="btns">
-        <button class="b3 ${s.auto ? "on" : "primary"}" onclick="G.toggleAuto()">自动修炼：${s.auto ? "开" : "关"}</button>
-        <button class="b3" onclick="G.openShenshi(true)">神识</button>
-        <button class="b3" onclick="G.openBody(true)">修炼肉身</button>
-        <button class="primary" style="flex-basis:100%" onclick="G.breakthrough()" ${can || s.trib ? "" : "disabled"}>
-          ${s.trib ? (s.trib.result ? "查看渡劫结果" : "渡劫中…查看劫云") : can ? next : `修为未满，还差 ${U.fmt(this.needExp() - s.exp)}`}</button>
+      <div class="cult-total">修为：<b>${U.fmt(s.exp)}</b> / ${U.fmt(need)}</div>
+      <p class="cult-wish${block ? " bad" : ""}">${!this.isCultivating() ? "自动修炼已关闭，点下方开关开始。" : block || "永无休止的自动修炼！"}</p>
+    </div>
+    <div class="card cult-rows">
+      <div class="cult-row">
+        <span class="cult-tag">境界</span>
+        <b class="cult-v">${this.realmName()}</b>
+        <span class="cult-num">${this.needTrib() ? "下次突破需渡劫" : ""}</span>
+        <button class="sm ${can || s.trib ? "primary" : ""}" onclick="G.breakthrough()" ${can || s.trib ? "" : "disabled"}>${brk}</button>
       </div>
-      <div class="row small" style="margin-top:8px"><span>修为</span><span>${U.fmt(s.exp)} / ${U.fmt(this.needExp())}</span></div>
-      <div class="bar"><div style="width:${Math.min(100, s.exp / this.needExp() * 100)}%"></div></div>
+      <div class="bar"><div style="width:${Math.min(100, s.exp / need * 100)}%"></div></div>
+      <div class="cult-row">
+        <span class="cult-tag">肉身</span>
+        <b class="cult-v">${this.bodyName()}</b>
+        <span class="cult-num">${U.fmt(s.bodyExp)}${bodyMax ? "" : ` / ${U.fmt(bodyNeed)}`} 气血</span>
+        <button class="sm" onclick="G.openBody(true)">炼体</button>
+      </div>
+      <div class="bar hp"><div style="width:${bodyMax ? 100 : Math.min(100, s.bodyExp / bodyNeed * 100)}%"></div></div>
+      <div class="cult-row">
+        <span class="cult-tag">灵气</span>
+        <span class="cult-v"></span>
+        <span class="cult-num">${U.fmt(s.ling)} / ${U.fmt(cap)}</span>
+        <button class="sm ${s.auto ? "on" : ""}" onclick="G.toggleAuto()">自动修炼：${s.auto ? "开" : "关"}</button>
+      </div>
+      <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
     </div>`;
   },
 });
