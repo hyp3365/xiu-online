@@ -761,9 +761,3 @@ button.sm.pill{padding:4px 12px}
 .cultivation-panel__buttons{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:6px;margin-top:4px}.cultivation-panel__buttons button{padding:7px 3px;font-size:13px}
 .cultivation-panel__stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;padding-top:7px;margin-top:7px;border-top:1px solid var(--c-line);font-size:11px;color:var(--t-sub2)}
 @media(max-width:380px){.cultivation-scene{height:54vh;min-height:360px}.cultivation-scene__figure{width:72%;top:17%;bottom:18%}.cultivation-scene__rate{left:12%;right:12%}.cultivation-panel__stats{font-size:10px}}
-
-/* 修炼人物以页面主轴为基准居中；导航装饰条背景缩小 30% */
-.cultivation-scene__figure{left:50%;width:100%;transform:translateX(-50%)}
-.cultivation-scene__figure img{position:absolute;left:50%;bottom:0;height:100%;width:auto;max-width:min(100%,440px);transform:translateX(-50%)}
-@media(max-width:380px){.cultivation-scene__figure{width:100%}}
-.bar-top,.bar-bot{background-size:70% auto;background-position:center}
