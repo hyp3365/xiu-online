@@ -734,3 +734,30 @@ button.sm.pill{padding:4px 12px}
 /* 三个一行的按钮（法术详情：精研 融合 进阶 / 卸下 更换 关闭） */
 .btns.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .btns.g3 button{min-width:0}
+
+/* 修炼主场景：角色展示复用悟道室人物图 */
+#view:has(.cultivation-scene){padding:0 0 10px}
+.cultivation-scene{height:clamp(390px,58vh,660px);min-height:390px;position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(180deg,rgba(64,64,104,.44),rgba(194,166,191,.38) 40%,rgba(255,240,207,.55) 76%,rgba(143,183,174,.44)),url(../img/bg/yunbai.webp?v=2) center/cover}
+.cultivation-scene:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 76%,rgba(255,246,204,.77),transparent 34%),linear-gradient(0deg,rgba(245,237,217,.64),transparent 40%)}
+.cultivation-scene__glow{position:absolute;width:58vw;max-width:300px;aspect-ratio:1;left:50%;top:53%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,218,97,.55),rgba(255,232,164,.19) 42%,transparent 70%);filter:blur(4px)}
+.cultivation-scene__mist{position:absolute;inset:45% -10% -5%;background:radial-gradient(ellipse,rgba(255,255,235,.78),rgba(255,255,255,.1) 58%,transparent 72%);pointer-events:none}
+.cultivation-scene__realm{position:absolute;top:14px;left:14px;padding:5px 12px;border:1px solid #eee0b5aa;border-radius:18px;background:#5e514b55;color:#fff6de;text-shadow:0 1px 3px #453d41;font-weight:bold;z-index:2}
+.cultivation-scene__realm small{font-size:11px;font-weight:normal}
+.cultivation-scene__actions{position:absolute;right:10px;top:12px;z-index:3;display:flex;gap:5px}
+.cultivation-scene__actions button{background:#eee8d699;color:#514739;border-color:#fff3d5}
+.cultivation-scene__figure{position:absolute;left:50%;top:14%;bottom:16%;width:min(76%,360px);transform:translateX(-50%);display:flex;justify-content:center;align-items:flex-end}
+.cultivation-scene__figure img{height:100%;max-width:100%;object-fit:contain;position:relative;z-index:1;filter:drop-shadow(0 8px 14px #47324a55);animation:ys-float 4s ease-in-out infinite}
+.cultivation-scene__aura{position:absolute;width:52%;aspect-ratio:1;left:50%;top:53%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,238,148,.7),rgba(255,207,73,.35) 39%,rgba(255,255,255,0) 72%);box-shadow:0 0 42px #ffe78d88}
+.cultivation-scene__rate{position:absolute;bottom:7px;left:13%;right:13%;z-index:2;text-align:center;color:#584c45;text-shadow:0 1px 3px #fff;font-size:14px}
+.cultivation-scene__rate b{font-size:18px;color:#80632c}.cultivation-scene__rate small{font-size:11px}
+.cultivation-scene__progress{height:8px;margin:2px 4px 4px;border-radius:8px;background:#665c4a44;overflow:hidden}.cultivation-scene__progress i{display:block;width:0;height:100%;background:linear-gradient(90deg,#d3a63c,#fff09a);box-shadow:0 0 8px #fff0a5}
+.cultivation-scene__status{font-size:12px}
+.cultivation-scene__side{position:absolute;top:36%;z-index:2;display:flex;flex-direction:column;gap:10px}
+.cultivation-scene__side--left{left:8px}.cultivation-scene__side--right{right:8px}
+.cultivation-scene__side button{width:54px;min-height:50px;padding:4px;background:#eee8d399;color:#53483b;border-color:#fff0cc;text-shadow:0 1px 2px #fff;line-height:1.25}
+.cultivation-panel{margin:8px 10px 0;padding:9px 12px;border:1px solid #8b806d66;border-radius:8px;background:var(--c-card);box-shadow:0 3px 12px #392e241f}
+.cultivation-panel__row{display:grid;grid-template-columns:48px 1fr;align-items:center;font-size:12px;color:var(--t-sub2)}
+.cultivation-panel__row>b{color:var(--t-gold)}.cultivation-panel__row>span{text-align:right}.cultivation-panel__row .bar{grid-column:1/3;margin:3px 0 7px;height:7px}
+.cultivation-panel__buttons{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:6px;margin-top:4px}.cultivation-panel__buttons button{padding:7px 3px;font-size:13px}
+.cultivation-panel__stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;padding-top:7px;margin-top:7px;border-top:1px solid var(--c-line);font-size:11px;color:var(--t-sub2)}
+@media(max-width:380px){.cultivation-scene{height:54vh;min-height:360px}.cultivation-scene__figure{width:72%;top:17%;bottom:18%}.cultivation-scene__rate{left:12%;right:12%}.cultivation-panel__stats{font-size:10px}}
