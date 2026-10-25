@@ -298,48 +298,32 @@ G.module({
     const block = this.isCultivating() ? this.cultivateBlock() : "";
     const boost = sp.pill || sp.room || this.arrayFactor() > 1 || sp.mifa, R0 = this.regen(false), R1 = this.regenStep();
     return `
-    <section class="cultivation-scene">
-      <div class="cultivation-scene__glow"></div>
-      <div class="cultivation-scene__mist"></div>
-      <div class="cultivation-scene__realm">${this.realmName()}${this.needTrib() ? `<small> · 下次突破需渡劫</small>` : ""}</div>
-      <div class="cultivation-scene__actions">
-        <button class="sm" onclick="G.openCultSet()">修炼设置</button>
-        <button class="sm ${boost ? "on" : ""}" onclick="G.openBoost()">修炼加成</button>
+    <div class="card">
+      <h3>${this.realmName()}<small>${this.needTrib() ? "下次突破需渡劫" : ""}</small></h3>
+      <div class="row small"><span>修炼速度 <b class="q4">${U.num(sp.total)}</b> 修为 / 10秒</span>
+        <div class="cult-sbtn"><button class="sm ${s.cultSet && s.cultSet.on ? "on" : ""}" onclick="G.openCultSet()">修炼设置</button>
+        <button class="sm ${boost ? "on" : ""}" onclick="G.openBoost()">修炼加成</button></div></div>
+      <div class="row small"><span>本次修炼</span><span>${!this.isCultivating() ? "未修炼" : block ? `<b class='q5'>${block}</b>` : `${s.auto ? "自动修炼中" : "修炼中"} · <b id="tick-left"></b>`}</span></div>
+      <div class="bar tick"><div id="tick-bar"></div></div>
+      <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
+      <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
+      <div class="btns">
+        <button class="b3 ${s.auto ? "on" : "primary"}" onclick="G.toggleAuto()">自动修炼：${s.auto ? "开" : "关"}</button>
+        <button class="b3" onclick="G.openShenshi(true)">神识</button>
+        <button class="b3" onclick="G.openBody(true)">修炼肉身</button>
+        <button class="primary" style="flex-basis:100%" onclick="G.breakthrough()" ${can || s.trib ? "" : "disabled"}>
+          ${s.trib ? (s.trib.result ? "查看渡劫结果" : "渡劫中…查看劫云") : can ? next : `修为未满，还差 ${U.fmt(this.needExp() - s.exp)}`}</button>
       </div>
-      <div class="cultivation-scene__figure">
-        <div class="cultivation-scene__aura"></div>
-        <img src="img/wd_hero.webp?v=${DATA.IMG_V}" alt="静坐修炼的人物" />
-      </div>
-      <div class="cultivation-scene__rate">
-        <div>当前修炼效率：<b>${U.fmt(sp.total)}</b><small> 修为 / 10秒</small></div>
-        <div class="cultivation-scene__progress"><i id="tick-bar"></i></div>
-        <div class="cultivation-scene__status">${!this.isCultivating() ? "静心凝神，开启自动修炼" : block ? `<b class="q5">${block}</b>` : `${s.auto ? "自动修炼中" : "修炼中"} · <span id="tick-left"></span>`}</div>
-      </div>
-      <div class="cultivation-scene__side cultivation-scene__side--left">
-        <button onclick="G.openShenshi(true)">神识</button><button onclick="G.openBody(true)">肉身</button>
-      </div>
-      <div class="cultivation-scene__side cultivation-scene__side--right">
-        <button onclick="G.openBoost()">修炼<br>加成</button><button onclick="G.openCultSet()">设置</button>
-      </div>
-    </section>
-    <div class="cultivation-panel">
-      <div class="cultivation-panel__row">
-        <b>灵气</b><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span>
-        <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
-      </div>
-      <div class="cultivation-panel__row">
-        <b>修为</b><span>${U.fmt(s.exp)} / ${U.fmt(this.needExp())}</span>
-        <div class="bar"><div style="width:${Math.min(100, s.exp / this.needExp() * 100)}%"></div></div>
-      </div>
-      <div class="cultivation-panel__buttons">
-        <button class="primary" onclick="G.toggleAuto()">${s.auto ? "停止修炼" : "自动修炼"}</button>
-        <button onclick="G.openBody(true)">肉身修炼</button>
-        <button class="primary" onclick="G.breakthrough()" ${can || s.trib ? "" : "disabled"}>${s.trib ? (s.trib.result ? "查看渡劫结果" : "渡劫中…") : can ? next : "突破未满"}</button>
-      </div>
-      <div class="cultivation-panel__stats">
-        <span>生命 ${U.fmt(s.hp)}/${U.fmt(st.hp)}</span><span>法力 ${U.fmt(s.mana)}/${U.fmt(st.mana)}</span>
-        <span>攻击 ${U.fmt(st.atk)}</span><span>防御 ${U.fmt(st.def)}</span>
-      </div>
-    </div>`;
+      <div class="row small" style="margin-top:8px"><span>修为</span><span>${U.fmt(s.exp)} / ${U.fmt(this.needExp())}</span></div>
+      <div class="bar"><div style="width:${Math.min(100, s.exp / this.needExp() * 100)}%"></div></div>
+    </div>
+    <div class="card"><h3>人物属性</h3><div class="stats">
+      <div><span>生命</span>${U.fmt(s.hp)}/${U.fmt(st.hp)}</div><div><span>法力</span>${U.fmt(s.mana)}/${U.fmt(st.mana)}</div>
+      <div><span>攻击</span>${U.fmt(st.atk)}</div><div><span>防御</span>${U.fmt(st.def)}</div>
+      <div><span>命中</span>${U.num(st.hit)}</div><div><span>闪避</span>${U.num(st.dodge)}</div>
+      <div><span>速度</span>${U.fmt(st.speed)}</div><div><span>暴击</span>${st.crit.toFixed(1)}%</div>
+      ${DATA.elements.map(e => `<div><span>${e.name}抗</span>${U.fmt(st.res[e.id])}</div>`).join("")}
+      <div style="grid-column:1/3"><span>修炼速度</span>${U.fmt(sp.total)} / 10秒</div>
+    </div><p class="desc" style="margin-top:4px">平时每 10 秒恢复 生命 ${U.num(R0.hp)}% · 法力 ${U.num(R0.mana)}%；历练/探索每走一步恢复 生命 ${U.num(R1.hp)}%${R1.hpFlat ? ` + ${U.fmt(R1.hpFlat)}` : ""} · 法力 ${U.num(R1.mana)}%${R1.manaFlat ? ` + ${U.fmt(R1.manaFlat)}` : ""}</p></div>`;
   },
 });
