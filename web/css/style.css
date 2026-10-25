@@ -764,6 +764,6 @@ button.sm.pill{padding:4px 12px}
 
 /* 修炼人物以页面主轴为基准居中；导航装饰条背景缩小 30% */
 .cultivation-scene__figure{left:50%;width:100%;transform:translateX(-50%)}
-.cultivation-scene__figure img{position:absolute;left:50%;bottom:0;height:100%;width:auto;max-width:min(100%,440px);transform:translateX(-50%)}
+.cultivation-scene__figure img{position:absolute;left:50%;bottom:0;height:78%;width:auto;max-width:min(100%,440px);transform:translateX(-50%)}
 @media(max-width:380px){.cultivation-scene__figure{width:100%}}
-.bar-top,.bar-bot{background-size:70% auto;background-position:center}
+.bar-top,.bar-bot{background-size:100% 70%;background-position:center}
