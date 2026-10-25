@@ -141,12 +141,12 @@ G.module({
     openCultSet() {
       const s = this.s, c = s.cultSet, T = this.cultTargets(), a = s.array;
       this.modal(`<h2>修炼设置</h2>
-        <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵气恢复到修炼速度（每次修炼消耗）的设定倍数以上，停止探索回来修炼。</p>
+        <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵气恢复到修炼速度（每次修炼消耗）的设定倍数以上，停止探索回[...]
         <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
-        <div class="line"><div>灵气高于修炼速度（倍）<small>当前修炼速度 ${U.fmt(this.speed().total)}</small></div><input id="cs-high" type="number" min="1" value="${c.mul === undefined ? 10 : c.mul}" style="width:130px" onchange="G.cultSetSave()"></div>
+        <div class="line"><div>灵气高于修炼速度（倍）<small>当前修炼速度 ${U.fmt(this.speed().total)}</small></div><input id="cs-high" type="number" min="1" value="${c.mul === un[...]
         <div class="line"><div>前往</div><button class="sm" onclick="G.openAtPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
-        <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefill ? "开" : "关"}</button></div>
+        <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefi[...]
         <h3 style="margin-top:14px">自动执行任务</h3>
         ${this.autoTaskHtml(T)}
         <div class="btns"><button class="primary" onclick="G.closeModal()">确定</button></div>`);
@@ -175,10 +175,11 @@ G.module({
       const canHide = k !== "poolI", hm = canHide && this._atHideMode, H = canHide ? ((this.s.atHide || {})[k] || []) : [], hid = x => H.includes(String(x));
       const rows = L.map(([x, n], i) => hm
         ? `<div class="line"><div class="${hid(x) ? "muted" : ""}">${n}${hid(x) ? "（已隐藏）" : ""}</div><button class="sm ${hid(x) ? "on" : ""}" onclick="G.atHideSet('${k}',${i})">${hid(x) ? "显示" : "隐藏"}</button></div>`
-        : hid(x) ? "" : `<div class="line"><div>${n}</div><button class="sm ${String(x) === String(cur) ? "on" : ""}" onclick="G.atPickSet('${k}',${i})">${String(x) === String(cur) ? "已选" : "选择"}</button></div>`).join("");
+        : hid(x) ? "" : `<div class="line"><div>${n}</div><button class="sm ${String(x) === String(cur) ? "on" : ""}" onclick="G.atPickSet('${k}',${i})">${String(x) === String(cur) ? "已选" : "选择"}</button></div>`
+      ).join("");
       this.modal(`<h2>${k === "poolI" ? CFG.sect.pool.name : k === "tgt" ? "前往" : "自动出窍"}${hm ? "<small>点地图右边按钮隐藏 / 显示</small>" : ""}</h2>
         ${rows || `<p class="desc">${L.length ? "地图都已隐藏，点「隐藏」可以重新显示" : "暂无可选"}</p>`}
-        <div class="btns">${canHide ? `<button class="${hm ? "on" : ""}" onclick="G.openAtPick('${k}',${hm ? 0 : 1})">${hm ? "完成" : "隐藏"}</button>` : ""}<button onclick="G._atHideMode=false;G.openCultSet()">返回</button></div>`);
+        <div class="btns">${canHide ? `<button class="${hm ? "on" : ""}" onclick="G.openAtPick('${k}',${hm ? 0 : 1})">${hm ? "完成" : "隐藏"}</button>` : ""}<button onclick="G.closeModal()">关闭</button></div>`);
     },
     atHideSet(k, i) {
       const it = this.atList(k)[i]; if (!it || k === "poolI") return;
@@ -227,7 +228,7 @@ G.module({
     openSettings() {
       const c = this.s.cultSet;
       this.modal(`<h2>设置</h2>
-        <div class="line"><div>修炼设置<small>自动探索 / 挖矿、自动执行任务、灵气不足自动补灵石${c && c.on ? " · 已开启" : ""}</small></div><button class="sm ${c && c.on ? "on" : ""}" onclick="G.openCultSet()">打开</button></div>
+        <div class="line"><div>修炼设置<small>自动探索 / 挖矿、自动执行任务、灵气不足自动补灵石${c && c.on ? " · 已开启" : ""}</small></div><button class="sm ${c && c.on ? "on" : ""}" onclick="G.openCultSet()">${c && c.on ? "已开启" : "设置"}</button></div>
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     // 修炼加成（弹窗）：修炼速度构成 + 丹药
@@ -235,17 +236,17 @@ G.module({
       const s = this.s, st = this.stats(), sp = this.speed(), arrPct = (this.arrayFactor() - 1) * 100;
       this.modal(`<h2>修炼加成<small> · ${U.num(sp.total)} 修为 / 10秒</small></h2>
         <div class="line"><div>基础修炼速度<small>境界 ${U.num(st.cultivate)} + 秘诀 ${U.num(this.gongfaBonus().cultivate)} + 秘法 ${U.num(sp.mifa)}</small></div><b>${U.num(sp.base)}</b></div>
-        <div class="line"><div>聚灵阵<small>${s.array.lv} 级</small></div><b>+${U.num(arrPct)}%</b></div>
+        <div class="line"><div>聚灵阵</div><b>+${U.num(arrPct)}%</b></div>
         <div class="line"><div>聚元秘法圆满</div><b>+${U.num(sp.mfPct)}%</b></div>
         <div class="line"><div>道童辅助修炼</div><b>+${U.num(sp.svPct)}%</b></div>
         <div class="line"><div>丹药</div><b>+${Math.round(sp.pill)}%</b></div>
-        <div class="line"><div>修炼室<small>${this.freeCultOn() ? `${CFG.sect.freeRoom.name}（剩余 ${s.freeCult.left} 次）` : s.room >= 0 && s.sect ? DATA.rooms[s.room].name : "未使用"}</small></div><b>+${Math.round(sp.room)}%</b></div>
+        <div class="line"><div>修炼室<small>${this.freeCultOn() ? `${CFG.sect.freeRoom.name}（剩余 ${s.freeCult.left} 次）` : s.room >= 0 && s.sect ? DATA.rooms[s.room].name : "未使用"}</small></div><b>+${U.num(this.freeCultOn() ? this.freeCultPct() : s.room >= 0 && s.sect ? this.roomPct(s.room) : 0)}%</b></div>
         <h3 style="margin-top:10px">丹药</h3>
         ${Object.keys(DATA.pills).map(t => {
           const b = s.buffs[t], on = b && b.left > 0, i = this.bestPillIndex(t);
           const cnt = s.bag.filter(x => x.t === "pill" && x.type === t && this.canUsePill(x.g)).reduce((a, x) => a + x.n, 0);
-          if (!on && !cnt) return "";   // v42：没生效、也没有能吃的就不显示
-          return `<div class="line"><div><img src="${DATA.pillIcon(t)}" alt="" style="width:30px;height:30px;float:left;margin-right:6px">${DATA.pills[t].name}<small>${on ? `+${Math.round(b.pct)}%，剩余 ${b.left} 次修炼` : "未生效"} · 可用 ${cnt} 枚</small></div>
+          if (!on && !cnt) return ""; // v42：没生效、也没有能吃的就不显示
+          return `<div class="line"><div><img src="${DATA.pillIcon(t)}" alt="" style="width:30px;height:30px;float:left;margin-right:6px">${DATA.pills[t].name}<small>${on ? `+${Math.round(b.pct)}%（${b.left}次）` : "未生效"}</small></div>
           <div><button data-refresh="openBoost" class="sm" onclick="G.manualPill('${t}')" ${i < 0 ? "disabled" : ""}>服用</button>
           <button data-refresh="openBoost" class="sm ${s.autoPill[t] ? "on" : ""}" onclick="G.toggleAutoPill('${t}')">自动${s.autoPill[t] ? "开" : "关"}</button></div></div>`;
         }).join("")}
@@ -326,6 +327,20 @@ G.module({
       <button class="cult-orb l" onclick="G.openShenshi(true)">神识</button>
       <button class="cult-orb r" onclick="G.openBoost()">修炼增幅</button>
     </div>
+    <div class="cult-summary">
+      <div class="cult-pill">
+        <span>修炼效率</span>
+        <strong>${U.num(sp.total)}</strong>
+      </div>
+      <div class="cult-pill ${this.isCultivating() ? (block ? "bad" : "on") : ""}">
+        <span>状态</span>
+        <strong>${this.isCultivating() ? (block ? "受阻" : "修炼中") : "已暂停"}</strong>
+      </div>
+      <div class="cult-pill">
+        <span>灵气</span>
+        <strong>${U.fmt(s.ling)} / ${U.fmt(cap)}</strong>
+      </div>
+    </div>
     <div class="cult-info">
       <div class="cult-eff">当前修炼效率：<b>${U.num(sp.total)}</b> / 10秒${block ? "" : `<span id="tick-left" class="cult-cd"></span>`}</div>
       <div class="bar tick"><div id="tick-bar"></div></div>
@@ -357,3 +372,455 @@ G.module({
     </div>`;
   },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
