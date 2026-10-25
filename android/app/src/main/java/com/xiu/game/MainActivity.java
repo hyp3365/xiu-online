@@ -5,8 +5,12 @@ import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
@@ -78,10 +82,12 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         Window w = getWindow();
-        w.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);   // 全屏：不显示手机顶部状态栏
-        w.setStatusBarColor(BG);
-        w.setNavigationBarColor(BG);
+        // 真全屏：网页一直铺到屏幕最顶端（含刘海/状态栏区域），并隐藏状态栏和导航栏
+        w.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        w.setStatusBarColor(Color.TRANSPARENT);
+        w.setNavigationBarColor(Color.TRANSPARENT);
         w.getDecorView().setBackgroundColor(BG);
+        setupFullscreen(w);
         loadImgVer();
         loadSrvHash();
         setContentView(makeWeb());
@@ -90,6 +96,45 @@ public class MainActivity extends Activity {
             requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, 1);
         if (b != null) web.restoreState(b);
         else web.loadUrl(serverUrl());
+    }
+
+    // 允许网页绘制到刘海区域，并把状态栏 / 导航栏全部隐藏（从边缘滑动可临时呼出）
+    private void setupFullscreen(Window w) {
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams lp = w.getAttributes();
+            lp.layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= 30
+                    ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            w.setAttributes(lp);
+        }
+        if (Build.VERSION.SDK_INT >= 30) w.setDecorFitsSystemWindows(false);
+        hideSystemBars();
+    }
+
+    private void hideSystemBars() {
+        Window w = getWindow();
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = w.getInsetsController();
+            if (c != null) {
+                c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            }
+        } else {
+            w.getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        }
+    }
+
+    // 从通知栏 / 弹窗返回游戏时，系统栏可能重新出现，再次隐藏
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) hideSystemBars();
     }
 
     // 建 WebView（网页进程被系统回收时会重新建一个）
