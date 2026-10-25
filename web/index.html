@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>问道长生 · 文字修仙</title>
+<link rel="stylesheet" href="css/style.css?v=244">
+</head>
+<body class="nologin">
+<div id="boot">问道长生<small>加载中…</small></div>
+<div id="app">
+  <div class="bar-img bar-top"></div>
+  <!-- 顶部：道号、境界、灵石、贡献、功德（修为条在修炼页突破按钮下面） -->
+  <header id="top">
+    <div class="top-line">
+      <button class="top-ava" onclick="G.openProfile()" aria-label="人物属性"><span id="p-realm"></span></button>
+      <div class="top-id"><b id="p-name"></b></div>
+      <div class="top-btns">
+        <button class="top-ic" onclick="G.openFanShop()"><i>市</i>坊市</button>
+        <button class="top-ic" onclick="G.openSettings()"><i>⚙</i>设置</button>
+      </div>
+    </div>
+    <div class="res3"><span><i class="r-st"></i>灵石 <b id="p-stone"></b></span><span><i class="r-ct"></i>贡献 <b id="p-contrib"></b></span><span><i class="r-mt"></i>功德 <b id="p-merit"></b></span></div>
+  </header>
+
+  <!-- 中间：当前标签页内容 -->
+  <main id="view"></main>
+
+  <!-- 修行日志 -->
+  <div id="log-wrap"><div id="log"></div></div>
+
+  <!-- 底部标签 -->
+  <nav id="tabs">
+    <button data-tab="cultivate" class="active"><img src="img/icons/nav_cultivate.png?v=1" alt="">修炼</button>
+    <button data-tab="bag"><img src="img/icons/nav_bag.png?v=1" alt="">背包</button>
+    <button data-tab="gongfa"><img src="img/icons/nav_gongfa.png?v=1" alt="">功法</button>
+    <button data-tab="sect"><img src="img/icons/nav_sect.png?v=1" alt="">门派</button>
+    <button data-tab="cave"><img src="img/icons/nav_cave.png?v=1" alt="">洞府</button>
+    <button data-tab="world"><img src="img/icons/nav_world.png?v=1" alt="">世界</button>
+  </nav>
+  <div class="bar-img bar-bot"></div>
+</div>
+
+<!-- 浮动提示（非修炼页显示消息） -->
+<div id="toast"></div>
+
+<!-- 弹窗 -->
+<div id="trib" class="trib hidden"></div>
+<div id="modal" class="modal hidden"><div class="modal-box" id="modal-box"></div></div>
+
+<!-- 加载顺序：数据 → 核心 → 模块（模块的 tick 按这里的顺序执行） -->
+<!-- 数值设置（改平衡只改这个） -->
+<script>
+  // 数值文件写错（语法错误）时在页面顶部提示是哪个文件、第几行
+  window.addEventListener("error", function (e) {
+    if (!e.filename || window.__noCfg) return;
+    var b = document.getElementById("cfg-err") || document.body.insertBefore(Object.assign(document.createElement("div"), { id: "cfg-err" }), document.body.firstChild);
+    b.style.cssText = "background:#7a1f1f;color:#fff;padding:8px;font-size:13px;white-space:pre-wrap";
+    b.textContent += "脚本错误：" + e.filename.split("/").slice(-2).join("/").split("?")[0] + " 第 " + e.lineno + " 行：" + e.message + "\n";
+  });
+</script>
+<!-- 游戏参数（js/config/）：由服务器按顺序加载，管理员「数据修改」改过的优先 -->
+<script src="api/config-loader.js"></script>
+<script>
+  // 参数没加载到（多半是服务器正在更新 / 重启，或网络断了）：不报一堆脚本错误，提示后自动刷新
+  if (!window.CFG) {
+    window.__noCfg = true;
+    document.body.insertBefore(Object.assign(document.createElement("div"), { textContent: "连接服务器失败（可能正在更新），3 秒后自动刷新…", style: "background:#7a1f1f;color:#fff;padding:10px;font-size:14px;text-align:center" }), document.body.firstChild);
+    setTimeout(function () { location.reload(); }, 3000);
+  }
+</script>
+<!-- 自定义物品、坊市、宗门宝库（不是数值文件） -->
+<script src="js/content/items.js?v=210"></script>
+<script src="js/data/names.js?v=208"></script>
+<script src="js/data/realms.js?v=219"></script>
+<script src="js/data/pills.js?v=208"></script>
+<script src="js/data/cave.js?v=208"></script>
+<script src="js/data/sects.js?v=209"></script>
+<script src="js/data/gongfa.js?v=224"></script>
+<script src="js/data/items.js?v=209"></script>
+<script src="js/data/maps.js?v=220"></script>
+<script src="js/data/jiegf.js?v=211"></script>
+<script src="js/data/craft.js?v=215"></script>
+<script src="js/data/forge.js?v=227"></script>
+<script src="js/data/refstats.js?v=211"></script>
+<script src="js/data/mobs.js?v=215"></script>
+
+<script src="js/core/util.js?v=210"></script>
+<script src="js/core/api.js?v=229"></script>
+<script src="js/core/game.js?v=222"></script>
+
+<script src="js/modules/player.js?v=214"></script>
+<script src="js/modules/cave.js?v=211"></script>
+<script src="js/modules/bag.js?v=213"></script>
+<script src="js/modules/custom.js?v=208"></script>
+<script src="js/modules/gongfa.js?v=227"></script>
+<script src="js/modules/sect.js?v=245"></script>
+<script src="js/modules/cultivate.js?v=218"></script>
+<script src="js/modules/trib.js?v=220"></script>
+<script src="js/modules/body.js?v=215"></script>
+<script src="js/modules/world.js?v=286"></script>
+<script src="js/modules/xingjun.js?v=214"></script>
+<script src="js/modules/lingen.js?v=210"></script>
+<script src="js/modules/craft.js?v=236"></script>
+<script src="js/modules/wudao.js?v=214"></script>
+<script src="js/modules/shenshi.js?v=211"></script>
+<script src="js/modules/wudaoshi.js?v=209"></script>
+<script src="js/modules/garden.js?v=211"></script>
+<script src="js/modules/servant.js?v=211"></script>
+<script src="js/modules/gift.js?v=213"></script>
+<script src="js/modules/accounts.js?v=209"></script>
+<script src="js/modules/srvinfo.js?v=4"></script>
+<script src="js/modules/cfgedit.js?v=217"></script>
+<script src="js/modules/battleset.js?v=209"></script>
+<script src="js/modules/origin.js?v=1"></script>
+<script src="js/modules/account.js?v=211"></script>
+<script src="js/core/fastsim.js?v=222"></script>
+
+<script>G.init();</script>
+</body>
+</html>
