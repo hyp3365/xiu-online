@@ -81,7 +81,7 @@ CFG.wudao = {
   //   自身伤害降低% = CUT_START − 各满层星级的 CUT_STEP 之和，最低 CUT_MIN；怪物固定降低 MOB_CUT%
   JINCHAN: {
     STAR: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2],
-    MAX: 7.5, ROUNDS: 3, TIMES: 2,
+    MAX: 7.5, ROUNDS: 2, TIMES: 2,
     CUT_START: 90, CUT_MIN: 50, CUT_STEP: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
     MOB: 4, MOB_CUT: 70,
   },
