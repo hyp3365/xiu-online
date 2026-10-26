@@ -61,7 +61,8 @@ G.module({
     craftLv(k) { return this.craftInfo(k).lv; },
     craftMax(k) { const C = CFG.craftsman; return (C[k] && C[k].MAX) || (C["x" + k] ? 20 : C.MAX); },   // 炼丹师 / 炼器师 / 灵植夫 1~20 阶
     // 显示：1~10 阶叫炼丹师 / 炼器师 / 灵植夫 N 阶，11~20 阶叫炼丹仙师 / 炼器仙师 / 仙植师 (N−10) 阶
-    craftTitle(k, lv) { const C = CFG.craftsman, u = this.craftUnit(k); lv = lv || this.craftLv(k); return lv > 20 && C["s" + k] ? `${C["s" + k].name} · ${lv - 20} ${u}` : lv > 10 && C["x" + k] ? `${C["x" + k].name} · ${lv - 10} ${u}` : `${C[k].name} · ${lv} ${u}`; },   // 炼丹师 21~30 阶显示为炼丹神师
+    craftTitle(k, lv) { const C = CFG.craftsman, u = this.craftUnit(k), z = n => this.cnNum(n) + u; lv = lv || this.craftLv(k); return lv > 20 && C["s" + k] ? `${C["s" + k].name} · ${z(lv - 20)}` : lv > 10 && C["x" + k] ? `${C["x" + k].name} · ${z(lv - 10)}` : `${C[k].name} · ${z(lv)}`; },   // 炼丹师 · 一阶；21~30 阶显示为炼丹神师
+    cnNum(n) { const D = "零一二三四五六七八九"; return n <= 10 ? (n === 10 ? "十" : D[n]) : n < 20 ? "十" + D[n - 10] : D[Math.floor(n / 10)] + "十" + (n % 10 ? D[n % 10] : ""); },
     craftUnit(k) { return k === "qi" ? "星" : "阶"; },   // 炼器师按星显示
     // 炼丹 / 炼器一件给的经验：物品阶 ≥ 技艺阶才给，g = 物品阶序号（0 = 一阶）
     itemExp(k, g, ok) {
@@ -287,7 +288,7 @@ G.module({
         j.ok = Math.random() < this.forgeRate(j.kind, j.g);
         this.addCraftExp("qi", this.itemExp("qi", this.forgeTotal(j.kind, j.g), j.ok));
       }
-      if (j.kind === "rf") {   // 精炼：成功 +1 阶；失败只扣材料（同类那件 + 矿石），被精炼的那件原样退回
+      if (j.kind === "rf") {   // 精炼：成功 +1 阶；失败只扣矿石，被精炼的那件原样退回
         if (this.bagFull()) { if (!this.silent) this.log("背包已满，暂停出炉。", "bad"); return false; }
         const e = j.item; if (j.ok) e.rj = DATA.rjOf(e) + 1;
         this.addEquip(e); this.dirty();
@@ -435,7 +436,7 @@ G.module({
     },
     setForgeTier(g) { this.forgeTier = g; this.render(); },
     setForgeMode(m) { this.forgeMode = m; this.render(); },
-    // ---------- 精炼：装备 / 法宝 / 戒指每次 +1 阶（一阶 ~ 十阶），消耗同类同星一件 + 炼制该星的三种矿石；必定成功、立即完成 ----------
+    // ---------- 精炼：装备 / 法宝 / 戒指每次 +1 阶（一阶 ~ 十阶），只消耗炼制该星的三种矿石；必定成功、立即完成 ----------
     //   同类：装备同部位；戒指同种；法宝同形状同属性。材料件优先用阶低、强化低、颜色差的；材料件本身的阶不影响
     refineSame(a, b) { return a !== b && b && b.attrs && b.slot === a.slot && b.g === a.g && (a.slot === "ring" ? b.r === a.r : a.slot === "fabao" ? b.ft === a.ft && b.el === a.el : true); },
     refineMatIndex(e) {
@@ -449,13 +450,11 @@ G.module({
       if (DATA.rjTop(e)) return this.log("已精炼到" + DATA.JIE[DATA.RJ_MAX - 1] + "。", "sys");
       if (s.furnaceUse.qi < 0) return this.log("炼器必须装有炼器炉（宗门宝库 · 杂物可兑换一星炼器炉）。", "sys");
       if (s.forgeJob && s.forgeQueue.length >= CFG.furnace.QUEUE) return this.log(`队列已满（最多 ${CFG.furnace.QUEUE} 个）。`, "sys");
-      const mats = DATA.refineMats(e), mi = this.refineMatIndex(e);
-      if (mi < 0) return this.log("背包里缺少一件同星同类的" + (e.slot === "fabao" ? "法宝（同形状同属性）" : e.slot === "ring" ? "戒指（同种）" : DATA.slots[e.slot]) + "作精炼材料。", "sys");
+      const mats = DATA.refineMats(e);   // 精炼只要这件法宝 / 装备 + 三种矿石，不需要另一件同星同类的
       if (!this.hasMats(mats)) return this.log("矿石不足。", "sys");
       mats.forEach(m => this.takeMat(m.kind, m.g, m.n));
-      const mat = s.bag[mi].e;
-      for (const k of [Math.max(+i, mi), Math.min(+i, mi)]) s.bag.splice(k, 1);
-      const job = { kind: "rf", g: e.g, item: e, mat };
+      s.bag.splice(+i, 1);
+      const job = { kind: "rf", g: e.g, item: e };
       if (s.forgeJob) { s.forgeQueue.push(job); this.log(`${this.jobName(job)}加入队列。`, "sys"); }
       else { s.forgeJob = Object.assign(job, { end: this.now() + this.forgePer("rf", e.g) }); this.log(`开始${this.jobName(job)}。`, "good"); }
       this.after();
@@ -614,9 +613,9 @@ G.module({
     // v251 正在炼丹 / 正在炼器 框（k = alch / forge）：左边信息，右边三个按钮一个一行
     jobCard(k, info) {
       const s = this.s, dan = k === "alch", busy = dan ? s.alchJob : s.forgeJob, q = dan ? s.alchQueue : s.forgeQueue, Q = dan ? CFG.alchemy.QUEUE : CFG.furnace.QUEUE, w = dan ? "炼丹" : "炼器";
-      return `<div class="card job-card"><div class="job-info">${info || `<b>${dan ? "丹炉" : "炼器炉"}空闲</b><small>点物品后面的「炼制」开始</small>`}</div>
-        <div class="job-btns"><button class="sm" onclick="G.openCraftLog('${dan ? "alchLog" : "forgeLog"}')">${w}记录</button>
-          <button class="sm" onclick="G.openCraftQueue('${k}')">${w}队列 ${q.length}/${Q}</button>
+      if (!info && !busy && !q.length) return "";   // 炉子空闲、队列也空：不显示这个框
+      return `<div class="card job-card"><div class="job-info">${info || `<b>${dan ? "丹炉" : "炼器炉"}空闲</b>`}</div>
+        <div class="job-btns" style="justify-content:space-around"><button class="sm" onclick="G.openCraftQueue('${k}')">${w}队列 ${q.length}/${Q}</button>
           ${busy ? `<button class="sm on" onclick="G.askStopJob('${k}')">正在${w}</button>` : `<button class="sm" disabled>尚未${w}</button>`}</div></div>`;
     },
     // v252 停炉确认：游戏风格弹窗（不用浏览器 confirm）
@@ -672,92 +671,138 @@ G.module({
   },
 });
 
-/* 洞府 · 炼丹房：按 一阶~九阶 分页，只显示已学会的丹方 */
+/* ---------- 炼丹房 / 炼器室：顶部按钮（炼丹 · 炼丹记录 · 隐藏丹方；炼器 · 精炼 · 记录 · 隐藏），先「开始炼丹 / 炼器」选配方，再开炉 ----------
+ * 隐藏的丹方 / 配方只是界面显示偏好，存在本机 localStorage（xiu_hide_dan / xiu_hide_qi） */
+Object.assign(G, {
+  hideList(k) { try { return JSON.parse(localStorage.getItem("xiu_hide_" + k) || "[]"); } catch { return []; } },
+  isHidden(k, key) { return this.hideList(k).includes(key); },
+  toggleHide(k, key) {
+    const L = this.hideList(k), i = L.indexOf(key); if (i >= 0) L.splice(i, 1); else L.push(key);
+    try { localStorage.setItem("xiu_hide_" + k, JSON.stringify(L)); } catch {}
+    this.render();
+  },
+  craftStartBtn(call, txt) { return `<div class="craft-start"><button class="primary" onclick="${call}">${txt}</button></div>`; },
+  roomBtns(list, cur) { return `<div class="room-grid" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([k, n, call]) => `<button class="${cur === k ? "active" : ""}" onclick="${call}">${n}</button>`).join("")}</div>`; },
+  setAlchMode(m) { this.alchMode = m; this.render(); },
+  // 已学丹方（按 凡丹→神丹、一阶→十阶 排好）
+  danKnown() {
+    return this.s.recipes.map(k => { const [t, g] = k.split("|"); return { t, g: +g, key: k }; })
+      .filter(x => DATA.recipes[x.t] && DATA.recipeHas(x.t, x.g))
+      .sort((x, y) => DATA.danCat(x.t) - DATA.danCat(y.t) || x.g - y.g);
+  },
+  danEatTxt(t, g) { return DATA.dans[t] ? `已服 ${DATA.danLimit(t, g) - this.danLeft(t, g)}/${DATA.danLimit(t, g)}` : ""; },
+  danInfo(t, g) {
+    const rec = DATA.danRecipe(t, g), e = this.danEatTxt(t, g);
+    return `<div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, g), "li")}${DATA.danName(t, g)}<span class="tag">${DATA.recipeEffect(t, g)}</span>
+      <small>${this.matsText(rec)} · 每枚 ${U.dur(this.danPer(t, g) / 1000)} · 成功率 ${this.ratePct(this.danRate(t, g))}${e ? " · " + e : ""}</small></div>`;
+  },
+  danCanMake(t, g) { const s = this.s; return s.furnaceUse[this.danFurn(DATA.danFu(t))] >= 0 && this.hasMats(DATA.danRecipe(t, g)) && !(s.alchJob && s.alchQueue.length >= CFG.alchemy.QUEUE); },
+  // 开始炼丹：弹出全部已学丹方（隐藏的不显示），选一个
+  openAlchList() {
+    const L = this.danKnown().filter(x => !this.isHidden("dan", x.key));
+    this.modal(`<h2>选择丹方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${this.danInfo(x.t, x.g)}<button class="sm" onclick="G.pickAlch('${x.t}',${x.g})">选择</button></div>`).join("")
+      : `<p class="desc">没有可选的丹方：在门派 → 炼丹房、四界功德司学习，或到「隐藏丹方」取消隐藏。</p>`}</div>
+      <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+  },
+  pickAlch(t, g) { this.alchPick = { t, g }; this.closeModal(); this.render(); },
+  // 炼器配方：所有星级里已学会能炼的东西
+  forgeItems() {
+    const s = this.s, j = s.forgeJob, has = s.furnaceUse.qi >= 0, full = !!(j && s.forgeQueue.length >= CFG.furnace.QUEUE), out = [];
+    const add = (key, info, ok, call, btn) => out.push({ key, info, ok: has && !full && ok, call, btn: btn || "炼制" });
+    for (let g = 0; g < DATA.XING.length; g++) {
+      const rate = this.ratePct(this.craftRate("qi", g));
+      for (const k of DATA.FURNACE_KINDS) if ((s.blueprints[k] || []).includes(g)) {
+        const mats = DATA.furnaceMats(k, g);
+        add(`f:${k}:${g}`, `<div>${DATA.li(DATA.furnaceIcon(k))}${DATA.furnaceName(k, g)}<span class="tag">-${DATA.furnaceBonus(k, g)}%</span>
+          <small>${this.matsText(mats)} · ${U.dur(this.forgePer(k, g) / 1000)} · 成功率 ${this.ratePct(this.forgeRate(k, g))}</small></div>`, this.hasMats(mats), `G.openForgeN('${k}',${g})`);
+      }
+      for (const sl of DATA.forgeSlots) if (s.forgeKnown.includes(this.forgeKey("eq", g, sl))) {
+        const mats = DATA.forgeEqMats(g);
+        if (sl === "fabao") {
+          const prevOK = this.fabaoAnyBase(g), yn = ((CFG.forge.YAOSHI || {}).fabao || [])[g] || 0;
+          add(`eq:fabao:${g}`, `<div>${DATA.eqTierIco(DATA.iconImg("fbs0_0"), g)}${DATA.XING[g]}法宝<span class="tag">${DATA.fabaoTypes.length} 种</span>
+            <small>${g ? `<span class="${prevOK ? "" : "q5"}">${DATA.XING[g - 1]}${DATA.JIE[9]}同形状同属性法宝 ×1</span>、` : ""}${this.matsText(mats)}${yn ? `、同属性${DATA.smName("ys")} ×${U.fmt(yn)}` : ""} · ${U.dur(this.forgePer("eq", g) / 1000)} · 成功率 ${rate}</small></div>`,
+            prevOK && this.hasMats(mats), `G.openFabaoPick(${g})`, "选择");
+          continue;
+        }
+        const prevOK = g === 0 || this.prevEquipIndex(sl, g) >= 0, esm = this.jobSm({ kind: "eq", g, slot: sl });
+        add(`eq:${sl}:${g}`, `<div>${DATA.eqTierIco(DATA.iconImg("eq_" + sl), g)}${DATA.forgeEqName(sl, g)}<span class="tag">${DATA.slots[sl]}</span>
+          <small>${g ? `<span class="${prevOK ? "" : "q5"}">${DATA.forgeEqName(sl, g - 1)}·${DATA.JIE[9]} ×1</span>、` : ""}${this.matsText(mats)}${esm.length ? "、" + this.smText(esm) : ""} · ${U.dur(this.forgePer("eq", g) / 1000)} · 成功率 ${rate}</small></div>`,
+          prevOK && this.hasMats(mats) && this.smHave(esm), `G.openForgeN('eq',${g},'${sl}')`);
+      }
+      if (g > 0) {
+        const mats = DATA.ringMats(g);
+        DATA.ringNames.forEach((n, r) => {
+          if (!this.ringKnown(r, g)) return;
+          const prevOK = this.prevEquipIndex("ring", g, r) >= 0, rsm = this.jobSm({ kind: "ring", g, r });
+          add(`ring:${r}:${g}`, `<div>${DATA.li(DATA.iconImg("eq_ring"))}${DATA.ringName(r, g)}<span class="tag">戒指</span>
+            <small><span class="${prevOK ? "" : "q5"}">${DATA.ringName(r, g - 1)}·${DATA.JIE[9]} ×1</span>、${this.matsText(mats)}${rsm.length ? "、" + this.smText(rsm) : ""} · ${U.dur(this.forgePer("ring", g) / 1000)} · 成功率 ${rate}</small></div>`,
+            prevOK && this.hasMats(mats) && this.smHave(rsm), `G.openForgeN('ring',${g},${r})`);
+        });
+      }
+      if (s.forgeKnown.includes(this.forgeKey("ss", g))) {
+        const mats = DATA.stoneMats(g), sm = this.jobSm({ kind: "ss", g });
+        add(`ss:${g}`, `<div>${DATA.li(DATA.iconImg("ss"))}${DATA.stoneName(g)}<span class="tag">储物格+1</span>
+          <small>${this.matsText(mats)}${sm.length ? "、" + this.smText(sm) : ""} · ${U.dur(this.forgePer("ss", g) / 1000)} · 成功率 ${rate} · 已用 ${CFG.forge.stone.MAX_USE - this.stoneLeft(g)}/${CFG.forge.stone.MAX_USE}</small></div>`,
+          this.hasMats(mats) && this.smHave(sm), `G.openForgeN('ss',${g})`);
+      }
+    }
+    // 灵珠（立即炼成，不占炼器队列）
+    const LZ = CFG.lingzhu, lzMats = this.lzMats();
+    LZ.NAMES.forEach((n, ft) => { if (!s.forgeKnown.includes(this.forgeKey("lz", 0, ft))) return;
+      const ok = this.hasMats(lzMats) && this.smCount("lj", ft) >= LZ.JING;
+      out.push({ key: `lz:${ft}`, info: `<div>${DATA.li(DATA.smIcon("lz", ft), "lz-glow")}${DATA.smName("lz", ft)}<span class="tag">聚灵+${U.fmt(LZ.BASE)}</span>
+        <small>${this.matsText(lzMats)}、<span class="${this.smCount("lj", ft) >= LZ.JING ? "" : "q5"}">${DATA.li(DATA.smIcon("lj", ft))}${DATA.smName("lj", ft)} ${U.fmt(this.smCount("lj", ft))}/${LZ.JING}</span></small></div>`, ok, call: `G.craftLz(${ft})`, btn: "炼制" }); });
+    return out;
+  },
+  openForgeList() {
+    const L = this.forgeItems().filter(x => !this.isHidden("qi", x.key));
+    this.modal(`<h2>选择配方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${x.info}<button class="sm" onclick="G.pickForge('${x.key}')">选择</button></div>`).join("")
+      : `<p class="desc">没有可选的配方：炉子图纸在门派宝库兑换，装备图谱、空间石、灵珠在门派炼器室学习，或到「隐藏」取消隐藏。</p>`}</div>
+      <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+  },
+  pickForge(key) { this.forgePickKey = key; this.closeModal(); this.render(); },
+});
+
+/* 洞府 · 炼丹房 */
 G.caveViews.alchemy = function () {
-  const s = this.s, a = s.alchJob, tier = this.danTier || 0, cat = this.danCat || 0, catName = (CFG.alchemy.CATS || [])[cat] || "";
-  const fk = this.danFurn(cat === 4 ? "sdan" : cat ? "xdan" : "dan"), ck = "dan", fu = s.furnaceUse[fk];   // 炼丹师统一 1~30 阶；仙冥魔丹装了炼丹仙炉用仙炉，神丹用炼丹神炉，没装依次往下用
-  let h = this.danCatBar("danCat") + this.cardRow(this.craftsmanMini(ck), this.furnaceMini(fk));
-  // v251 「正在炼丹」框：左边当前炉信息，右边一列按钮（炼丹记录 / 炼丹队列 / 正在炼丹），固定三行高
+  const s = this.s, a = s.alchJob, mode = this.alchMode === "hide" ? "hide" : "make";
+  let h = this.cardRow(this.craftsmanMini("dan"), this.furnaceMini(this.danFurn("dan")));
+  h += this.roomBtns([["make", "炼丹", "G.setAlchMode('make')"], ["log", "炼丹记录", "G.openCraftLog('alchLog')"], ["hide", "隐藏丹方", "G.setAlchMode('hide')"]], mode);
+  if (mode === "hide") {
+    const L = this.danKnown();
+    return h + `<div class="card"><h3>已学丹方<small>${L.length} 个 · 隐藏后「开始炼丹」里不显示</small></h3>` + (L.length ? L.map(x => { const hid = this.isHidden("dan", x.key), e = this.danEatTxt(x.t, x.g);
+      return `<div class="line"><div>${DATA.danImg(DATA.danIcon(x.t), DATA.danCls(x.t, x.g), "li")}${DATA.danName(x.t, x.g)}<span class="tag">${DATA.recipeEffect(x.t, x.g)}</span><small>${e || "不可服用"}</small></div>
+        <button class="sm ${hid ? "on" : ""}" onclick="G.toggleHide('dan','${x.key}')">${hid ? "已隐藏" : "隐藏"}</button></div>`; }).join("") : `<p class="desc">还没有学会丹方。</p>`) + `</div>`;
+  }
   h += this.jobCard("alch", a ? `<b>${DATA.danName(a.type, a.g)}</b> ${a.done} / ${a.n}
       <div class="pg">${this.pgFill(Math.max(0, a.next - Date.now()), a.per)}<span>下一枚 ${U.cd(Math.max(0, a.next - Date.now()) / 1000 + 59)}</span></div>
       <small>成丹 ${a.ok || 0}${a.extra ? `（+${a.extra}）` : ""} · 失败 ${a.fail || 0} · 成功率 ${this.ratePct(this.danRate(a.type, a.g))} · 约 ${U.cd((Math.max(0, a.next - Date.now()) + Math.max(0, a.n - a.done - 1) * a.per) / 1000 + 59)} 后炼完</small>` : "");
-  const list = Object.keys(DATA.recipes).filter(t => DATA.danCat(t) === cat && DATA.recipeHas(t, tier) && s.recipes.includes(t + "|" + tier));
-  h += `<div class="card"><h3>炼丹<small>已学丹方 ${s.recipes.length}</small></h3>
-    <div class="room-grid five">${DATA.JIE.slice(0, DATA.DAN_JIE_N).map((n, g) => `<button class="${tier === g ? "active" : ""}" onclick="G.setDanTier(${g})">${n}</button>`).join("")}</div>` +
-    (list.length ? list.map(t => {
-      const rec = DATA.danRecipe(t, tier), ok = fu >= 0 && this.hasMats(rec) && !(a && s.alchQueue.length >= CFG.alchemy.QUEUE);
-      const eaten = !DATA.dans[t] ? "" : ` · 已服 ${DATA.danLimit(t, tier) - this.danLeft(t, tier)}/${DATA.danLimit(t, tier)}`;
-      return `<div class="line"><div>${DATA.danImg(DATA.danIcon(t), DATA.danCls(t, tier), "li")}${DATA.danName(t, tier)}<span class="tag">${DATA.recipeEffect(t, tier)}</span>
-        <small>${this.matsText(rec)} · 每枚 ${U.dur(this.danPer(t, tier) / 1000)} · 成功率 ${this.ratePct(this.danRate(t, tier))}${eaten}</small></div>
-        <button class="sm" onclick="G.openAlchN('${t}',${tier})" ${ok ? "" : "disabled"}>炼制</button></div>`;
-    }).join("") : `<p class="desc">尚未学会${DATA.JIE[tier]}${cat ? catName : ""}丹方，可在${cat && cat !== 4 ? "四界功德司" : "门派 → 炼丹房"}学习。</p>`) +
-    `</div>`;
+  const p = this.alchPick && s.recipes.includes(this.alchPick.t + "|" + this.alchPick.g) ? this.alchPick : null;
+  h += p ? `<div class="card"><h3>炼丹<small>已学丹方 ${s.recipes.length}</small></h3><div class="line">${this.danInfo(p.t, p.g)}<button class="sm" onclick="G.openAlchList()">更换</button></div>
+    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="G.openAlchN('${p.t}',${p.g})" ${!this.danCanMake(p.t, p.g) ? "disabled" : ""}>开始炼丹</button></div></div>`
+    : this.craftStartBtn("G.openAlchList()", "开始炼丹");   // 没选配方：按钮在页面中部，选了配方后信息在上、按钮跟着往下
   return h;
 };
 
-/* 洞府 · 炼器室：按 一阶~十阶 分页，每阶里有 炼丹炉、炼器炉、装备、空间石（必须装有炼器炉） */
+/* 洞府 · 炼器室 */
 G.caveViews.forge = function () {
-  const s = this.s, j = s.forgeJob, qi = s.furnaceUse.qi, has = qi >= 0, full = j && s.forgeQueue.length >= CFG.furnace.QUEUE, g = this.forgeTier || 0;
+  const s = this.s, j = s.forgeJob, mode = ["refine", "hide"].includes(this.forgeMode) ? this.forgeMode : "make";
   let h = this.cardRow(this.craftsmanMini("qi"), this.furnaceMini("qi"));
+  h += this.roomBtns([["make", "炼器", "G.setForgeMode('make')"], ["refine", "精炼", "G.setForgeMode('refine')"], ["log", "记录", "G.openCraftLog('forgeLog')"], ["hide", "隐藏", "G.setForgeMode('hide')"]], mode);
+  if (mode === "refine") return h + this.jobCard("forge", j ? `<b>${this.jobName(j)}</b><small>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</small>` : "") + `<div class="card"><h3>精炼<small>只需三种矿石</small></h3>${this.refineRows()}</div>`;
+  const items = this.forgeItems();
+  if (mode === "hide") {
+    return h + `<div class="card"><h3>已学配方<small>${items.length} 个 · 隐藏后「开始炼器」里不显示</small></h3>` + (items.length ? items.map(x => { const hid = this.isHidden("qi", x.key);
+      return `<div class="line">${x.info}<button class="sm ${hid ? "on" : ""}" onclick="G.toggleHide('qi','${x.key}')">${hid ? "已隐藏" : "隐藏"}</button></div>`; }).join("") : `<p class="desc">还没有学会配方。</p>`) + `</div>`;
+  }
   h += this.jobCard("forge", j ? `<b>${this.jobName(j)}</b>
       <div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div>
       <small>成功率 ${this.ratePct(this.forgeRate(j.kind, j.g))}</small>` : "");
-  const btn = (ok, call) => `<button class="sm" onclick="${call.replace("G.craftFurnace(", "G.openForgeN(")}" ${!has || full || !ok ? "disabled" : ""}>炼制</button>`;
-  let rows = "";
-  const rate = this.ratePct(this.craftRate("qi", g));
-  // 炉子（需在背包学会图纸）
-  for (const k of DATA.FURNACE_KINDS) if ((s.blueprints[k] || []).includes(g)) {
-    const mats = DATA.furnaceMats(k, g);
-    rows += `<div class="line"><div>${DATA.li(DATA.furnaceIcon(k))}${DATA.furnaceName(k, g)}<span class="tag">-${DATA.furnaceBonus(k, g)}%</span>
-      <small>${this.matsText(mats)} · ${U.dur(this.forgePer(k, g) / 1000)} · 成功率 ${this.ratePct(this.forgeRate(k, g))}</small></div>${btn(this.hasMats(mats), `G.craftFurnace('${k}',${g})`)}</div>`;
-  }
-  // 装备（门派炼器室学会）
-  const tierOK = has;   // v249 低阶炼器炉也能炼高阶
-  for (const sl of DATA.forgeSlots) if (s.forgeKnown.includes(this.forgeKey("eq", g, sl))) {
-    const mats = DATA.forgeEqMats(g);
-    if (sl === "fabao") {   // 法宝：7 种形状，点「选择」挑属性和形状
-      const prevOK = this.fabaoAnyBase(g), yn = ((CFG.forge.YAOSHI || {}).fabao || [])[g] || 0;
-      rows += `<div class="line"><div>${DATA.eqTierIco(DATA.iconImg("fbs0_0"), g)}${DATA.XING[g]}法宝<span class="tag">${DATA.fabaoTypes.length} 种</span>
-        <small>${g ? `<span class="${prevOK ? "" : "q5"}">${DATA.XING[g - 1]}${DATA.JIE[9]}同形状同属性法宝 ×1</span>、` : ""}${this.matsText(mats)}${yn ? `、同属性${DATA.smName("ys")} ×${U.fmt(yn)}` : ""} · ${U.dur(this.forgePer("eq", g) / 1000)} · 成功率 ${rate}</small></div>
-        <button class="sm" onclick="G.openFabaoPick(${g})" ${!has || full || !tierOK || !prevOK || !this.hasMats(mats) ? "disabled" : ""}>选择</button></div>`;
-      continue;
-    }
-    const prevOK = g === 0 || this.prevEquipIndex(sl, g) >= 0, esm = this.jobSm({ kind: "eq", g, slot: sl });
-    rows += `<div class="line"><div>${DATA.eqTierIco(DATA.iconImg("eq_" + sl), g)}${DATA.forgeEqName(sl, g)}<span class="tag">${DATA.slots[sl]}</span>
-      <small>${g ? `<span class="${prevOK ? "" : "q5"}">${DATA.forgeEqName(sl, g - 1)}·${DATA.JIE[9]} ×1</span>、` : ""}${this.matsText(mats)}${esm.length ? "、" + this.smText(esm) : ""} · ${U.dur(this.forgePer("eq", g) / 1000)} · 成功率 ${rate}</small></div>
-      ${btn(tierOK && prevOK && this.hasMats(mats) && this.smHave(esm), `G.craftFurnace('eq',${g},'${sl}')`)}</div>`;
-  }
-  // 戒指（试炼塔图纸学会，二阶起）
-  if (g > 0) {
-    const mats = DATA.ringMats(g);
-    DATA.ringNames.forEach((n, r) => {
-      if (!this.ringKnown(r, g)) return;
-      const prevOK = this.prevEquipIndex("ring", g, r) >= 0, rsm = this.jobSm({ kind: "ring", g, r });
-      rows += `<div class="line"><div>${DATA.li(DATA.iconImg("eq_ring"))}${DATA.ringName(r, g)}<span class="tag">戒指</span>
-        <small><span class="${prevOK ? "" : "q5"}">${DATA.ringName(r, g - 1)}·${DATA.JIE[9]} ×1</span>、${this.matsText(mats)}${rsm.length ? "、" + this.smText(rsm) : ""} · ${U.dur(this.forgePer("ring", g) / 1000)} · 成功率 ${rate}</small></div>
-        ${btn(tierOK && prevOK && this.hasMats(mats) && this.smHave(rsm), `G.craftFurnace('ring',${g},${r})`)}</div>`;
-    });
-  }
-  // 空间石
-  if (s.forgeKnown.includes(this.forgeKey("ss", g))) {
-    const mats = DATA.stoneMats(g), sm = this.jobSm({ kind: "ss", g });
-    rows += `<div class="line"><div>${DATA.li(DATA.iconImg("ss"))}${DATA.stoneName(g)}<span class="tag">储物格+1</span>
-      <small>${this.matsText(mats)}${sm.length ? "、" + this.smText(sm) : ""} · ${U.dur(this.forgePer("ss", g) / 1000)} · 成功率 ${rate} · 已用 ${CFG.forge.stone.MAX_USE - this.stoneLeft(g)}/${CFG.forge.stone.MAX_USE}</small></div>
-      ${btn(tierOK && this.hasMats(mats) && this.smHave(sm), `G.craftFurnace('ss',${g})`)}</div>`;
-  }
-  const mode = this.forgeMode === "refine" ? "refine" : "make";
-  const modeTabs = `<div class="room-grid" style="grid-template-columns:1fr 1fr">${[["make", "炼制"], ["refine", "精炼"]].map(([k, n]) => `<button class="${mode === k ? "active" : ""}" onclick="G.setForgeMode('${k}')">${n}</button>`).join("")}</div>`;
-  const tierTabs = `<div class="room-grid five">${DATA.XING.map((n, i) => `<button class="${g === i ? "active" : ""}" onclick="G.setForgeTier(${i})">${n}</button>`).join("")}</div>`;
-  if (mode === "refine") return h + `<div class="card"><h3>精炼</h3>${modeTabs}${this.refineRows()}</div>`;
-  h += `<div class="card"><h3>炼器</h3>${modeTabs}${tierTabs}` +
-    (rows || `<p class="desc">${DATA.XING[g]}还没有可炼制的东西：炉子图纸在门派宝库兑换，装备图谱、空间石在门派炼器室学习。</p>`) +
-    `</div>`;
-  // 灵珠（门派炼器室学会图纸）
-  const LZ = CFG.lingzhu, lzMats = this.lzMats();
-  const lzRows = LZ.NAMES.map((n, ft) => !s.forgeKnown.includes(this.forgeKey("lz", 0, ft)) ? "" : `<div class="line"><div>${DATA.li(DATA.smIcon("lz", ft), "lz-glow")}${DATA.smName("lz", ft)}<span class="tag">聚灵+${U.fmt(LZ.BASE)}</span>
-    <small>${this.matsText(lzMats)}、<span class="${this.smCount("lj", ft) >= LZ.JING ? "" : "q5"}">${DATA.li(DATA.smIcon("lj", ft))}${DATA.smName("lj", ft)} ${U.fmt(this.smCount("lj", ft))}/${LZ.JING}</span></small></div>
-    <button class="sm" onclick="G.craftLz(${ft})" ${this.hasMats(lzMats) && this.smCount("lj", ft) >= LZ.JING ? "" : "disabled"}>炼制</button></div>`).join("");
-  if (lzRows) h += `<div class="card"><h3>灵珠</h3>${lzRows}</div>`;
+  const p = items.find(x => x.key === this.forgePickKey);
+  h += p ? `<div class="card"><h3>炼器</h3><div class="line">${p.info}<button class="sm" onclick="G.openForgeList()">更换</button></div>
+    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="${p.call}" ${!p.ok ? "disabled" : ""}>开始炼器</button></div></div>`
+    : this.craftStartBtn("G.openForgeList()", "开始炼器");
   return h;
 };
 

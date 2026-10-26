@@ -33,7 +33,7 @@ DATA.RJ_MAX = 10;
 DATA.rjOf = e => Math.max(0, Math.min(DATA.RJ_MAX - 1, (e && e.rj) || 0));
 DATA.rjName = e => DATA.JIE[DATA.rjOf(e)];
 DATA.rjTop = e => DATA.rjOf(e) >= DATA.RJ_MAX - 1;
-// 精炼材料：同类同星一件（另算）+ 炼制这一星时的三种矿石（数量相同）
+// 精炼材料：炼制这一星时的三种矿石（数量相同）
 DATA.refineMats = e => e.slot === "ring" ? DATA.ringMats(e.g) : DATA.forgeEqMats(e.g);
 DATA.forgeEqTime = g => _FG.equip.time[g] * 60000;
 DATA.stoneName = g => DATA.JIE[g] + DATA.SS;
@@ -287,7 +287,7 @@ DATA.fabaoInfo = (e, own) => {
  *   img/icons/pill_丹药id.png 修炼丹、dan_类型.png 属性丹、fu_dan / fu_qi.png 炉子、ss.png 空间石
  *   fbs形状_属性.png 法宝（7 种形状 × 6 种属性）、sm_ys属性.png 耀石、mifa.png 秘法、seed.png 种子、stone.png 灵石、cu_misc.png 自定义物品
  *   hx.png 火髓、bp.png 图纸 */
-DATA.IMG_V = 25;
+DATA.IMG_V = 30;
 DATA.matImg = (kind, g) => `img/mats/${kind}${g}.png?v=${DATA.IMG_V}`;
 DATA.iconImg = n => `img/icons/${n}.png?v=${DATA.IMG_V}`;
 DATA.ICON_EQ = ["helmet", "armor", "weapon", "legs", "boots", "pendant", "ring"];

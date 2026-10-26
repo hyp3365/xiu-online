@@ -46,7 +46,7 @@ G.module({
       const room = this.freeCultOn && this.freeCultOn() ? this.freeCultPct() : s.room >= 0 && s.sect && this.roomPct ? this.roomPct(s.room) : 0;
       const arr = this.arrayFactor ? Math.max(0, (this.arrayFactor() - 1) * 100) : 0;   // 聚灵阵效率 %，同修为修炼
       const pct = (M.bodySpeedPct || 0) + (this.servantPct ? this.servantPct("cult") : 0) + room + arr;   // 炼体秘法圆满额外 % + 道童辅助修炼 % + 修炼室 % + 聚灵阵 %
-      return { base, gf, mf, room, arr, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100)) };
+      return { base, gf, mf, room, arr, pct, total: Math.floor((base + gf + mf) * (1 + pct / 100) * 100) / 100 };   // 保留两位小数：速度很小时修炼室等百分比加成也能生效
     },
     // 突破到第 T 层的消耗
     bodyCost(T) {
@@ -94,31 +94,43 @@ G.module({
       out.resEl = Object.fromEntries(DATA.elements.map(e => [e.id, n > 0 ? this.brRand("rs", "res:" + e.id) : 0]));   // 抗性随机六系各不同
       return out;
     },
+    // 突破弹窗：点人物右下「突破」才显示需要的气血、灵石、药材
+    openBodyBreak() {
+      const s = this.s, max = this.bodyMax(); if (max) return this.modal(`<h2>肉身突破</h2><p class="desc">已达肉身极境。</p><div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+      const need = this.bodyNeed(), c = this.bodyCost(), why = this.bodyBlock(), ok = (a, b) => a >= b ? "" : "q5";
+      this.modal(`<h2>肉身突破<small>${this.bodyName()} → ${this.bodyName(s.bodyL + 1)}</small></h2>
+        <div class="line"><div>气血</div><b class="${ok(s.bodyExp, need)}">${U.fmt(s.bodyExp)} / ${U.fmt(need)}</b></div>
+        <div class="line"><div>灵石</div><b class="${ok(s.stone, c.stone)}">${U.fmt(s.stone)} / ${U.fmt(c.stone)}</b></div>
+        ${c.herbs.map(h => { const hv = this.herbCount(h.name); return `<div class="line"><div>${h.name}</div><b class="${ok(hv, h.n)}">${U.fmt(hv)} / ${U.fmt(h.n)}</b></div>`; }).join("")}
+        <div class="btns"><button class="primary" data-refresh="openBodyBreak" onclick="G.bodyBreak()" ${why ? "disabled" : ""}>${why || "突 破"}</button><button onclick="G.closeModal()">关闭</button></div>`);
+    },
+    // 修炼肉身页：上面人物打坐（左上肉身境界，左下自动修炼，右下突破），下面肉身加成，底部返回修炼
     bodyView() {
-      const s = this.s, B = CFG.body, sp = this.bodySpeed(), has = this.hasTijue(), max = this.bodyMax(), cap = this.lingCap();
-      const need = this.bodyNeed(), c = max ? null : this.bodyCost(), why = this.bodyBlock(), bb = this.bodyBonus();
-      const status = !s.bodyAuto ? "未修炼" : !has ? "<b class='q5'>未学练体秘诀</b>" : this.exBlocksCult() ? "<b class='q5'>历练 / 探索中，无法修炼</b>" : max ? "已达极境" : s.ling < 1 ? "<b class='q5'>灵气耗尽</b>" : "自动修炼中";
+      const s = this.s, sp = this.bodySpeed(), has = this.hasTijue(), max = this.bodyMax();
+      const need = this.bodyNeed(), bb = this.bodyBonus();
+      const warn = !has ? "未学练体秘诀（宗门 → 功法殿）" : !s.bodyAuto ? "" : this.exBlocksCult() ? "历练 / 探索中，无法修炼" : s.ling < 1 ? "灵气耗尽" : "";
+      const run = s.bodyAuto && has && !warn && !max;
       const names = { hp: "生命", atk: "攻击", def: "防御", mana: "法力", speed: "速度", hit: "命中", dodge: "闪避", crit: "暴击%" };
       // 抗性：每系（金木水火土雷）单独一行
       const bonus = Object.keys(names).filter(k => bb[k]).map(k => `<div><span>${names[k]}</span>+${k === "crit" ? U.num(bb[k]) : U.fmt(bb[k])}</div>`).join("")
         + (bb.res ? DATA.elements.map(e => `<div><span>${e.name}抗性</span>+${U.fmt(bb.res + (bb.resEl[e.id] || 0))}</div>`).join("") : "");
-      return `<div class="card"><h3>修炼肉身 · ${this.bodyName()}</h3>
-        ${has ? "" : `<p class="desc q5">需要先学会一本练体秘诀（宗门 → 功法殿）。</p>`}
-        <div class="row small"><span>肉身修炼速度 <b class="q4">${U.num(sp.total)}</b> / 10秒</span><span>${status}</span></div>
-        <p class="desc">基础 ${U.num(sp.base)} + 练体秘诀 ${U.num(sp.gf)} + 炼体秘法 ${U.num(sp.mf)}${sp.room ? `，修炼室 +${Math.round(sp.room)}%` : ""}${sp.arr ? `，聚灵阵 +${Math.round(sp.arr)}%` : ""}</p>
-        <div class="bar tick"><div id="body-bar"></div></div>
-        <div class="row small"><span>灵气</span><span>${U.fmt(s.ling)} / ${U.fmt(cap)}</span></div>
-        <div class="bar ling"><div style="width:${Math.min(100, s.ling / cap * 100)}%"></div></div>
-        <div class="btns">
-          <button class="${s.bodyAuto ? "on" : "primary"}" onclick="G.toggleBodyAuto()">自动修炼肉身：${s.bodyAuto ? "开" : "关"}</button>
-          <button onclick="G.openBody(false)">返回修炼</button>
-          <button class="primary" style="flex-basis:100%" onclick="G.bodyBreak()" ${why ? "disabled" : ""}>${max ? "已达肉身极境" : why || `突破至${this.bodyName(s.bodyL + 1)}`}</button>
+      return `<div class="bd-page">
+        <div class="bd-stg${run ? " on" : ""}">
+          <div class="cult-aura bd-aura"></div>
+          <img class="cult-hero" src="${this.heroImg("ys")}?v=${DATA.IMG_V}" alt="">
+          <div class="bd-realm">${this.bodyName()}</div>
+          <button class="cult-orb l${s.bodyAuto ? " on" : ""}" onclick="G.toggleBodyAuto()"><span>${s.bodyAuto ? "停止<br>修炼" : "自动<br>修炼"}</span></button>
+          <button class="cult-orb r" onclick="G.openBodyBreak()"><span>${max ? "极境" : "突破"}</span></button>
+          <div class="cult-info">
+            <div class="cult-eff">肉身修炼：<b>${U.num(sp.total)}</b> / 10秒</div>
+            <div class="cult-tick"><div id="body-bar"></div></div>
+            <div class="cult-total"><span>气血：</span><b>${U.fmt(s.bodyExp)}${max ? "" : ` / ${U.fmt(need)}`}</b></div>
+            ${warn ? `<p class="cult-wish bad">${warn}</p>` : ""}
+          </div>
         </div>
-        ${max ? "" : `<div class="row small" style="margin-top:8px"><span>气血</span><span>${U.fmt(s.bodyExp)} / ${U.fmt(need)}</span></div>
-        <div class="bar"><div style="width:${Math.min(100, s.bodyExp / need * 100)}%"></div></div>
-        <p class="desc">突破消耗：<span class="${s.stone >= c.stone ? "" : "q5"}">灵石 ${U.fmt(c.stone)}</span>、${c.herbs.map(h => { const hv = this.herbCount(h.name); return `<span class="${hv >= h.n ? "" : "q5"}">${h.name} ${U.fmt(hv)}/${U.fmt(h.n)}</span>`; }).join("、")}</p>`}
-        </div>
-        <div class="card"><h3>肉身加成</h3>${bonus ? `<div class="stats">${bonus}</div>` : `<p class="desc">尚未突破，突破后每层增加属性。</p>`}</div>`;
+        <div class="card"><h3>肉身加成</h3>${bonus ? `<div class="stats">${bonus}</div>` : `<p class="desc">尚未突破，突破后每层增加属性。</p>`}</div>
+        <div class="btns"><button onclick="G.openBody(false)">返回修炼</button></div>
+      </div>`;
     },
   },
 });

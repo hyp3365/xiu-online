@@ -31,7 +31,7 @@ body{color:var(--t-main);font-family:"Songti SC","Noto Serif SC","Source Han Ser
 #tabs{flex:none;display:flex;background:var(--c-bar);border-top:1px solid var(--c-line)}
 /* 最顶部、底部导航下面的修仙背景图条 */
 .bar-img{flex:none;height:24px;background:var(--c-deep) center/cover no-repeat}
-.bar-top{background-image:url(../img/ui/bar_top.webp?v=1);height:calc(24px + env(safe-area-inset-top));background-position:center bottom}
+.bar-top{background-image:url(../img/ui/bar_top.webp?v=1);height:max(24px,env(safe-area-inset-top));background-position:center bottom}   /* 全屏：花纹铺到状态栏后面，总高度和底部背景条一样（状态栏更高时按状态栏高度） */
 .bar-bot{background-image:url(../img/ui/bar_bot.webp?v=1);margin-bottom:env(safe-area-inset-bottom)}
 #tabs button{flex:1;background:none;border:none;border-radius:0;color:var(--t-sub);padding:6px 0 7px;font-size:12px;display:flex;flex-direction:column;align-items:center}
 #tabs button i{font-style:normal;font-size:17px;line-height:1.2}
@@ -545,7 +545,7 @@ button small .cd{min-width:0}
   background:linear-gradient(180deg,#f3e9d400,#f3e9d4d9 55%,#efe3c8)}
 .cult-aura{position:absolute;left:50%;bottom:calc(100px + min(100% - 112px,380px)*.25);width:72%;max-width:340px;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;
   background:radial-gradient(circle,#fff6dccc 0%,#ffe8b066 35%,transparent 68%);animation:cult-pulse 4s ease-in-out infinite}
-.cult-hero{position:absolute;left:50%;bottom:100px;height:calc(100% - 112px);max-height:380px;max-width:92%;object-fit:contain;
+.cult-hero{position:absolute;left:50%;bottom:62px;height:calc(100% - 74px);max-height:380px;max-width:92%;object-fit:contain;
   transform:translateX(-50%);z-index:1;filter:drop-shadow(0 4px 10px #6b4a2a55);animation:ys-float 5s ease-in-out infinite}
 /* 身前金丹法轮 */
 .cult-dan{position:absolute;left:50%;bottom:calc(100px + min(100% - 112px,380px)*.2);width:46px;height:46px;margin-left:-23px;z-index:2;border-radius:50%;
@@ -554,17 +554,17 @@ button small .cd{min-width:0}
 .cult-dan i{position:absolute;inset:-6px;border-radius:50%;border:2px dashed #ffe7a0cc;animation:cult-spin 9s linear infinite}
 .cult-dan b{position:absolute;inset:8px;border-radius:50%;border:1px solid #fff2c0;opacity:.8;animation:cult-spin 6s linear infinite reverse}
 /* 左右圆钮：神识 / 修炼增幅 */
-.cult-orb{position:absolute;bottom:12px;z-index:3;width:64px;height:64px;padding:0;border-radius:50%;
-  font-size:17px;font-weight:bold;line-height:1.1;letter-spacing:1px;color:#fff3dc;text-shadow:0 1px 2px #8a2a10,0 0 4px #c0401a;
+.cult-orb{position:absolute;bottom:14px;z-index:3;width:50px;height:50px;padding:0;border-radius:50%;
+  font-size:14px;font-weight:bold;line-height:1.1;letter-spacing:1px;color:#fff3dc;text-shadow:0 1px 2px #8a2a10,0 0 4px #c0401a;
   background:radial-gradient(circle at 50% 35%,#ffcf9a,#f08a50 55%,#c9502a);border:2px solid #f6d6a0;
   box-shadow:0 0 0 3px #e8b88a66,0 4px 10px #8a3a1a66,inset 0 -4px 8px #a0381a66}
 .cult-orb:active{transform:scale(.95);background:radial-gradient(circle at 50% 35%,#ffcf9a,#f08a50 55%,#c9502a)}
 .cult-orb.l{left:14px}.cult-orb.r{right:14px}
 /* 效率 / 进度 / 总修为横幅 / 状态 */
-.cult-info{position:absolute;left:0;right:0;bottom:8px;z-index:2;padding:0 84px;text-align:center}
-.cult-eff{font-size:15px;color:#3a2c1e;white-space:nowrap}
+.cult-info{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:0 72px;text-align:center;pointer-events:none}
+.cult-eff{font-size:15px;color:#3a2c1e;white-space:nowrap;text-shadow:0 0 3px #f6efe2,0 0 6px #f6efe2}
 .cult-eff b{color:#3a2c1e;font-weight:normal}
-.cult-tick{height:7px;margin:4px auto 10px;max-width:200px;background:#a89a86;border:1px solid #8a7a66;border-radius:1px;overflow:hidden}
+.cult-tick{height:7px;margin:3px auto 6px;max-width:200px;background:#a89a86;border:1px solid #8a7a66;border-radius:1px;overflow:hidden}
 .cult-tick>div{height:100%;width:0;background:linear-gradient(90deg,#e05a1a,#f59a3a)}
 .cult-total{display:inline-block;min-width:78%;padding:3px 26px;font-size:15px;color:#f3e6cc;white-space:nowrap;
   background:linear-gradient(90deg,transparent,#3a332bdd 12%,#2e2822ee 50%,#3a332bdd 88%,transparent)}
@@ -597,17 +597,17 @@ button small .cd{min-width:0}
 @keyframes cult-dan{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.06)}}
 @keyframes cult-spin{to{transform:rotate(360deg)}}
 /* 顶部（只在修炼页显示）：头像 + 境界徽标、道号、坊市 / 设置、资源行 */
-#top{background:linear-gradient(180deg,#efe6d4,#e2d6be);border-bottom:2px solid #a8916a;color:#3a2c1e}
-#top .top-ava{width:46px;height:46px;position:relative;overflow:visible;border:2px solid #c9a96a;box-shadow:0 0 0 2px #f6efe2,0 2px 6px #0005}
-#top .top-ava #p-realm{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);max-width:90px;padding:0 6px;font-size:11px;line-height:16px;
+#top{padding:4px 12px 4px;background:linear-gradient(180deg,#efe6d4,#e2d6be);border-bottom:2px solid #a8916a;color:#3a2c1e}
+#top .top-ava{width:37px;height:37px;position:relative;overflow:visible;border:2px solid #c9a96a;box-shadow:0 0 0 2px #f6efe2,0 2px 6px #0005}
+#top .top-ava #p-realm{position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);max-width:80px;padding:0 5px;font-size:9px;line-height:13px;
   color:#f3e6cc;background:#4a3a2a;border:1px solid #c9a96a;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#top .top-line b{color:#3a2c1e;font-size:15px}
-.top-btns{flex:none;display:flex;gap:10px}
-.top-ic{display:flex;flex-direction:column;align-items:center;padding:0;background:none;border:none;font-size:11px;font-weight:bold;color:#3a2c1e;text-shadow:0 0 3px #fff}
+#top .top-line b{color:#3a2c1e;font-size:13px}
+.top-btns{flex:none;display:flex;gap:8px}
+.top-ic{display:flex;flex-direction:column;align-items:center;padding:0;background:none;border:none;font-size:9px;line-height:1.3;font-weight:bold;color:#3a2c1e;text-shadow:0 0 3px #fff}
 .top-ic:active{background:none;transform:scale(.94)}
-.top-ic i{display:flex;align-items:center;justify-content:center;width:28px;height:28px;margin-bottom:0;border-radius:50%;font-style:normal;font-size:14px;
+.top-ic i{display:flex;align-items:center;justify-content:center;width:22px;height:22px;margin-bottom:0;border-radius:50%;font-style:normal;font-size:11px;
   color:#5a4a36;background:radial-gradient(circle at 50% 35%,#fffaf0,#d8ccb4);border:1px solid #a8916a}
-#top .res3{justify-content:space-between;margin-top:7px;padding:1px 6px;background:#d6c9ae99;border-radius:3px}
+#top .res3{justify-content:space-between;margin-top:6px;padding:0 6px;font-size:12px;line-height:1.4;background:#d6c9ae99;border-radius:3px}
 #top .res3,#top .res3 b{color:#3a2c1e}
 .res3 i{display:inline-block;width:9px;height:9px;margin-right:3px;border-radius:2px;transform:rotate(45deg)}
 .res3 .r-st{background:#4ab0b8}.res3 .r-ct{background:#c87ab0}.res3 .r-mt{background:#e0a83a}
@@ -820,3 +820,22 @@ button.sm.pill{padding:4px 12px}
 .hero-sw img{width:100%;aspect-ratio:1;object-fit:contain;background:radial-gradient(circle,#f3e9d4,#d9c9a8);border-radius:4px}
 .hero-sw span{font-size:12px;white-space:nowrap}
 .hero-sw.on{border-color:var(--t-gold);box-shadow:0 0 0 1px var(--t-gold)}
+
+/* 修炼肉身页：人物打坐（和修炼页同样式），左上肉身境界，左下自动修炼，右下突破 */
+.bd-stg{position:relative;flex:1 1 auto;min-height:240px;margin:-10px -12px 10px;overflow:hidden;
+  background:url(../img/bg/xuanzhi.webp?v=25) center 30%/cover no-repeat,#e9dcc0}
+.bd-stg::after{content:"";position:absolute;inset:auto 0 0 0;height:42%;pointer-events:none;background:linear-gradient(180deg,#f3e9d400,#f3e9d4d9 55%,#efe3c8)}
+.bd-stg .cult-hero{bottom:72px;height:calc(100% - 84px)}
+.bd-aura{background:radial-gradient(circle,#ffd8c8cc 0%,#ff9a7a55 35%,transparent 68%)}
+.bd-stg.on .bd-aura{animation:cult-pulse 1.6s ease-in-out infinite}
+.bd-realm{position:absolute;left:10px;top:10px;z-index:3;padding:3px 12px;font-size:15px;font-weight:bold;letter-spacing:2px;color:#f3e6cc;
+  background:#4a3a2ae6;border:1px solid #c9a96a;border-radius:6px;box-shadow:0 2px 6px #0004}
+.cult-orb.on{background:radial-gradient(circle at 50% 35%,#ffe0b0,#e07040 55%,#a83a1a)}
+/* 练体页一屏放下：人物区自适应，加成卡片过长时内部滚动，返回按钮始终可见 */
+#view:has(.bd-page){display:flex;flex-direction:column}
+.bd-page{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.bd-page>.card{flex:0 1 auto;max-height:32vh;overflow-y:auto;margin-bottom:8px}
+.bd-page>.btns{flex:none;margin:0}
+/* 洞府炼丹 / 炼器：还没选配方时「开始」按钮放在页面中部 */
+.craft-start { min-height: 38vh; display: flex; align-items: center; justify-content: center; }
+.craft-start button { min-width: 180px; padding: 12px 28px; font-size: 17px; }

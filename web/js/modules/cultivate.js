@@ -214,9 +214,9 @@ G.module({
     // 顶部「坊市」：直接进凡界坊市（world.js mapSel "shop"）
     // 从修炼页进去的坊市，返回时回到修炼页（world.js backFromShop）
     openFanShop() { this.tab = "world"; this.worldId = "fan"; this.atlasOn = false; this.atlasSub = null; this.setMapSel("shop"); this.shopFromCult = true; this.render(); },
-    /* ---------- 人物形象：存在本机（localStorage xiu_hero），修炼页、神识、悟道室、头像一起换 ---------- */
-    HEROES: [["", "默认（男修）"], ["f1", "仙子 · 粉裳"], ["f2", "仙子 · 红裳"], ["f3", "魅影 · 黑纱"], ["f4", "狐仙 · 绯蕾"], ["f5", "冰仙 · 蓝蕾"]],
-    heroId() { let k = ""; try { k = localStorage.getItem("xiu_hero") || ""; } catch (e) {} return this.HEROES.some(h => h[0] === k) ? k : ""; },
+    /* ---------- 人物形象：存在角色存档（服务器 s.hero，换设备也生效），修炼页、神识、悟道室、头像一起换 ---------- */
+    HEROES: [["", "默认（男修）"], ["f1", "仙子 · 粉裳"], ["f2", "仙子 · 红裳"], ["f3", "魅影 · 黑纱"], ["f4", "狐仙 · 绯蕾"], ["f5", "冰仙 · 蓝蕾"], ["f6", "金冠 · 白衣"], ["f7", "月仙 · 银蓝"], ["f8", "桃仙 · 粉霞"], ["f9", "紫宸 · 仙后"], ["f10", "魅姬 · 黑蕾"], ["f11", "雪莲 · 金纱"], ["f12", "白莲 · 素纱"], ["f13", "魔后 · 赤纱"], ["f14", "星灵 · 幻纱"]],
+    heroId() { let k = this.s && typeof this.s.hero === "string" ? this.s.hero : ""; if (!(this.s && "hero" in this.s)) try { k = localStorage.getItem("xiu_hero") || ""; } catch (e) {} return this.HEROES.some(h => h[0] === k) ? k : ""; },
     // where：ys 修炼页 / 神识，wd 悟道室，ava 头像
     heroImg(where) {
       const k = this.heroId();
@@ -230,10 +230,10 @@ G.module({
       if (!this.heroId()) { a.style.backgroundImage = a.style.backgroundSize = a.style.backgroundPosition = ""; return; }   // 默认：用 style.css 里的头像裁切
       a.style.backgroundImage = `url(${src}?v=${DATA.IMG_V})`; a.style.backgroundSize = "cover"; a.style.backgroundPosition = "center";
     },
-    setHero(k) { try { k ? localStorage.setItem("xiu_hero", k) : localStorage.removeItem("xiu_hero"); } catch (e) {} this.applyHeroAva(); this.render(); },
+    setHero(k) { k = this.HEROES.some(h => h[0] === k) ? k : ""; if (this.s) this.s.hero = k; try { k ? localStorage.setItem("xiu_hero", k) : localStorage.removeItem("xiu_hero"); } catch (e) {} this.applyHeroAva(); this.render(); },
     heroCard() {
       const cur = this.heroId();
-      return `<div class="card"><h3>人物形象<small>修炼、神识、悟道室一起更换 · 只影响这台设备</small></h3><div class="hero-grid">${this.HEROES.map(([k, n]) =>
+      return `<div class="card"><h3>人物形象<small>修炼、神识、悟道室一起更换 · 保存在角色存档</small></h3><div class="hero-grid">${this.HEROES.map(([k, n]) =>
         `<button class="hero-sw${k === cur ? " on" : ""}" onclick="G.setHero('${k}')"><img src="${k ? `img/hero_${k}.webp` : "img/ys_hero.webp"}?v=${DATA.IMG_V}" alt=""><span>${n}</span></button>`).join("")}</div></div>`;
     },
     // 修炼肉身界面（modules/body.js）
@@ -243,7 +243,7 @@ G.module({
       const s = this.s, st = this.stats(), sp = this.speed(), R0 = this.regen(false), R1 = this.regenStep();
       this.modal(`<h2>${s.name}<small>${this.realmName()}</small></h2>
         <div class="stats">
-          <div><span>生命</span>${U.fmt(s.hp)}/${U.fmt(st.hp)}</div><div><span>法力</span>${U.fmt(s.mana)}/${U.fmt(st.mana)}</div>
+          <div><span>生命</span><b id="pf-hp" style="font-weight:normal">${U.fmt(s.hp)}/${U.fmt(st.hp)}</b></div><div><span>法力</span><b id="pf-mana" style="font-weight:normal">${U.fmt(s.mana)}/${U.fmt(st.mana)}</b></div>
           <div><span>攻击</span>${U.fmt(st.atk)}</div><div><span>防御</span>${U.fmt(st.def)}</div>
           <div><span>命中</span>${U.num(st.hit)}</div><div><span>闪避</span>${U.num(st.dodge)}</div>
           <div><span>速度</span>${U.fmt(st.speed)}</div><div><span>暴击</span>${st.crit.toFixed(1)}%</div>

@@ -200,6 +200,14 @@ const G = {
     if (bb) bb.style.width = this.bodyActive() ? pct : "0%";
     const tl = $("#tick-left");  // 本次修炼倒计时
     if (tl) tl.textContent = (cycleMs > 0 ? Math.ceil((cycleMs - phaseMs) / 1000) : 0) + " 秒";
+    // 头像弹窗里的生命 / 法力：服务器每次结算恢复后实时刷新，不用关掉重开
+    const ph = $("#pf-hp"), pm = $("#pf-mana");
+    if ((ph || pm) && now - (this._pfT || 0) > 500) {
+      this._pfT = now; const st = this.stats();
+      const h = `${U.fmt(this.s.hp)}/${U.fmt(st.hp)}`, m = `${U.fmt(this.s.mana)}/${U.fmt(st.mana)}`;
+      if (ph && ph.textContent !== h) ph.textContent = h;
+      if (pm && pm.textContent !== m) pm.textContent = m;
+    }
   },
 
   // 当前服务器结算周期内的显示时间；只绘制进度，不在浏览器执行状态结算。
@@ -235,7 +243,7 @@ const G = {
     // 顶部（道号、灵石、贡献、功德）和信息栏只在修炼页显示
     const main = this.tab === "cultivate";
     $("#top").style.display = main ? "" : "none";
-    $("#log-wrap").style.display = main && this.cultView !== "set" ? "" : "none";   // 设置页不显示信息栏，留出地方
+    $("#log-wrap").style.display = main && !this.cultView ? "" : "none";   // 神识 / 肉身 / 设置页不显示信息栏
     const v = $("#view"), top = v.scrollTop;
     // 某个页面出错时不再整页空白：显示错误信息，其它页面照常可用
     // 内容没变就不重绘：避免每秒重绘时按钮被替换、点了没反应，也省手机电量

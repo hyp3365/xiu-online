@@ -358,9 +358,9 @@ G.module({
       const s = this.s, C = CFG.sect.freeRoom;
       if (!s.freeCult) s.freeCult = { day: "", used: 0, left: 0, on: false };
       const f = s.freeCult;
-      if (f.left > 0) { f.on = !f.on; return this.after(); }              // 本次还没用完：进入 / 离开
+      if (f.left > 0) { f.on = !f.on; if (f.on) s.room = -1; return this.after(); }              // 本次还没用完：进入 / 离开（进入时自动离开付费修炼室）
       if (this.freeUsed(f) >= C.daily) return this.log(`${C.name}今天已用过。`, "sys");
-      Object.assign(f, { day: this.bjDay(), used: this.freeUsed(f) + 1, left: C.times, on: true });
+      Object.assign(f, { day: this.bjDay(), used: this.freeUsed(f) + 1, left: C.times, on: true }); s.room = -1;   // 自动离开付费修炼室
       this.log(`进入${C.name}，可修炼 ${C.times} 次。`, "good"); this.after();
     },
     enterFreeGfRoom() {
@@ -369,14 +369,16 @@ G.module({
       const f = s.freeGf;
       if (this.freeGfOn()) return;
       if (this.freeUsed(f) >= C.daily) return this.log(`${C.name}今天已用过。`, "sys");
-      Object.assign(f, { day: this.bjDay(), used: this.freeUsed(f) + 1, end: this.now() + C.minutes * 60000 });
+      Object.assign(f, { day: this.bjDay(), used: this.freeUsed(f) + 1, end: this.now() + C.minutes * 60000 }); s.gfRoom = -1;   // 自动离开付费练功房
       this.log(`进入${C.name}，持续 ${C.minutes} 分钟。`, "good"); this.after();
     },
 
     /* ---------- 练功房 ---------- */
     enterRoom(i) {
       if (this.s.room !== i && this.roomLocked(i)) return this.log(`需要职务【${DATA.ranks[DATA.rooms[i].rank].name}】。`, "sys");
-      this.s.room = this.s.room === i ? -1 : i; this.after();
+      this.s.room = this.s.room === i ? -1 : i;
+      if (this.s.room >= 0 && this.s.freeCult) this.s.freeCult.on = false;   // 换到付费修炼室：免费修炼室暂停（剩余次数保留）
+      this.after();
     },
     enterGfRoom(i) {
       if (this.s.gfRoom !== i && this.gfRoomLocked(i)) return this.log(`需要职务【${DATA.ranks[DATA.gfRooms[i].rank].name}】。`, "sys");
