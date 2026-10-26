@@ -138,9 +138,15 @@ G.module({
         if (this.s.explore) { c.went = true; this.s.explore.cs = 1; this.exploreOpen = false; this.log("灵石不足且灵气不够修炼，自动前往探索。", "sys"); }
       }
     },
+    // 修炼设置在设置页里显示时直接刷新设置页（选「前往」等弹窗返回也回到设置页）
     openCultSet() {
+      if (this.cultView === "set") { if (!this.s.cultSet.tgt) { const T = this.cultTargets(); if (T.length) this.s.cultSet.tgt = T[0][0]; } return this.openSettings("cult"); }
+      this.modal(this.cultSetHtml(true));
+    },
+    cultSetHtml(modal) {
       const s = this.s, c = s.cultSet, T = this.cultTargets(), a = s.array;
-      this.modal(`<h2>修炼设置</h2>
+      if (!c.tgt && T.length) c.tgt = T[0][0];
+      return `<h2>修炼设置</h2>
         <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵气恢复到修炼速度（每次修炼消耗）的设定倍数以上，停止探索回来修炼。</p>
         <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
@@ -149,8 +155,7 @@ G.module({
         <div class="line"><div>聚灵阵灵气不足时自动用灵石补充</div><button data-refresh="openCultSet" class="sm ${a.autoRefill ? "on" : ""}" onclick="G.toggleRefill()">${a.autoRefill ? "开" : "关"}</button></div>
         <h3 style="margin-top:14px">自动执行任务</h3>
         ${this.autoTaskHtml(T)}
-        <div class="btns"><button class="primary" onclick="G.closeModal()">确定</button></div>`);
-      if (!c.tgt && T.length) c.tgt = T[0][0];
+        ${modal ? `<div class="btns"><button class="primary" onclick="G.closeModal()">确定</button></div>` : ""}`;
     },
     // v229 自动执行任务（逻辑见 modules/sect.js runAutoTask）
     autoTaskHtml(T) {
@@ -207,7 +212,30 @@ G.module({
       this.after();
     },
     // 顶部「坊市」：直接进凡界坊市（world.js mapSel "shop"）
-    openFanShop() { this.tab = "world"; this.worldId = "fan"; this.atlasOn = false; this.atlasSub = null; this.setMapSel("shop"); },
+    // 从修炼页进去的坊市，返回时回到修炼页（world.js backFromShop）
+    openFanShop() { this.tab = "world"; this.worldId = "fan"; this.atlasOn = false; this.atlasSub = null; this.setMapSel("shop"); this.shopFromCult = true; this.render(); },
+    /* ---------- 人物形象：存在本机（localStorage xiu_hero），修炼页、神识、悟道室、头像一起换 ---------- */
+    HEROES: [["", "默认（男修）"], ["f1", "仙子 · 粉裳"], ["f2", "仙子 · 红裳"], ["f3", "魅影 · 黑纱"], ["f4", "狐仙 · 绯蕾"], ["f5", "冰仙 · 蓝蕾"]],
+    heroId() { let k = ""; try { k = localStorage.getItem("xiu_hero") || ""; } catch (e) {} return this.HEROES.some(h => h[0] === k) ? k : ""; },
+    // where：ys 修炼页 / 神识，wd 悟道室，ava 头像
+    heroImg(where) {
+      const k = this.heroId();
+      if (k) return where === "ava" ? `img/ava_${k}.webp` : `img/hero_${k}.webp`;
+      return where === "ys" ? "img/ys_hero.webp" : "img/wd_hero.webp";
+    },
+    applyHeroAva() {
+      const a = typeof document !== "undefined" && document.querySelector(".top-ava"); if (!a) return;
+      const src = this.heroImg("ava"); if (a.dataset.hero === src) return;
+      a.dataset.hero = src;
+      if (!this.heroId()) { a.style.backgroundImage = a.style.backgroundSize = a.style.backgroundPosition = ""; return; }   // 默认：用 style.css 里的头像裁切
+      a.style.backgroundImage = `url(${src}?v=${DATA.IMG_V})`; a.style.backgroundSize = "cover"; a.style.backgroundPosition = "center";
+    },
+    setHero(k) { try { k ? localStorage.setItem("xiu_hero", k) : localStorage.removeItem("xiu_hero"); } catch (e) {} this.applyHeroAva(); this.render(); },
+    heroCard() {
+      const cur = this.heroId();
+      return `<div class="card"><h3>人物形象<small>修炼、神识、悟道室一起更换 · 只影响这台设备</small></h3><div class="hero-grid">${this.HEROES.map(([k, n]) =>
+        `<button class="hero-sw${k === cur ? " on" : ""}" onclick="G.setHero('${k}')"><img src="${k ? `img/hero_${k}.webp` : "img/ys_hero.webp"}?v=${DATA.IMG_V}" alt=""><span>${n}</span></button>`).join("")}</div></div>`;
+    },
     // 修炼肉身界面（modules/body.js）
     openBody(on) { this.cultView = on ? "body" : ""; this.render(); },
     // 人物头像：人物属性（原来在修炼页下方，现在点头像打开）
@@ -226,11 +254,14 @@ G.module({
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
     // 顶部设置按钮：修炼设置（从修炼卡片移到这里）
-    openSettings() {
-      const c = this.s.cultSet;
-      this.modal(`<h2>设置</h2>
-        <div class="line"><div>修炼设置<small>自动探索 / 挖矿、自动执行任务、灵气不足自动补灵石${c && c.on ? " · 已开启" : ""}</small></div><button class="sm ${c && c.on ? "on" : ""}" onclick="G.openCultSet()">打开</button></div>
-        <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
+    // 设置页：顶部三个选项 修炼设置 / 战斗设置（原 世界 → 战斗）/ 其他设置（原 世界 → 设置，加人物形象）
+    openSettings(tab) { this.cultView = "set"; this.setTab = tab || this.setTab || "cult"; this.closeModal(); this.render(); $("#view").scrollTop = 0; },
+    closeSettings() { this.cultView = ""; this.render(); },
+    setView() {
+      const T = [["cult", "修炼设置"], ["battle", "战斗设置"], ["other", "其他设置"]], t = T.some(x => x[0] === this.setTab) ? this.setTab : "cult";
+      const body = t === "battle" ? this.bsetView() : t === "other" ? this.otherSetHtml() : `<div class="card">${this.cultSetHtml()}</div>`;
+      return `<div class="mpage cset"><div class="sub-tabs">${T.map(([k, n]) => `<button class="${k === t ? "active" : ""}" onclick="G.openSettings('${k}')">${n}</button>`).join("")}</div>
+        ${body}<div class="fback"><button onclick="G.closeSettings()">返回</button></div></div>`;
     },
     // 修炼加成（弹窗）：修炼速度构成 + 丹药
     openBoost() {
@@ -270,7 +301,7 @@ G.module({
       if (s.mortal) { // 凡人 → 练气期一层
         s.exp -= this.needExp(); s.mortal = false; this.brRoll("xw", s.L); this.dirty();
         const st = this.stats(); s.hp = st.hp; s.mana = st.mana;
-        this.log("引气入体，你正式踏入仙途——【练气期一层】！", "gold");
+        this.log("引气入体，你正式踏入仙途——【练气一层】！", "gold");
         return this.after();
       }
       // 不需要渡劫的突破：修为够了直接成功
@@ -317,6 +348,8 @@ G.module({
     const s = this.s, sp = this.speed(), cap = this.lingCap();
     if (this.cultView === "body") return this.bodyView();   // 修炼肉身（modules/body.js）
     if (this.cultView === "shenshi") return this.shenshiView();   // 神识（modules/shenshi.js）
+    if (this.cultView === "set") return this.setView();   // 设置（修炼 / 战斗 / 其他）
+    this.applyHeroAva();
     const can = this.canBreak(), need = this.needExp(), bodyMax = this.bodyMax(), bodyNeed = bodyMax ? 0 : this.bodyNeed();
     const block = this.isCultivating() ? this.cultivateBlock() : "";
     const brk = s.trib ? (s.trib.result ? "查看结果" : "渡劫中…") : can ? (this.needTrib() ? "渡 劫" : "突 破") : "修为未满";
@@ -324,7 +357,7 @@ G.module({
     const pct = (a, b) => Math.max(0, Math.min(100, b > 0 ? a / b * 100 : 100)).toFixed(1);
     const row = (ico, tag, name, val, fill, cls, btn) => `
       <div class="cult-row">
-        <div class="cult-ico"><i>${ico}</i><span>${tag}</span></div>
+        <div class="cult-ico"><i>${tag}</i></div>
         <div class="cult-name">${name}</div>
         <div class="cult-val ${cls}"><s style="width:${fill}%"></s><span>${val}</span></div>
         ${btn}
@@ -332,7 +365,7 @@ G.module({
     return `
     <div class="cult-stage">
       <div class="cult-aura"></div>
-      <img class="cult-hero" src="img/ys_hero.webp?v=${DATA.IMG_V}" alt="">
+      <img class="cult-hero" src="${this.heroImg("ys")}?v=${DATA.IMG_V}" alt="">
       <div class="cult-dan"><i></i><b></b></div>
       <button class="cult-orb l" onclick="G.openShenshi(true)"><span>神识</span></button>
       <button class="cult-orb r" onclick="G.openBoost()"><span>修炼<br>增幅</span></button>
@@ -340,7 +373,7 @@ G.module({
         <div class="cult-eff">当前修炼效率：<b>${U.num(sp.total)}</b> / 10秒</div>
         <div class="cult-tick"><div id="tick-bar"></div></div>
         <div class="cult-total"><span>总修为：</span><b>${U.fmt(s.exp)}</b></div>
-        <p class="cult-wish${block || !this.isCultivating() ? " bad" : ""}">${!this.isCultivating() ? "自动修炼已关闭" : block || "永无休止的自动修炼！"}</p>
+        ${!this.isCultivating() || block ? `<p class="cult-wish bad">${!this.isCultivating() ? "自动修炼已关闭" : block}</p>` : ""}
       </div>
     </div>
     <div class="cult-panel">
@@ -348,7 +381,7 @@ G.module({
         `<button class="cult-btn" onclick="G.breakthrough()" ${can || s.trib ? "" : "disabled"}>${brk}</button>`)}
       ${row("身", "肉身", this.bodyName(), `${U.fmt(s.bodyExp)}${bodyMax ? "" : ` / ${U.fmt(bodyNeed)}`} 气血`, bodyMax ? 100 : pct(s.bodyExp, bodyNeed), "hp",
         `<button class="cult-btn" onclick="G.openBody(true)">炼 体</button>`)}
-      ${row("灵", "灵气", s.auto ? "自动修炼中" : "自动修炼已停", `${U.fmt(s.ling)} / ${U.fmt(cap)}`, pct(s.ling, cap), "ling",
+      ${row("灵", "灵气", s.auto ? "修炼中" : "修炼已停", `${U.fmt(s.ling)} / ${U.fmt(cap)}`, pct(s.ling, cap), "ling",
         `<button class="cult-btn ${s.auto ? "on" : ""}" onclick="G.toggleAuto()">${s.auto ? "停 止" : "修 炼"}</button>`)}
     </div>`;
   },

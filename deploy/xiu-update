@@ -9,9 +9,14 @@ if [[ ! "$PUBLIC_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
   echo "无法自动探测服务器公网 IPv4；请检查服务器的出网连接后重试。" >&2
   exit 1
 fi
-printf '>>> 拉取 hyp3699/xiu-online 的 main 分支\n'
-git -C "$DIR" fetch --depth 1 origin main
+REPO="${XIU_REPO:-https://gitlab.com/hepicpde-group/xiu.git}"
+printf '>>> 从 %s 拉取 main 分支（强制覆盖服务器上的代码）\n' "$REPO"
+# 远程地址统一指向 GitLab（旧服务器的 origin 还是 GitHub，这里自动改过来）
+git -C "$DIR" remote set-url origin "$REPO" 2>/dev/null || git -C "$DIR" remote add origin "$REPO"
+git -C "$DIR" fetch --depth 1 --force origin main
+# 强制覆盖：丢弃服务器上对代码的任何改动，并删掉仓库里没有的文件（保留 server/node_modules；存档在 /var/lib/xiu-online 不受影响）
 git -C "$DIR" reset --hard FETCH_HEAD
+git -C "$DIR" clean -fdx -e server/node_modules
 # 更新器自己有新版本时，装好后用新版本重新执行一遍（否则本次仍按旧脚本跑，新增步骤要等下次才生效）
 if [ -z "${XIU_UPDATE_REEXEC:-}" ] && ! cmp -s "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update; then
   install -m 0755 "$DIR/deploy/xiu-update" /usr/local/bin/xiu-online-update

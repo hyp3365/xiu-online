@@ -121,7 +121,7 @@ G.caveViews.wudao = function () {
         : `<div class="btns"><button class="primary" onclick="G.wudao('${cur.id}')" ${left > 0 && have >= need ? "" : "disabled"}>开始悟道</button></div>`}`;
   }
   return `<div class="card wd-card"><h3>${DATA.caveName("wudao")}</h3><p class="desc">${_WR.DESC}</p>
-    <div class="ys-stage wd-stage${fx}"><div class="ys-aura"></div><img class="ys-hero" src="img/wd_hero.webp?v=${DATA.IMG_V}" alt=""></div>
+    <div class="ys-stage wd-stage${fx}"><div class="ys-aura"></div><img class="ys-hero" src="${this.heroImg("wd")}?v=${DATA.IMG_V}" alt=""></div>
     <div class="wd-daos">${_WR.daos.map(daoBtn).join("")}</div></div>
     <div class="card"><h3>${cur.name}</h3>${body}</div>`;
 };

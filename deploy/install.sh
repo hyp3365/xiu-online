@@ -4,7 +4,7 @@
 # 不停止、不覆盖原版 xiu-server、/opt/xiu、/var/lib/xiu 或 /xiuxian/。
 set -euo pipefail
 [ "$(id -u)" = 0 ] || exec sudo -E bash "$0" "$@"
-REPO="${XIU_REPO:-https://github.com/hyp3699/xiu-online.git}"
+REPO="${XIU_REPO:-https://gitlab.com/hepicpde-group/xiu.git}"
 DIR=/opt/xiu-online
 DATA_DIR=/var/lib/xiu-online
 SERVICE=xiu-online-test
@@ -21,10 +21,15 @@ if ! command -v node >/dev/null || [ "$(node -p 'Number(process.versions.node.sp
   apt-get install -y -qq nodejs >/dev/null
 fi
 if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" fetch --depth 1 origin main
+  # 已装过：远程改指向 $REPO，强制覆盖为仓库最新代码
+  git -C "$DIR" remote set-url origin "$REPO" 2>/dev/null || git -C "$DIR" remote add origin "$REPO"
+  git -C "$DIR" fetch --depth 1 --force origin main
   git -C "$DIR" reset --hard FETCH_HEAD
+  git -C "$DIR" clean -fdx -e server/node_modules
 else
-  [ ! -e "$DIR" ] || { echo "$DIR 已存在但不是 Git 仓库，停止以免覆盖。" >&2; exit 1; }
+  if [ -e "$DIR" ]; then  # 不是 Git 仓库的旧目录：挪到备份再重新拉
+    BAK="$DIR.bak.$(date +%Y%m%d%H%M%S)"; mv "$DIR" "$BAK"; echo ">>> 旧目录已备份到 $BAK"
+  fi
   git clone --depth 1 --branch main "$REPO" "$DIR"
 fi
 

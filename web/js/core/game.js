@@ -235,7 +235,7 @@ const G = {
     // 顶部（道号、灵石、贡献、功德）和信息栏只在修炼页显示
     const main = this.tab === "cultivate";
     $("#top").style.display = main ? "" : "none";
-    $("#log-wrap").style.display = main ? "" : "none";
+    $("#log-wrap").style.display = main && this.cultView !== "set" ? "" : "none";   // 设置页不显示信息栏，留出地方
     const v = $("#view"), top = v.scrollTop;
     // 某个页面出错时不再整页空白：显示错误信息，其它页面照常可用
     // 内容没变就不重绘：避免每秒重绘时按钮被替换、点了没反应，也省手机电量

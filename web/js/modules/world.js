@@ -1386,7 +1386,7 @@ G.module({
     exInfoTab() { const s = this.s; return this.exInfo === "cq" || this.exInfo === "ex" ? this.exInfo : s.cq && !s.explore ? "cq" : "ex"; },
     // 六界图：整张插画 + 各界竖条名牌（位置 % 写在 ATLAS_POS；没开放的变暗）
     atlasView() {
-      const P = { tianwai: [50, 12], shen: [50, 29.5], xian: [50, 47.5], fan: [50, 64.5], mo: [21, 82], ming: [79, 82] };
+      const P = { tianwai: [50, 12], shen: [50, 29.5], xian: [50, 47.5], fan: [50, 86], mo: [21, 62], ming: [79, 62] };
       const tags = DATA.worlds.map(w => { const p = P[w.id]; if (!p) return "";
         const open = w.open !== false && (this.worldOpen(w.id) || w.id === "fan"), cur = (this.worldId || "fan") === w.id;
         const req = (((CFG.worldMaps || {})[w.id] || {}).open || {}).realm;
@@ -1395,8 +1395,8 @@ G.module({
       const s = this.s, ln = (x, cq) => x ? `<p onclick="G.setExInfo('${cq ? "cq" : "ex"}',1)"><i>${cq ? "出窍中" : x.once ? "历练中" : "探索中"}</i>${this.exName(x)}</p>` : "";
       const top = `<div class="atl-l"><div class="atl-btns"><button class="pill" onclick="G.openRunList('cq')">元婴出窍</button><button class="pill" onclick="G.openRunList('ex')">自动探索</button></div>${ln(s.cq, true)}${ln(s.explore, false)}</div>
         <button class="pill atl-r" onclick="G.setExInfo('${s.cq && !s.explore ? "cq" : "ex"}',1)">探索信息</button>
-        <button class="pill atl-bl" onclick="G.setAtlasSub('battle')">战斗</button><button class="pill atl-br" onclick="G.setAtlasSub('set')">设置</button>`;
-      return `<div class="atlas"><img src="img/map/atlas.webp" alt="">${tags}${top}</div>` + this.exOverlay();
+`;   // 战斗、设置已移到修炼页顶部「设置」（战斗设置 / 其他设置）
+      return `<div class="atlas"><img src="img/map/atlas.webp?v=2" alt="">${tags}${top}</div>` + this.exOverlay();
     },
     // 一界的地图卷轴：从上到下第 1 ~ 10 张图，图左右交替，旁边竖写图名；凡界最后加秘境
     mapScroll(wid, idx, ex) {
@@ -1452,7 +1452,7 @@ G.module({
           ${sel === i ? `<div class="explore-log">${(r.ev || []).map((e, j) => this.evLine(e, "h" + i, j)).join("")}</div>` : ""}`).join("") : "<p>还没有记录。</p>"}
         <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
     },
-    setMapSel(a) { this.mapSel = a; this.mapPage = true; this.hallSel = null; this.render(); this.viewScroll(0); },   // a = 地图序号，"mj" = 秘境
+    setMapSel(a) { this.shopFromCult = false; this.mapSel = a; this.mapPage = true; this.hallSel = null; this.render(); this.viewScroll(0); },   // a = 地图序号，"mj" = 秘境
 
     /* ---------- 坊市：丹药 装备 功法 药材 矿石 ----------
      * 丹药、装备：content/items.js 的 ITEMS.shop，只卖练气品质
@@ -1617,6 +1617,21 @@ G.module({
             <button class="sm" onclick="G.buyMat('${t}',${g})" ${s.stone < c ? "disabled" : ""}>购买</button></div>`; }).join("") + `</div>`;
     },
 
+    // 其他设置（修炼页 → 设置 → 其他设置）：人物形象、管理员、背景、礼包码、账号
+    otherSetHtml() {
+      const isAdmin = !!(this.adminInfo && this.adminInfo.admin);
+      if (this.adminInfo === undefined) { this.adminInfo = null; API.adminInfo().then(j => { this.adminInfo = j; this.render(); }).catch(() => {}); }
+      const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdminFromCult()">管理员</button></div></div>` : "";
+      return this.heroCard() + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>${this.oriNames && this.oriNames() ? `<p class="desc">出身：${this.oriNames()}</p>` : ""}
+      <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
+      <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
+      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>`;
+    },
+    // 管理员页在「世界」页里显示：跳过去，返回时回到修炼页设置
+    openAdminFromCult() { this.setFromCult = true; this.tab = "world"; this.atlasOn = false; this.atlasSub = "set"; this.openAdmin(true); },
+    backToCultSet() { this.setFromCult = false; this.adminPage = false; this.atlasSub = null; this.atlasOn = true; this.tab = "cultivate"; this.cultView = "set"; this.setTab = "other"; this.render(); },
+    backFromShop() { this.shopFromCult = false; this.mapPage = false; this.atlasOn = true; this.tab = "cultivate"; this.render(); },
+
     /* ---------- 背景主题：存在本机（localStorage xiu_bg），只影响这台设备 ---------- */
     bgCard() {
       let cur = ""; try { cur = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
@@ -1671,7 +1686,7 @@ G.module({
         const fl = halls ? ["lingdi", "wudao"].filter(id => halls[id] !== undefined).map(id => `<button class="fic" onclick="G.setWHall('${id}')"><img src="img/hall_${id}.png" alt=""><span>${halls[id]}</span></button>`).join("") : "";
         return this.mapScroll(wid, idx, ex) + this.exOverlay() + `<div class="fback"><div class="fl">${fl}</div><button onclick="G.openAtlas()">返回</button></div>`;
       }
-      const mb = fback("G.setMapPage(false)"), pg = h => `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">${h}${mb}</div>`;   // 点进去的页面也铺满（本界背景图）
+      const mb = fback(sel === "shop" && this.shopFromCult ? "G.backFromShop()" : "G.setMapPage(false)"), pg = h => `<div class="mpage" style="background-image:url(img/map/bg_${wid}.webp)">${h}${mb}</div>`;   // 点进去的页面也铺满（本界背景图）
       if (sel === "shop") return pg(`<div class="pghead">${DATA.nmPick(CFG.names.worldTab, "shop", "坊市")}</div>` + this.shopView());
       const mback = `<div class="pghead">${sel === "mj" ? this.mjLabel("mj") : DATA.maps[sel].name}</div>`;
       if (halls && sel !== "mj") {
@@ -1708,11 +1723,8 @@ G.module({
       <div class="card"><h3>礼包码<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openGiftAdmin(true)">生成礼包码</button></div></div>
       <div class="card"><h3>账号管理<small>管理员</small></h3><div class="btns"><button class="primary" onclick="G.openAccAdmin(true)">账号管理</button></div></div>
       <div class="card"><h3>数据修改<small>管理员</small></h3><p class="desc">直接修改 js/config 里的游戏参数，保存后服务器立即使用新参数。</p><div class="btns"><button class="primary" onclick="G.openCfgEdit()">数据修改</button></div></div>`;
-    const upd = isAdmin ? `<div class="card"><h3>管理员<small>仅管理员可见</small></h3><div class="btns"><button class="primary" onclick="G.openAdmin(true)">管理员</button></div></div>` : "";
-    return `<div class="mpage"><div class="pghead">设置</div>` + upd + this.bgCard() + this.giftRedeemCard() + `<div class="card"><h3>账号<small>${API.user}</small></h3>${this.oriNames && this.oriNames() ? `<p class="desc">出身：${this.oriNames()}</p>` : ""}
-      <p class="desc">存档保存在服务器，换手机、关浏览器都不会丢。离线期间修炼、聚灵阵持续进行，不封顶。</p>
-      <div class="btns"><button onclick="G.openPwForm(true)">修改密码</button><button onclick="G.logout()">退出登录</button>
-      <button onclick="G.restart()">删档重来</button></div>${this.pwFormView()}</div>` + fback("G.setAtlasSub(null)") + "</div>";
+    // 管理员页返回到这里：从修炼页设置进来的，再返回回到修炼页设置
+    return `<div class="mpage"><div class="pghead">设置</div>` + this.otherSetHtml() + fback(this.setFromCult ? "G.backToCultSet()" : "G.setAtlasSub(null)") + "</div>";
   },
 
 });

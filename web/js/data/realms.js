@@ -14,7 +14,7 @@ DATA.NM_DEF.realm = [
 ];
 DATA.realms = DATA.nmArr(CFG.names.realm, DATA.NM_DEF.realm);
 // 显示：序号 → "练气期" / "散仙"（仙人以上不加「期」）；-1 = 凡人
-DATA.REALM_TEXT = { mortal: DATA.nmPick(CFG.names.realmText, "mortal", "凡人"), suffix: DATA.nmPick(CFG.names.realmText, "suffix", "期") };
+DATA.REALM_TEXT = { mortal: DATA.nmPick(CFG.names.realmText, "mortal", "凡人"), suffix: DATA.nmPick(CFG.names.realmText, "suffix", "") };
 DATA.realmLabel = i => i < 0 ? DATA.REALM_TEXT.mortal : DATA.realms[i] + (i <= 10 ? DATA.REALM_TEXT.suffix : "");
 
 // 每个大境界的层数

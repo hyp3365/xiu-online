@@ -87,7 +87,7 @@ G.shenshiView = function () {
   return `<div class="card ys-card">
     <div class="ys-stage${fx}"><div class="ys-pow"><span>神识强度</span><b>${U.fmt(s.ssPow || 0)}</b></div>
       <div class="ys-wisps">${wisps}</div><div class="ys-aura"></div>
-      <img class="ys-hero" src="img/ys_hero.webp?v=${DATA.IMG_V}" alt=""></div>
+      <img class="ys-hero" src="${this.heroImg("ys")}?v=${DATA.IMG_V}" alt=""></div>
     <div class="ys-need"><img src="${DATA.smIcon("yd")}" alt=""><b class="${have >= need ? "" : "q5"}">${U.fmt(have)}/${U.fmt(need)}</b></div>
     <div class="btns"><button class="primary" onclick="G.yangshen()" ${have >= need ? "" : "disabled"}>养神</button></div></div>
   <div class="card ls-card"><h3>灵识点</h3>

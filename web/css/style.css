@@ -3,7 +3,7 @@
 html,body{height:100%;background:var(--c-deep)}
 body{color:var(--t-main);font-family:"Songti SC","Noto Serif SC","Source Han Serif SC","SimSun",serif;font-size:14px;line-height:1.55;overscroll-behavior:none}
 #app{max-width:560px;margin:0 auto;height:100%;display:flex;flex-direction:column}
-#top{padding:calc(8px + env(safe-area-inset-top)) 12px 6px;background:var(--c-bar);border-bottom:1px solid var(--c-line);flex:none}
+#top{padding:6px 12px 6px;background:var(--c-bar);border-bottom:1px solid var(--c-line);flex:none}
 .top-line{display:flex;justify-content:space-between;align-items:center;gap:8px}
 /* 道号左边的人物头像（点开人物属性） */
 .top-ava{flex:none;width:42px;height:42px;padding:0;border:1px solid var(--c-edge);border-radius:50%;overflow:hidden;cursor:pointer;
@@ -30,8 +30,8 @@ body{color:var(--t-main);font-family:"Songti SC","Noto Serif SC","Source Han Ser
 #log .good{color:var(--t-good)}#log .bad{color:var(--t-bad)}#log .gold{color:var(--t-gold)}#log .sys{color:var(--t-dim)}
 #tabs{flex:none;display:flex;background:var(--c-bar);border-top:1px solid var(--c-line)}
 /* 最顶部、底部导航下面的修仙背景图条 */
-.bar-img{flex:none;height:34px;background:var(--c-deep) center/cover no-repeat}
-.bar-top{background-image:url(../img/ui/bar_top.webp?v=1)}
+.bar-img{flex:none;height:24px;background:var(--c-deep) center/cover no-repeat}
+.bar-top{background-image:url(../img/ui/bar_top.webp?v=1);height:calc(24px + env(safe-area-inset-top));background-position:center bottom}
 .bar-bot{background-image:url(../img/ui/bar_bot.webp?v=1);margin-bottom:env(safe-area-inset-bottom)}
 #tabs button{flex:1;background:none;border:none;border-radius:0;color:var(--t-sub);padding:6px 0 7px;font-size:12px;display:flex;flex-direction:column;align-items:center}
 #tabs button i{font-style:normal;font-size:17px;line-height:1.2}
@@ -543,12 +543,12 @@ button small .cd{min-width:0}
   background:url(../img/bg/xuanzhi.webp?v=25) center 30%/cover no-repeat,#e9dcc0}
 .cult-stage::after{content:"";position:absolute;inset:auto 0 0 0;height:42%;pointer-events:none;
   background:linear-gradient(180deg,#f3e9d400,#f3e9d4d9 55%,#efe3c8)}
-.cult-aura{position:absolute;left:50%;bottom:calc(122px + min(100% - 136px,380px)*.25);width:72%;max-width:340px;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;
+.cult-aura{position:absolute;left:50%;bottom:calc(100px + min(100% - 112px,380px)*.25);width:72%;max-width:340px;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;
   background:radial-gradient(circle,#fff6dccc 0%,#ffe8b066 35%,transparent 68%);animation:cult-pulse 4s ease-in-out infinite}
-.cult-hero{position:absolute;left:50%;bottom:122px;height:calc(100% - 136px);max-height:380px;max-width:92%;object-fit:contain;
+.cult-hero{position:absolute;left:50%;bottom:100px;height:calc(100% - 112px);max-height:380px;max-width:92%;object-fit:contain;
   transform:translateX(-50%);z-index:1;filter:drop-shadow(0 4px 10px #6b4a2a55);animation:ys-float 5s ease-in-out infinite}
 /* 身前金丹法轮 */
-.cult-dan{position:absolute;left:50%;bottom:calc(122px + min(100% - 136px,380px)*.2);width:46px;height:46px;margin-left:-23px;z-index:2;border-radius:50%;
+.cult-dan{position:absolute;left:50%;bottom:calc(100px + min(100% - 112px,380px)*.2);width:46px;height:46px;margin-left:-23px;z-index:2;border-radius:50%;
   background:radial-gradient(circle,#fff8d8 0%,#ffd76a 30%,#f0a020 55%,#c0600088 72%,transparent 74%);
   box-shadow:0 0 24px 8px #ffb43a99,0 0 50px 16px #ffd76a55;animation:cult-dan 3s ease-in-out infinite}
 .cult-dan i{position:absolute;inset:-6px;border-radius:50%;border:2px dashed #ffe7a0cc;animation:cult-spin 9s linear infinite}
@@ -572,23 +572,23 @@ button small .cd{min-width:0}
 .cult-wish{margin-top:4px;font-size:14px;color:#c0392b;letter-spacing:1px}
 .cult-wish.bad{color:#a8321f}
 /* 境界 / 肉身 / 灵气三行（羊皮纸面板） */
-.cult-panel{flex:none;margin:0 6px 4px;padding:6px 10px;border:2px solid #b8a68a;border-radius:4px;
+.cult-panel{flex:none;margin:0 6px 4px;padding:1px 8px;border:2px solid #b8a68a;border-radius:4px;
   background:linear-gradient(180deg,#f6efe2,#ebe1cf);box-shadow:inset 0 0 0 1px #fffaf0,0 2px 6px #0006}
-.cult-row{display:flex;align-items:center;gap:6px;padding:3px 0}
+.cult-row{display:flex;align-items:center;gap:5px;padding:1px 0}
 .cult-row+.cult-row{border-top:1px dashed #cbbda5}
-.cult-ico{flex:none;position:relative;width:44px;height:44px}
-.cult-ico i{display:flex;align-items:center;justify-content:center;width:40px;height:40px;margin:0 auto;border-radius:50%;font-style:normal;font-size:18px;
+.cult-ico{flex:none;position:relative;width:32px;height:32px}
+.cult-ico i{display:flex;align-items:center;justify-content:center;width:32px;height:32px;margin:0 auto;border-radius:50%;font-style:normal;font-size:11px;font-weight:bold;letter-spacing:0;
   color:#4a5a78;background:radial-gradient(circle at 50% 35%,#ffffff,#d9dde6 60%,#b9c0cf);border:1px solid #9aa3b5;box-shadow:inset 0 0 6px #fff}
-.cult-ico span{position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);padding:0 4px;font-size:11px;line-height:15px;white-space:nowrap;
+.cult-ico span{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);padding:0 3px;font-size:10px;line-height:13px;white-space:nowrap;
   color:#5a2a1a;background:#f6efe2;border:1px solid #c9a27a;border-radius:3px}
-.cult-name{flex:0 0 28%;min-width:0;padding:5px 4px;text-align:center;font-size:14px;color:#3a2c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.cult-name{flex:0 0 21%;min-width:0;padding:1px 4px;text-align:center;font-size:13px;color:#3a2c1e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   background:linear-gradient(90deg,#d9d2c6,#e4ddd2 50%,#d9d2c6);border-radius:2px}
-.cult-val{position:relative;flex:1 1 auto;min-width:0;padding:5px 6px;text-align:center;font-size:13px;color:#3a2c1e;background:#e4ddd2;border-radius:2px;overflow:hidden}
+.cult-val{position:relative;flex:1 1 auto;min-width:0;padding:1px 6px;text-align:center;font-size:12px;color:#3a2c1e;background:#e4ddd2;border-radius:2px;overflow:hidden}
 .cult-val s{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#e8b84a,#f3d27a);opacity:.75}
 .cult-val.hp s{background:linear-gradient(90deg,#e08a6a,#f2b49a)}
 .cult-val.ling s{background:linear-gradient(90deg,#7ab6c8,#a8d6e0)}
 .cult-val span{position:relative;white-space:nowrap}
-.cult-btn{flex:none;min-width:76px;padding:5px 8px;font-size:15px;font-weight:bold;color:#4a2a10;letter-spacing:1px;
+.cult-btn{flex:none;min-width:68px;padding:1px 8px;font-size:14px;font-weight:bold;color:#4a2a10;letter-spacing:1px;
   background:linear-gradient(180deg,#fff0c0,#f2cf7a 55%,#d9a848);border:1px solid #9a7232;border-radius:3px;box-shadow:inset 0 1px 0 #fffbe6,0 2px 0 #8a6428}
 .cult-btn:active{background:linear-gradient(180deg,#f2cf7a,#d9a848)}
 .cult-btn:disabled{color:#8a7a62;background:linear-gradient(180deg,#eee6d6,#d6cbb6);border-color:#b0a28a;box-shadow:none;font-size:13px}
@@ -598,16 +598,16 @@ button small .cd{min-width:0}
 @keyframes cult-spin{to{transform:rotate(360deg)}}
 /* 顶部（只在修炼页显示）：头像 + 境界徽标、道号、坊市 / 设置、资源行 */
 #top{background:linear-gradient(180deg,#efe6d4,#e2d6be);border-bottom:2px solid #a8916a;color:#3a2c1e}
-#top .top-ava{width:56px;height:56px;position:relative;overflow:visible;border:2px solid #c9a96a;box-shadow:0 0 0 2px #f6efe2,0 2px 6px #0005}
+#top .top-ava{width:46px;height:46px;position:relative;overflow:visible;border:2px solid #c9a96a;box-shadow:0 0 0 2px #f6efe2,0 2px 6px #0005}
 #top .top-ava #p-realm{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);max-width:90px;padding:0 6px;font-size:11px;line-height:16px;
   color:#f3e6cc;background:#4a3a2a;border:1px solid #c9a96a;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#top .top-line b{color:#3a2c1e;font-size:17px}
+#top .top-line b{color:#3a2c1e;font-size:15px}
 .top-btns{flex:none;display:flex;gap:10px}
-.top-ic{display:flex;flex-direction:column;align-items:center;padding:0;background:none;border:none;font-size:13px;font-weight:bold;color:#3a2c1e;text-shadow:0 0 3px #fff}
+.top-ic{display:flex;flex-direction:column;align-items:center;padding:0;background:none;border:none;font-size:11px;font-weight:bold;color:#3a2c1e;text-shadow:0 0 3px #fff}
 .top-ic:active{background:none;transform:scale(.94)}
-.top-ic i{display:flex;align-items:center;justify-content:center;width:34px;height:34px;margin-bottom:1px;border-radius:50%;font-style:normal;font-size:17px;
+.top-ic i{display:flex;align-items:center;justify-content:center;width:28px;height:28px;margin-bottom:0;border-radius:50%;font-style:normal;font-size:14px;
   color:#5a4a36;background:radial-gradient(circle at 50% 35%,#fffaf0,#d8ccb4);border:1px solid #a8916a}
-#top .res3{justify-content:space-between;margin-top:10px;padding:2px 6px;background:#d6c9ae99;border-radius:3px}
+#top .res3{justify-content:space-between;margin-top:7px;padding:1px 6px;background:#d6c9ae99;border-radius:3px}
 #top .res3,#top .res3 b{color:#3a2c1e}
 .res3 i{display:inline-block;width:9px;height:9px;margin-right:3px;border-radius:2px;transform:rotate(45deg)}
 .res3 .r-st{background:#4ab0b8}.res3 .r-ct{background:#c87ab0}.res3 .r-mt{background:#e0a83a}
@@ -812,3 +812,11 @@ button.sm.pill{padding:4px 12px}
 /* 三个一行的按钮（法术详情：精研 融合 进阶 / 卸下 更换 关闭） */
 .btns.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .btns.g3 button{min-width:0}
+
+/* 修炼页 · 设置（修炼设置 / 战斗设置 / 其他设置） */
+.cset .sub-tabs{position:sticky;top:-10px;z-index:4;margin:-10px -12px 10px;padding:8px 12px;background:var(--c-bar);border-bottom:1px solid var(--c-line)}
+.hero-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hero-sw{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;background:#2a221b;border:1px solid var(--c-edge);border-radius:6px}
+.hero-sw img{width:100%;aspect-ratio:1;object-fit:contain;background:radial-gradient(circle,#f3e9d4,#d9c9a8);border-radius:4px}
+.hero-sw span{font-size:12px;white-space:nowrap}
+.hero-sw.on{border-color:var(--t-gold);box-shadow:0 0 0 1px var(--t-gold)}
