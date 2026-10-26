@@ -1,0 +1,94 @@
+/* ★ 经脉（代码 modules/jingmai.js）—— 经脉的参数全部在这个文件
+ * 修炼页人物身前光球进入经脉图：人物身上 6 条主脉，每条 6 个光点（共 36 个）。
+ * 点光点进入光点页：10 个穴位，每个穴位 LAYERS 层，按顺序冲（冲满一个才能冲下一个），点穴位就冲一层。
+ *
+ * 开启光点：境界 ≥ UNLOCK_REALM（1 = 筑基）起，每个境界可开启 UNLOCK_PER 个光点（筑基 2 个、金丹 4 个……），开哪个自己选。
+ *
+ * 属性（和功法一样设总属性，自动分配）：
+ *   每种属性 36 个光点全部冲满合计 = 宗门功法 TOTAL（config/gongfa.js sect.TOTAL）× STAT_PCT%；六系抗性每系 = 功法 res ÷ 6 × STAT_PCT%（功法 res 是六系合计）。
+ *   也可以在 STAT_TOTAL 里直接写某种属性的合计（写了就不按百分比），例 STAT_TOTAL: { atk: 1000000 }。
+ *   分到 36 个光点：按 LIST 顺序越后越多，最后一个是第一个的 NODE_RATIO 倍（不超过 5 倍就写 ≤ 5），中间按比例递增；每个光点里平均分到 LAYERS 层。
+ *   每个穴位加哪种属性写在 LIST 的 xue 里：["穴位名", "属性"]，现在是随机排好的，可以自己改。
+ *   属性：hp 生命 mana 法力 atk 攻击 def 防御 res_jin 金抗 res_mu 木抗 res_shui 水抗 res_huo 火抗 res_tu 土抗 res_lei 雷抗
+ *
+ * 每个穴位冲满 LAYERS 层：额外修炼速度、练体速度各随机 FULL_MIN~FULL_MAX（平均 FULL_AVG），直接加数值。
+ *
+ * 每冲一层消耗（按总共已冲的层数 n 算，n = 0 是第一次）：
+ *   冲脉丹 = DAN_MIN + floor(n ÷ DAN_STEP)，最多 DAN_MAX（默认 1~12 颗，每 300 层多 1 颗）
+ *   灵液：第一次 LY_FIRST，最后一次 LY_LAST，中间按比例递增（自动分配）
+ * 冲脉丹：2 星宗门炼丹房用贡献学丹方（丹方材料、贡献在 config/alchemy.js 的 chongmai），洞府炼丹房炼制。
+ * 灵液：经脉页右上「灵液兑换」用药材换，每个药材换 LY_RATE[药材名] 灵液（没写的药材不能换）。
+ * LIST：主脉名、颜色、6 个光点（name 光点名，x y 在人体图上的位置：图宽 400、高 535）。顺序 = 存档序号，不要调换或插入。 */
+window.CFG = window.CFG || {};
+
+CFG.jingmai = {
+  LAYERS: 10,          // 每个穴位几层
+  UNLOCK_REALM: 1,     // 从哪个境界开始能开光点（0 练气 1 筑基 2 金丹 …）
+  UNLOCK_PER: 2,       // 每个境界可开启几个光点
+  STAT_PCT: 75,        // 每种属性合计 = 宗门功法总属性的 %
+  STAT_TOTAL: {},      // 直接指定某种属性合计（写了就不按 STAT_PCT），例 { hp: 5000000 }
+  NODE_RATIO: 5,       // 最后一个光点属性 = 第一个的几倍
+  FULL_MIN: 1000,      // 每个穴位冲满 10 层：额外修炼速度、练体速度各随机增加，最少
+  FULL_MAX: 6000,      //   最多
+  FULL_AVG: 3000,      //   平均（FULL_AVG 要在 MIN~MAX 之间，越靠近 MIN 小数值越多）
+  DAN_MIN: 1,          // 冲脉丹：第一次几颗
+  DAN_MAX: 12,         // 冲脉丹：最多几颗
+  DAN_STEP: 300,       // 冲脉丹：每冲多少层 多 1 颗
+  LY_FIRST: 50,        // 灵液：第一次冲脉要多少
+  LY_LAST: 10000,       // 灵液：最后一次冲脉要多少
+  LY_RATE: {           // 灵液兑换：每个药材换多少灵液
+    青灵草: 1, 凝露花: 1, 赤血参: 2, 紫灵芝: 2, 幽冥花: 3, 星辰草: 3,                          // 凡界
+    天元草: 4, 玄霜花: 4, 紫府灵根: 5, 万年雪莲: 5, 星河藤: 6, 琼华仙草: 6, 冥魂花: 6, 噬血魔莲: 6,   // 仙界 魔界 冥界
+    神曦花: 7, 九霄神芝: 7, 天曜神莲: 8, 太阳神果: 8, 紫极神参: 9, 星魂神藤: 9,                  // 神界
+  },
+  LIST: [
+    { name: "督脉", color: "#ffd860", nodes: [
+      { name: "百会", x: 117.3, y: 119.9, xue: [["天泉", "res_huo"], ["天海", "res_lei"], ["天关", "res_jin"], ["天府", "hp"], ["天门", "res_mu"], ["天池", "res_tu"], ["天庭", "res_shui"], ["天堂", "atk"], ["天宫", "def"], ["天台", "mana"]] },
+      { name: "神庭", x: 141.1, y: 84.6, xue: [["玄泉", "hp"], ["玄海", "def"], ["玄关", "res_huo"], ["玄府", "res_shui"], ["玄门", "res_jin"], ["玄池", "mana"], ["玄庭", "atk"], ["玄堂", "res_tu"], ["玄宫", "res_mu"], ["玄台", "res_lei"]] },
+      { name: "上星", x: 178.7, y: 64.6, xue: [["紫泉", "res_shui"], ["紫海", "res_tu"], ["紫关", "res_lei"], ["紫府", "mana"], ["紫门", "res_jin"], ["紫池", "res_huo"], ["紫庭", "atk"], ["紫堂", "def"], ["紫宫", "hp"], ["紫台", "res_mu"]] },
+      { name: "后顶", x: 221.3, y: 64.6, xue: [["太泉", "hp"], ["太海", "atk"], ["太关", "res_tu"], ["太府", "res_mu"], ["太门", "def"], ["太池", "res_huo"], ["太庭", "mana"], ["太堂", "res_jin"], ["太宫", "res_lei"], ["太台", "res_shui"]] },
+      { name: "强间", x: 258.9, y: 84.6, xue: [["清泉", "hp"], ["清海", "res_shui"], ["清关", "res_huo"], ["清府", "res_jin"], ["清门", "atk"], ["清池", "def"], ["清庭", "res_lei"], ["清堂", "res_tu"], ["清宫", "res_mu"], ["清台", "mana"]] },
+      { name: "风府", x: 282.7, y: 119.9, xue: [["灵泉", "def"], ["灵海", "res_tu"], ["灵关", "atk"], ["灵府", "res_jin"], ["灵门", "res_shui"], ["灵池", "hp"], ["灵庭", "mana"], ["灵堂", "res_lei"], ["灵宫", "res_huo"], ["灵台", "res_mu"]] },
+    ] },
+    { name: "任脉", color: "#ff8a6a", nodes: [
+      { name: "天突", x: 200, y: 195, xue: [["元泉", "atk"], ["元海", "mana"], ["元关", "res_mu"], ["元府", "res_jin"], ["元门", "res_tu"], ["元池", "hp"], ["元庭", "res_shui"], ["元堂", "res_lei"], ["元宫", "res_huo"], ["元台", "def"]] },
+      { name: "膻中", x: 200, y: 229, xue: [["神泉", "atk"], ["神海", "def"], ["神关", "res_shui"], ["神府", "res_huo"], ["神门", "mana"], ["神池", "res_lei"], ["神庭", "res_mu"], ["神堂", "hp"], ["神宫", "res_tu"], ["神台", "res_jin"]] },
+      { name: "鸠尾", x: 200, y: 263, xue: [["云泉", "res_jin"], ["云海", "def"], ["云关", "mana"], ["云府", "res_huo"], ["云门", "res_lei"], ["云池", "res_mu"], ["云庭", "res_tu"], ["云堂", "hp"], ["云宫", "atk"], ["云台", "res_shui"]] },
+      { name: "中脘", x: 200, y: 297, xue: [["金泉", "atk"], ["金海", "res_huo"], ["金关", "mana"], ["金府", "hp"], ["金门", "def"], ["金池", "res_shui"], ["金庭", "res_mu"], ["金堂", "res_tu"], ["金宫", "res_jin"], ["金台", "res_lei"]] },
+      { name: "神阙", x: 200, y: 331, xue: [["玉泉", "mana"], ["玉海", "res_shui"], ["玉关", "def"], ["玉府", "res_mu"], ["玉门", "res_tu"], ["玉池", "atk"], ["玉庭", "res_huo"], ["玉堂", "res_lei"], ["玉宫", "hp"], ["玉台", "res_jin"]] },
+      { name: "关元", x: 200, y: 365, xue: [["华泉", "res_shui"], ["华海", "res_mu"], ["华关", "res_jin"], ["华府", "def"], ["华门", "mana"], ["华池", "atk"], ["华庭", "res_huo"], ["华堂", "res_lei"], ["华宫", "res_tu"], ["华台", "hp"]] },
+    ] },
+    { name: "阴维脉", color: "#b890ff", nodes: [
+      { name: "天池", x: 148, y: 222, xue: [["青泉", "res_shui"], ["青海", "mana"], ["青关", "res_mu"], ["青府", "res_jin"], ["青门", "atk"], ["青池", "res_lei"], ["青庭", "res_tu"], ["青堂", "def"], ["青宫", "hp"], ["青台", "res_huo"]] },
+      { name: "期门", x: 128, y: 258, xue: [["赤泉", "hp"], ["赤海", "res_lei"], ["赤关", "mana"], ["赤府", "res_jin"], ["赤门", "def"], ["赤池", "res_tu"], ["赤庭", "res_huo"], ["赤堂", "res_mu"], ["赤宫", "atk"], ["赤台", "res_shui"]] },
+      { name: "腹哀", x: 108, y: 293, xue: [["白泉", "res_shui"], ["白海", "def"], ["白关", "res_jin"], ["白府", "hp"], ["白门", "res_mu"], ["白池", "atk"], ["白庭", "res_lei"], ["白堂", "mana"], ["白宫", "res_huo"], ["白台", "res_tu"]] },
+      { name: "大横", x: 90, y: 320, xue: [["幽泉", "hp"], ["幽海", "res_shui"], ["幽关", "def"], ["幽府", "res_jin"], ["幽门", "res_lei"], ["幽池", "atk"], ["幽庭", "mana"], ["幽堂", "res_tu"], ["幽宫", "res_mu"], ["幽台", "res_huo"]] },
+      { name: "府舍", x: 68, y: 338, xue: [["明泉", "res_lei"], ["明海", "hp"], ["明关", "mana"], ["明府", "res_jin"], ["明门", "def"], ["明池", "res_shui"], ["明庭", "res_huo"], ["明堂", "res_tu"], ["明宫", "res_mu"], ["明台", "atk"]] },
+      { name: "筑宾", x: 45, y: 352, xue: [["阳泉", "hp"], ["阳海", "def"], ["阳关", "res_jin"], ["阳府", "mana"], ["阳门", "atk"], ["阳池", "res_huo"], ["阳庭", "res_lei"], ["阳堂", "res_shui"], ["阳宫", "res_mu"], ["阳台", "res_tu"]] },
+    ] },
+    { name: "阳维脉", color: "#70c8ff", nodes: [
+      { name: "肩井", x: 252, y: 222, xue: [["阴泉", "hp"], ["阴海", "res_tu"], ["阴关", "res_mu"], ["阴府", "atk"], ["阴门", "res_jin"], ["阴池", "res_lei"], ["阴庭", "res_shui"], ["阴堂", "def"], ["阴宫", "mana"], ["阴台", "res_huo"]] },
+      { name: "天髎", x: 272, y: 258, xue: [["中泉", "res_mu"], ["中海", "mana"], ["中关", "hp"], ["中府", "res_lei"], ["中门", "def"], ["中池", "res_tu"], ["中庭", "res_shui"], ["中堂", "res_jin"], ["中宫", "res_huo"], ["中台", "atk"]] },
+      { name: "臑俞", x: 292, y: 293, xue: [["承泉", "res_tu"], ["承海", "hp"], ["承关", "res_jin"], ["承府", "mana"], ["承门", "res_shui"], ["承池", "res_mu"], ["承庭", "res_huo"], ["承堂", "atk"], ["承宫", "res_lei"], ["承台", "def"]] },
+      { name: "阳白", x: 310, y: 320, xue: [["归泉", "def"], ["归海", "hp"], ["归关", "mana"], ["归府", "atk"], ["归门", "res_tu"], ["归池", "res_jin"], ["归庭", "res_lei"], ["归堂", "res_huo"], ["归宫", "res_shui"], ["归台", "res_mu"]] },
+      { name: "本神", x: 332, y: 338, xue: [["通泉", "def"], ["通海", "res_huo"], ["通关", "hp"], ["通府", "atk"], ["通门", "res_mu"], ["通池", "res_shui"], ["通庭", "res_jin"], ["通堂", "mana"], ["通宫", "res_tu"], ["通台", "res_lei"]] },
+      { name: "金门", x: 355, y: 352, xue: [["会泉", "res_shui"], ["会海", "res_mu"], ["会关", "res_lei"], ["会府", "hp"], ["会门", "res_jin"], ["会池", "def"], ["会庭", "mana"], ["会堂", "atk"], ["会宫", "res_tu"], ["会台", "res_huo"]] },
+    ] },
+    { name: "冲脉", color: "#ff6a9a", nodes: [
+      { name: "横骨", x: 155, y: 380, xue: [["极泉", "res_jin"], ["极海", "res_mu"], ["极关", "def"], ["极府", "res_lei"], ["极门", "res_tu"], ["极池", "mana"], ["极庭", "res_shui"], ["极堂", "res_huo"], ["极宫", "atk"], ["极台", "hp"]] },
+      { name: "大赫", x: 120, y: 380, xue: [["丹泉", "mana"], ["丹海", "def"], ["丹关", "res_huo"], ["丹府", "res_shui"], ["丹门", "res_tu"], ["丹池", "res_mu"], ["丹庭", "hp"], ["丹堂", "atk"], ["丹宫", "res_jin"], ["丹台", "res_lei"]] },
+      { name: "气穴", x: 85, y: 384, xue: [["真泉", "mana"], ["真海", "res_mu"], ["真关", "res_shui"], ["真府", "res_tu"], ["真门", "res_jin"], ["真池", "atk"], ["真庭", "res_huo"], ["真堂", "hp"], ["真宫", "def"], ["真台", "res_lei"]] },
+      { name: "四满", x: 100, y: 405, xue: [["乾泉", "res_jin"], ["乾海", "res_huo"], ["乾关", "res_lei"], ["乾府", "hp"], ["乾门", "res_mu"], ["乾池", "def"], ["乾庭", "atk"], ["乾堂", "res_tu"], ["乾宫", "res_shui"], ["乾台", "mana"]] },
+      { name: "中注", x: 140, y: 415, xue: [["坤泉", "mana"], ["坤海", "res_jin"], ["坤关", "atk"], ["坤府", "hp"], ["坤门", "res_tu"], ["坤池", "res_mu"], ["坤庭", "res_lei"], ["坤堂", "res_shui"], ["坤宫", "res_huo"], ["坤台", "def"]] },
+      { name: "幽门", x: 180, y: 422, xue: [["震泉", "atk"], ["震海", "res_tu"], ["震关", "res_huo"], ["震府", "res_shui"], ["震门", "res_jin"], ["震池", "res_lei"], ["震庭", "res_mu"], ["震堂", "mana"], ["震宫", "def"], ["震台", "hp"]] },
+    ] },
+    { name: "带脉", color: "#60e0a0", nodes: [
+      { name: "带脉", x: 245, y: 380, xue: [["巽泉", "res_shui"], ["巽海", "res_tu"], ["巽关", "res_huo"], ["巽府", "res_mu"], ["巽门", "mana"], ["巽池", "def"], ["巽庭", "res_jin"], ["巽堂", "atk"], ["巽宫", "hp"], ["巽台", "res_lei"]] },
+      { name: "五枢", x: 280, y: 380, xue: [["坎泉", "res_shui"], ["坎海", "mana"], ["坎关", "res_lei"], ["坎府", "res_tu"], ["坎门", "hp"], ["坎池", "def"], ["坎庭", "res_huo"], ["坎堂", "res_jin"], ["坎宫", "res_mu"], ["坎台", "atk"]] },
+      { name: "维道", x: 315, y: 384, xue: [["离泉", "res_shui"], ["离海", "res_mu"], ["离关", "res_tu"], ["离府", "atk"], ["离门", "res_lei"], ["离池", "mana"], ["离庭", "hp"], ["离堂", "res_jin"], ["离宫", "res_huo"], ["离台", "def"]] },
+      { name: "京门", x: 300, y: 405, xue: [["艮泉", "res_lei"], ["艮海", "res_tu"], ["艮关", "def"], ["艮府", "hp"], ["艮门", "res_mu"], ["艮池", "mana"], ["艮庭", "res_jin"], ["艮堂", "res_huo"], ["艮宫", "res_shui"], ["艮台", "atk"]] },
+      { name: "章门", x: 260, y: 415, xue: [["兑泉", "res_mu"], ["兑海", "mana"], ["兑关", "res_jin"], ["兑府", "res_huo"], ["兑门", "res_shui"], ["兑池", "hp"], ["兑庭", "atk"], ["兑堂", "res_tu"], ["兑宫", "def"], ["兑台", "res_lei"]] },
+      { name: "居髎", x: 220, y: 422, xue: [["龙泉", "res_tu"], ["龙海", "hp"], ["龙关", "res_mu"], ["龙府", "mana"], ["龙门", "res_shui"], ["龙池", "res_huo"], ["龙庭", "res_lei"], ["龙堂", "atk"], ["龙宫", "def"], ["龙台", "res_jin"]] },
+    ] },
+  ],
+};

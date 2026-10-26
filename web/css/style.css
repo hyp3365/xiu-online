@@ -111,7 +111,7 @@ button.sel i{font-style:normal;color:#c9a45c;font-size:12px}
 .chips span.on{border-color:#c9a45c;color:#f3d48b;background:#3a2c18}
 
 /* 浮动提示 */
-#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;max-width:90%;background:#2a2219ee;border:1px solid #c9a45c;border-radius:8px;padding:6px 12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;max-width:90%;background:var(--c-toast);color:var(--t-main);border:1px solid #c9a45c;border-radius:8px;padding:6px 12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
 #toast.show{opacity:1}
 #toast.center{top:50%;bottom:auto;transform:translate(-50%,-50%);border-color:var(--t-bad);font-size:15px;padding:10px 16px}#toast.center p{color:var(--t-bad)}#toast.center[data-tone="bad"]{color:var(--t-bad)}
 #toast[data-tone="good"]{border-color:#8fd19e}
@@ -461,6 +461,7 @@ button small .cd{min-width:0}
 .btv-nm{display:none}
 .btv-u{bottom:2.5%}
 .btv-u.l .btv-hero{position:relative;height:80%;aspect-ratio:269/560}
+.btv-u.l .btv-hero.bth-f .btv-body{object-fit:contain;object-position:center bottom}
 .btv-u.l .btv-hero .btv-body{position:absolute;inset:0;width:100%;height:100%;max-height:none;filter:drop-shadow(0 4px 6px #0006)}
 .btv-u.l .btv-hero .btv-sword{position:absolute;left:24.4%;top:52.4%;width:94%;height:auto;max-height:none;max-width:none;transform-origin:12.3% 50%;transform:rotate(40deg);filter:drop-shadow(0 2px 3px #0005)}
 @keyframes btv-slash{0%,100%{transform:rotate(40deg)}40%{transform:rotate(-110deg)}62%{transform:rotate(75deg)}80%{transform:rotate(40deg)}}
@@ -739,10 +740,10 @@ button.sm.pill{padding:4px 12px}
 .pill.on{border-color:var(--t-gold);color:var(--t-gold)}
 .atl-l{position:absolute;left:2.5%;top:2%;display:flex;flex-direction:column;gap:4px;max-width:44%}
 .atl-btns{display:flex;gap:6px}
-.atl-btns .pill{padding:5px 10px;font-size:12px}
+.atl-btns .pill,.atl-r .pill{box-sizing:border-box;width:76px;min-width:0;height:28px;padding:0;font-size:12px;line-height:26px;text-align:center;white-space:nowrap;margin:0}
 .atl-l p{margin:0;padding:2px 8px;border-radius:10px;background:rgba(10,8,6,.62);color:#f1e3c2;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .atl-l p i{font-style:normal;color:#ffd77a;margin-right:4px}
-.atl-r{position:absolute;right:2.5%;top:2%;padding:5px 12px;font-size:12px}
+.atl-r{position:absolute;right:2.5%;top:2%;display:flex;gap:6px}
 .atl-bl{position:absolute;left:3%;bottom:1.2%}
 .atl-br{position:absolute;right:3%;bottom:1.2%}
 .fback{position:sticky;bottom:12px;height:72px;margin-top:-72px;display:flex;justify-content:space-between;padding:0 2px;align-items:flex-end;z-index:5;pointer-events:none}
@@ -839,3 +840,59 @@ button.sm.pill{padding:4px 12px}
 /* 洞府炼丹 / 炼器：还没选配方时「开始」按钮放在页面中部 */
 .craft-start { min-height: 38vh; display: flex; align-items: center; justify-content: center; }
 .craft-start button { min-width: 180px; padding: 12px 28px; font-size: 17px; }
+/* 顶部 坊市 / 设置 按钮加大：负边距抵消，顶部框高度不变 */
+.top-btns{gap:10px;align-items:center}
+.top-ic{font-size:11px;line-height:1.15;margin:-5px 0}
+.top-ic i{width:30px;height:30px;font-size:15px}
+/* 经脉（modules/jingmai.js） */
+#view:has(.jm-card){display:flex;flex-direction:column;overflow:hidden;padding:0}
+.jm-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;box-sizing:border-box;padding:0;margin:0;background:none;border:0;box-shadow:none}
+.jm-stage{position:relative;flex:1;min-height:420px;overflow:hidden;background:#0d0906}
+.jm-svg{position:absolute;inset:0;width:100%;height:100%}
+.jm-stage .ys-pow{z-index:2}
+.jm-swap{position:absolute;top:10px;right:10px;z-index:2}
+.jm-cost{position:absolute;left:0;right:0;bottom:8px;z-index:2;display:flex;justify-content:center;gap:18px;font-size:13px;color:#e8d8b8;text-shadow:0 0 4px #000}
+.jm-cost img{width:18px;height:18px;vertical-align:-4px;margin-right:3px}
+.jm-pt{cursor:pointer}
+.jm-pt.nx>circle:nth-child(2){animation:jm-pulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes jm-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+.jm-lb{font-size:13px;fill:#ffe8b0;paint-order:stroke;stroke:#000a;stroke-width:3px;pointer-events:none}
+.jm-stage.fx{animation:jm-fx .9s ease-out}
+@keyframes jm-fx{0%{box-shadow:inset 0 0 70px #ffd070}100%{box-shadow:inset 0 0 0 transparent}}
+.jm-xn{font-size:14px;fill:#ffe8b0;text-anchor:middle;paint-order:stroke;stroke:#000b;stroke-width:3px;pointer-events:none}
+.jm-xs{font-size:11px;fill:#d8c8a8;text-anchor:middle;paint-order:stroke;stroke:#000b;stroke-width:3px;pointer-events:none}
+.jm-cn{font-size:22px;fill:#fff2d0;text-anchor:middle;font-weight:bold;paint-order:stroke;stroke:#000a;stroke-width:3px}
+.jm-sum{position:absolute;left:8px;right:8px;bottom:34px;z-index:2;text-align:center;font-size:12px;color:#ffe8b0;text-shadow:0 0 4px #000}.jm-sum small{color:#d8c8a8}
+.jm-btns{margin:0;padding:6px 8px;display:flex;gap:8px}.jm-btns button{flex:1}
+.cult-dan{cursor:pointer;pointer-events:auto}
+
+/* 浅色背景主题（html.bg-light，由 world.js applyBg 加）：默认主题是深色底，很多地方写死了浅色字，浅色背景下看不清，这里统一改成深色；卡片也加厚一点，背景图不再透出干扰文字 */
+html.bg-light{--c-card:rgba(250,246,236,0.84);--c-log:rgba(250,246,236,0.88);--c-cell:rgba(252,249,242,0.84);--c-card2:rgba(238,228,206,0.86);--c-card3:rgba(238,228,206,0.86)}
+html.bg-light .desc{color:var(--t-sub)}
+html.bg-light .fb-sum{color:var(--t-main);background:rgba(190,140,40,.12);border-color:rgba(150,100,20,.35)}
+html.bg-light .gf-base{color:var(--t-main)}
+html.bg-light .gf-up,html.bg-light .c-green,html.bg-light .tag.gf-lv,html.bg-light .ac1{color:#1d7a3a!important}
+html.bg-light .c-red,html.bg-light .tag.gf-to,html.bg-light .fb-bad{color:#b52a1c!important}
+html.bg-light .ac2{color:#7a2fb5}html.bg-light .ac3{color:#9a6a00}
+html.bg-light button.sel i{color:var(--t-gold)}
+html.bg-light .sv-el{color:var(--t-main)}
+html.bg-light .line.ld,html.bg-light .line.ld small,html.bg-light .line.ld .tag,html.bg-light .line.ld b{color:#777}
+html.bg-light .fb-jin,html.bg-light .fb-jin .nm{color:#9a7400}
+html.bg-light .fb-mu,html.bg-light .fb-mu .nm{color:#1f7f32}
+html.bg-light .fb-shui,html.bg-light .fb-shui .nm{color:#1f64b8}
+html.bg-light .fb-huo,html.bg-light .fb-huo .nm{color:#c23a1a}
+html.bg-light .fb-tu,html.bg-light .fb-tu .nm{color:#8a5a1a}
+html.bg-light .fb-lei,html.bg-light .fb-lei .nm{color:#6a3ec0}
+html.bg-light .ico.t-gf{color:#8a6a10}html.bg-light .ico.j0,html.bg-light .ico.j1{color:#666}
+html.bg-light .ico.j2,html.bg-light .ico.j3{color:#1f7a5c}html.bg-light .ico.j4,html.bg-light .ico.j5{color:#2a52b0}
+html.bg-light .ico.j6,html.bg-light .ico.j7{color:#7a34b0}html.bg-light .ico.j8,html.bg-light .ico.j9{color:#a07000}
+html.bg-light .ico.t-mifa{color:#16806e}html.bg-light .ico.eqt9{color:#c0601a}
+html.bg-light .ico.eqt10,html.bg-light .ico.j10{color:#1a7aa0}html.bg-light .ico.eqt11,html.bg-light .ico.j11{color:#a0802a}
+html.bg-light .ori-it{background:rgba(255,255,255,.55);border-color:rgba(150,110,40,.35)}
+html.bg-light .ori-it b{color:var(--t-gold)}html.bg-light .ori-it small{color:var(--t-sub)}
+/* 浅色背景：整体文字再压深一档，提示框、日志、底栏加粗一点更清楚 */
+html.bg-light{--t-main:#1e1810;--t-sub:#4c4132;--t-dim:#5a4e3c;--t-sub2:#463b2b;--t-logt:#2a2318;--t-gold:#7a4f0e;--t-gold2:#83540a}
+html.bg-light #toast{background:rgba(252,248,238,.97);color:#1e1810;font-size:14px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+html.bg-light #log p{font-weight:500}
+html.bg-light #tabs button{color:#3e3426;font-weight:600}
+

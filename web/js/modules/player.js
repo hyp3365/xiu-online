@@ -75,20 +75,22 @@ G.module({
       const s = this.s, x = s.explore, q = s.cq;
       return !!((x && !x.rest) || (q && !q.rest) || (s.trib && !s.trib.result));
     },
-    // 突破随机属性：kind "xw" 修为 / "rs" 肉身，T = 刚突破到的层序；每项属性 ± (RAND_BASE + RAND_STEP × 境界) 整数，累计存 s.brRand（config/realm.js）
-    //   抗性六系各掷各的（键 res:金木水火土雷 id）
+    // 突破随机属性：kind "xw" 修为 / "rs" 肉身，T = 刚突破到的层序；累计存 s.brRand（config/realm.js AUTO.RAND_PCT）
+    //   每项属性随机 ±RAND_PCT 个百分点：例 修为 12% ±2% → 本层这项 = 一星功法 × (1 + 10%~14%)，后面境界按同样比例浮动；抗性六系各掷各的
     brRoll(kind, T, s = this.s) {
-      const C = CFG.realm, k = (C.RAND_BASE || 0) + (C.RAND_STEP || 0) * Math.floor(Math.max(0, T) / DATA.LAYERS); if (k <= 0) return;
-      const g = (DATA.brRow(kind === "rs" ? C.BODY_GAIN : C.GAIN, Math.floor(Math.max(0, T) / DATA.LAYERS)) || [0, {}])[1] || {};
-      const o = ((s.brRand = s.brRand || {})[kind] = s.brRand[kind] || {}), add = a => { o[a] = (o[a] || 0) + Math.floor(Math.random() * (2 * k + 1)) - k; };
-      for (const a in g) if (a === "res") DATA.elements.forEach(e => add("res:" + e.id)); else if (a !== "cultivate") add(a);
+      const A = CFG.realm.AUTO || {}, P = +A.RAND_PCT || 0; if (P <= 0) return;
+      const body = kind === "rs", FP0 = body ? A.BODY_FIRST_PCT : A.XW_FIRST_PCT, fp = a => typeof FP0 === "object" && FP0 ? +FP0[a] || 0 : +FP0 || 0;
+      const g = (DATA.brRow(DATA.autoRows(body), Math.floor(Math.max(0, T) / DATA.LAYERS)) || [0, {}])[1] || {};
+      const o = ((s.brRand = s.brRand || {})[kind] = s.brRand[kind] || {});
+      const add = (key, a) => { const v = DATA.brLayerGain(body, T, a) * (Math.random() * 2 - 1) * P / (100 + fp(a)); o[key] = Math.round(((o[key] || 0) + v) * 100) / 100; };
+      for (const a in g) { if (a === "cultivate" || (body && a === "mana")) continue; if (a === "res") DATA.elements.forEach(e => add("res:" + e.id, a)); else add(a, a); }
     },
-    // 老存档：已突破的层补掷一次（只做一次，s.brRandOk 标记）
+    // 老存档：已突破的层按现在的规则重新掷一次（s.brRandV = 2 标记，只做一次）
     brFill(s) {
-      if (s.brRandOk) return; s.brRand = {};
+      if (s.brRandV === 2) return; s.brRand = {};
       if (!s.mortal) for (let t = 0; t <= (s.L || 0); t++) this.brRoll("xw", t, s);
       for (let t = 0; t <= (s.bodyL === undefined ? -1 : s.bodyL); t++) this.brRoll("rs", t, s);
-      s.brRandOk = 1;
+      s.brRandOk = 1; s.brRandV = 2;
     },
     brRand(kind, a) { const r = this.s.brRand; return (r && r[kind] && r[kind][a]) || 0; },
     computeStats() {

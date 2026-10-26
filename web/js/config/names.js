@@ -257,7 +257,7 @@ CFG.names.hall.xian = {   // 仙界
   shop: "坊市",
   lilian: "历练",
   wudao: "悟道碑",
-  lingdi: "灵地",
+  lingdi: "秘境",
 };
 CFG.names.hall.ming = {   // 冥界
   tg: "{short}冥宫",
@@ -266,7 +266,7 @@ CFG.names.hall.ming = {   // 冥界
   shop: "鬼市",
   lilian: "历练",
   wudao: "悟道碑",
-  lingdi: "灵地",
+  lingdi: "秘境",
 };
 CFG.names.hall.mo = {   // 魔界
   tg: "{map}魔宫",
@@ -275,7 +275,7 @@ CFG.names.hall.mo = {   // 魔界
   shop: "魔市",
   lilian: "历练",
   wudao: "悟道碑",
-  lingdi: "灵地",
+  lingdi: "秘境",
 };
 CFG.names.hall.shen = {   // 神界
   tg: "{map}神殿",
@@ -284,7 +284,7 @@ CFG.names.hall.shen = {   // 神界
   shop: "神市",
   lilian: "历练",
   wudao: "悟道碑",
-  lingdi: "灵地",
+  lingdi: "秘境",
 };
 
 /* ================= 四、星君殿官位 ================= */
@@ -336,7 +336,7 @@ CFG.names.xingjun.shen = {   // 神界
 /* ================= 五、秘境 · 灵地 ================= */
 CFG.names.mjLabel = {   // 秘境、灵地的总称（显示为「灵地·瑶池仙境」、页面标题等）
   mj: "秘境",             // 凡界秘境
-  ld: "灵地",             // 仙冥魔神灵地
+  ld: "秘境",             // 仙冥魔神灵地（显示为秘境）
 };
 /* 秘境（凡界）：按 config/mijing.js 的 list 顺序；name 名字  boss 首领  monsters 普通怪 */
 CFG.names.mijing = [

@@ -67,7 +67,7 @@ const G = {
   newSave(name) {
     let s = { v: 5, name, last: Date.now(), log: [] };
     for (const m of this.modules) if (m.defaults) Object.assign(s, m.defaults());
-    s.brRandOk = 1;
+    s.brRandOk = 1; s.brRandV = 2;
     if (this.mobElInit) this.mobElInit(s);   // 首领 / 天将 / 星君 / 界主属性：第一次进游戏随机定死
     s._nm = DATA.nmSnap();   // 新存档记下当前用的名字（config/names.js），以后改名读档时对照
     return s;
@@ -253,10 +253,16 @@ const G = {
     if (this.editing(v)) { this._renderDeferred = true; return; }
     const lg0 = document.getElementById("exov-log"), lgTop = lg0 ? lg0.scrollTop : -1;   // 探索信息浮层：重绘后保持位置，或「跟随最新」滚到底
     try { const html = this.views[this.tab] ? this.views[this.tab].call(this) : ""; if (html !== this._viewHtml || v.innerHTML === "") { v.innerHTML = html; this._viewHtml = html;
-      const lg = document.getElementById("exov-log"); if (lg) lg.scrollTop = this.exFollow === false && lgTop >= 0 ? lgTop : 0; }
+      const lg = document.getElementById("exov-log"); if (lg) lg.scrollTop = this.exFollow === false && lgTop >= 0 ? lgTop : 0;
+      this.syncLoopAnims(v); }
       this.exovFit(); }   // 最新一条在最上面
     catch (err) { console.error(err); this._viewHtml = null; v.innerHTML = `<div class="card"><h3>页面出错</h3><p class="desc">${String(err && err.message || err)}<br>如果刚改过 js/config/ 里的数值，请检查有没有写错（例如少了小数点、多了问号）。</p></div>`; }
     v.scrollTop = top;
+  },
+  // 重绘后循环动画（人物上下浮动、光环、金丹）对齐到同一条时间线：新元素接着原来的进度，不会每次服务器结算重绘就跳回起点抖一下
+  syncLoopAnims(root) {
+    try { if (!root.getAnimations) return;
+      for (const a of root.getAnimations({ subtree: true })) { const t = a.effect && a.effect.getTiming && a.effect.getTiming(); if (t && t.iterations === Infinity) a.startTime = 0; } } catch (e) {}
   },
   editing(root) {
     const a = document.activeElement;

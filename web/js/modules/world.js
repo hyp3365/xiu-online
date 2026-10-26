@@ -275,7 +275,8 @@ G.module({
         let ex = 0; for (const x of fb.extra) ex += d * x.pct / 100;   // 附加伤害：主伤害 × %
         return (d + ex + (fb.addDmg || 0)) * (1 + (fb.fuPct || 0) / 100);   // v152 强化附加伤害（固定数字）；融合：伤害结果 +%
       };
-      const BS = this.bsetGet(), onlyAtk = !!opt.foe && (BS.foe || {})[opt.foe] === "atk", off = BS.off || [],   // v241 按对手类型：只能普通攻击（优先于回合设置）
+      // 战斗设置只对 探索 / 出窍 / 历练（含秘境）生效（opt.useSet）；考核、试炼塔、测试、天将、星君、界主等按默认方式出手
+      const BS = opt.useSet ? this.bsetGet() : { foe: {}, r: [], mode: "rot", off: [], order: [], lowPct: 0, lowKey: "" }, onlyAtk = !!opt.foe && (BS.foe || {})[opt.foe] === "atk", off = BS.off || [],   // v241 按对手类型：只能普通攻击（优先于回合设置）
        keepMp = 0, rKeys = BS.r || [];
       let rDone = 0;
       // 出一招：a = acts[j]；res = true 可以动用保留的法力；放不出返回 null
@@ -575,7 +576,7 @@ G.module({
           <div class="btv-hp l"><div class="btv-bar"><i id="bt-hp0"></i></div><span id="bt-hpt0"></span><div class="btv-mp"><i id="bt-mp0"></i></div></div>
           <div class="btv-zhan">战</div>
           <div class="btv-hp r"><div class="btv-bar"><i id="bt-hp1"></i></div><span id="bt-hpt1"></span><div class="btv-mp"><i id="bt-mp1"></i></div></div>
-          <div class="btv-u l" id="bt-u0"><div class="btv-hero"><img class="btv-body" src="img/bt_hero.webp?v=${v}" alt=""><div class="btv-arm"><img class="btv-sword" src="img/bt_sword.webp?v=${v}" alt=""><img class="btv-hand" src="img/bt_hand.webp?v=${v}" alt=""></div></div></div>
+          <div class="btv-u l" id="bt-u0">${this.heroId && this.heroId() ? `<div class="btv-hero bth-f"><img class="btv-body" src="img/bt_${this.heroId()}.webp?v=${v}" alt=""></div>` : `<div class="btv-hero"><img class="btv-body" src="img/bt_hero.webp?v=${v}" alt=""><div class="btv-arm"><img class="btv-sword" src="img/bt_sword.webp?v=${v}" alt=""><img class="btv-hand" src="img/bt_hand.webp?v=${v}" alt=""></div></div>`}</div>
           <div class="btv-u r${b.glow ? " glow" : ""}" id="bt-u1" onclick="G.btMobInfo()"><img src="${mi.src}" onerror="this.onerror=null;this.src='${mi.alt}'" alt=""></div>
           <div class="btv-fx" id="bt-fx"></div>
           <div class="btv-info" id="bt-info" style="display:none" onclick="G.btMobInfo()"></div>
@@ -1130,7 +1131,7 @@ G.module({
       else if (type === "monster" || type === "elite" || type === "boss") {
         const kind = type === "monster" ? "normal" : type, m = mj !== undefined ? this.makeMjMob(mj, kind, mk) : this.makeMob(a, r, kind);
         m.a = a;
-        const res = this.battle(m, { foe: m.boss ? "boss" : m.elite ? "elite" : "mob" }), tag = `${m.boss ? "【首领】" : m.elite ? "【精英】" : ""}${String(m.name).replace(/^精英·/, "")}`;
+        const res = this.battle(m, { foe: m.boss ? "boss" : m.elite ? "elite" : "mob", useSet: true }), tag = `${m.boss ? "【首领】" : m.elite ? "【精英】" : ""}${String(m.name).replace(/^精英·/, "")}`;
         if (res.win) { this.s.kills++; t = `遭遇${tag}，${res.rounds}回合击败，获得 ${[this.rollMonsterLoot(x, m), sm()].filter(Boolean).join("、")}`; c = m.boss ? "gold" : ""; }
         else if (res.lose) { t = `遭遇${tag}，${res.timeout ? `${res.rounds} 回合未能击败，力竭重伤` : `第 ${res.rounds} 回合不敌重伤`}，本次探索收获全部遗失。${res.why}`; c = "bad"; }
         else { const g = sm(); t = `遭遇${tag}，缠斗 ${res.rounds} 回合，各自退去${g ? `，拾得 ${g}` : ""}`; }
@@ -1238,7 +1239,7 @@ G.module({
     exPlan(x) { return x.kuang ? this.kuangPlan() : this.makePlan(this.exCfg(x)); },
     exName(x) { return x.mj !== undefined ? this.mjLabel(x.mk) + "·" + this.mjDef(x.mj, x.mk).name : x.kuang ? this.kuangName(x.map) : DATA.regionName(x.map, x.reg || 0); },
     mjCfg(k) { return k === "ld" ? CFG.lingdi : CFG.mijing; },
-    mjLabel(k) { return k === "ld" ? DATA.nmPick(CFG.names.mjLabel, "ld", "灵地") : DATA.nmPick(CFG.names.mjLabel, "mj", "秘境"); },   // 名字在 config/names.js 的 mjLabel
+    mjLabel(k) { return k === "ld" ? DATA.nmPick(CFG.names.mjLabel, "ld", "秘境") : DATA.nmPick(CFG.names.mjLabel, "mj", "秘境"); },   // 名字在 config/names.js 的 mjLabel
     mjDef(i, k) { return this.mjCfg(k).list[i]; },
     mjToday() { return this.bjDay(); },   // 秘境 / 灵地每天次数：北京时间 0 点重置
     // 秘境 / 灵地存档（换日自动清空今天的次数）
@@ -1258,7 +1259,7 @@ G.module({
           const d = C.list[i], M = DATA.maps[a] || {}, at = k === "ld" ? (M.w && M.w !== "fan" && d.find && M.wi === d.find.map ? a : -1) : d.find && d.find.map;
           if (m.found.includes(i) || !d.find || at !== a || Math.random() * 100 >= (d.find.chance || 0)) continue;
           m.found.push(i);
-          this.log(k === "ld" ? `探得灵地消息：发现${(DATA.worlds.find(w => w.id === d.w) || {}).name || ""}灵地「${d.name}」！可在 仙冥魔神任一地图 → 灵地 进入。`
+          this.log(k === "ld" ? `探得秘境消息：发现${(DATA.worlds.find(w => w.id === d.w) || {}).name || ""}秘境「${d.name}」！可在 仙冥魔神任一地图 → 灵地 进入。`
             : `探得秘境消息：发现「${d.name}」（需${DATA.realmLabel(d.realm)}）！可在 历练 → 秘境 进入。`, "gold");
           break;
         }
@@ -1327,14 +1328,22 @@ G.module({
       if (x) this.stopExplore("更换");
       this.mjStart(i, once, null, null, k); this.exploreOpen = true; this.exInfo = "ex"; this.after();
     },
-    // 一键探索：今天还没进过、已历练通过的秘境 / 灵地依次自动探索
+    // 一键探索：今天还没进过、已历练通过的秘境 / 灵地依次自动探索；k = "all" 凡界秘境 + 四界秘境一起（世界页「秘境探索」）
+    //   队列项：数字 = 同一种（x.mk），"mj:序号" / "ld:序号" = 指定种类
+    mjQ(e, k) { if (typeof e === "string") { const [kk, i] = e.split(":"); return { k: kk === "ld" ? "ld" : undefined, i: +i }; } return { k, i: e }; },
+    mjAllList(k) {
+      const ks = k === "all" ? ["mj", "ld"] : [k]; const out = [];
+      for (const kk of ks) { const kx = kk === "ld" ? "ld" : undefined, m = this.mjState(kx);
+        m.found.filter(i => m.trained.includes(i) && this.mjCanEnter(i, kx)).sort((a, b) => a - b).forEach(i => out.push((kx || "mj") + ":" + i)); }
+      return out;
+    },
     mjAll(k) {
-      const s = this.s, m = this.mjState(k), list = m.found.filter(i => m.trained.includes(i) && this.mjCanEnter(i, k)).sort((a, b) => a - b);
-      if (!list.length) return this.log(`没有可以探索的${this.mjLabel(k)}（要已发现、已历练通过、今天还没进过）。`, "sys");
+      const s = this.s, list = this.mjAllList(k);
+      if (!list.length) return this.log(`没有可以探索的秘境（要已发现、已历练通过、今天还没进过）。`, "sys");
       if (s.hp < this.stats().hp * DATA.EXPLORE_STOP) return this.log("生命不足三成，先休养片刻。", "sys");
       if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");
       if (s.explore) this.stopExplore("更换");
-      this.mjStart(list[0], false, list.slice(1), null, k); this.exploreOpen = true; this.exInfo = "ex"; this.after();
+      const f = this.mjQ(list[0]); this.mjStart(f.i, false, list.slice(1), null, f.k); this.exploreOpen = true; this.exInfo = "ex"; this.after();
     },
     // 秘境 / 灵地走完一处：历练通过记下；一键探索接着下一处。返回 true = 还在继续
     mjFinish(x, lost) {
@@ -1343,10 +1352,10 @@ G.module({
         if (!lost && !m.trained.includes(x.mj)) { m.trained.push(x.mj); this.log(`${L}「${name}」历练通过！以后可以自动探索。`, "gold"); }
         else if (lost) this.log(`${L}历练失败，明天提升实力再来。`, "bad");
       }
-      const q = (x.queue || []).filter(i => this.mjCanEnter(i, k));
+      const q = (x.queue || []).filter(e => { const o = this.mjQ(e, k); return this.mjCanEnter(o.i, o.k); });
       if (lost || !q.length) { s.explore = null; if (x.queue && x.queue.length && lost) s.lastRun.title += "；战败，一键探索停止"; return false; }
       if (s.hp < this.stats().hp * DATA.EXPLORE_STOP) { this.log("生命不足三成，一键探索停止。", "bad"); s.lastRun.title += "；生命不足三成，一键探索停止"; s.explore = null; return false; }
-      this.mjStart(q[0], false, q.slice(1), x, k);
+      const nx = this.mjQ(q[0], k); this.mjStart(nx.i, false, q.slice(1).map(e => typeof e === "string" ? e : (k || "mj") + ":" + e), x, nx.k);
       return true;
     },
     stopNow() { const x = this.s.explore; if (x) this.stopExplore(x.once ? "放弃历练" : "停止探索"); this.after(); },
@@ -1355,17 +1364,17 @@ G.module({
     mjRow(i, k) {
       const s = this.s, m = this.mjState(k), d = this.mjDef(i, k), x = s.explore, ka = k === "ld" ? ",'ld'" : "";
       const lock = !this.realmOK(d.realm), ok = m.trained.includes(i), left = x && x.cq ? 0 : this.mjLeft(i, k), on = x && x.mj === i && (x.mk || "mj") === (k || "mj");   // 出窍中不能进
-      return `<div class="line"><div>${k === "ld" ? DATA.li("img/hall_lingdi.png") : ""}${d.name}${k === "ld" ? "" : `<span class="tag">需${DATA.realmLabel(d.realm)}</span>`}<small>首领 ${d.bossName} · ${ok ? "已通过历练" : "未历练"} · 今天${left > 0 ? `还能进 ${left} 次` : "已进过"}</small></div>
-          ${lock ? `<button class="sm" disabled>境界不足</button>` : `<div><button class="sm ${on && x.once ? "on" : ""}" onclick="G.toggleMj(${i},true${ka})" ${on ? "" : left > 0 ? "" : "disabled"}>${on && x.once ? "停止" : "历练"}</button>
-          <button class="sm ${on && !x.once ? "on" : ""}" onclick="G.toggleMj(${i},false${ka})" ${on ? "" : ok && left > 0 ? "" : "disabled"}>${on && !x.once ? "停止" : "探索"}</button></div>`}</div>`;
+      return `<div class="line"><div>${k === "ld" ? DATA.li("img/hall_lingdi.png") : ""}${this._mjModal ? (k === "ld" ? (DATA.worlds.find(w => w.id === d.w) || {}).name || "" : (DATA.worlds.find(w => w.id === "fan") || {}).name || "凡界") + " · " : ""}${d.name}${k === "ld" ? "" : `<span class="tag">需${DATA.realmLabel(d.realm)}</span>`}<small>首领 ${d.bossName} · ${ok ? "已通过历练" : "未历练"} · 今天${left > 0 ? `还能进 ${left} 次` : "已进过"}</small></div>
+          ${lock ? `<button class="sm" disabled>境界不足</button>` : `<div><button class="sm ${on && x.once ? "on" : ""}" ${this._mjModal ? `data-refresh="openMjList"` : ""} onclick="G.toggleMj(${i},true${ka})" ${on ? "" : left > 0 ? "" : "disabled"}>${on && x.once ? "停止" : "历练"}</button>
+          <button class="sm ${on && !x.once ? "on" : ""}" ${this._mjModal ? `data-refresh="openMjList"` : ""} onclick="G.toggleMj(${i},false${ka})" ${on ? "" : ok && left > 0 ? "" : "disabled"}>${on && !x.once ? "停止" : "探索"}</button></div>`}</div>`;
     },
     mjReady(k) { const m = this.mjState(k), x = this.s.explore; return x && x.cq ? 0 : m.found.filter(i => m.trained.includes(i) && this.mjCanEnter(i, k)).length; },
     mijingView() {
       const m = this.mjState(), L = CFG.mijing.list, ready = this.mjReady();
       const rows = m.found.slice().sort((a, b) => a - b).map(i => this.mjRow(i)).join("");
-      return `<div class="card"><h3>${this.mjLabel("mj")}<small>已发现 ${m.found.length} / ${L.length}</small></h3>
+      return `<div class="card"><h3>凡界${this.mjLabel("mj")}<small>已发现 ${m.found.length} / ${L.length}</small></h3>
         ${rows || `<p class="desc">还没有发现秘境。在凡界地图历练、自动探索时，有几率探得秘境消息。</p>`}
-        ${m.found.length ? `<div class="btns"><button class="primary" onclick="G.mjAll()" ${ready ? "" : "disabled"}>一键探索（${ready} 处）</button></div>` : ""}</div>`;
+        ${m.found.length ? `<div class="btns"><button class="primary" ${this._mjModal ? `data-refresh="openMjList"` : ""} onclick="G.mjAll()" ${ready ? "" : "disabled"}>一键探索（${ready} 处）</button></div>` : ""}</div>`;
     },
     // 灵地：在仙冥魔神任一地图的「灵地」里显示四界全部已发现的灵地（按界分组）
     // 灵地同一界里的顺序：按发现地图，同一张图按列表顺序
@@ -1377,9 +1386,23 @@ G.module({
         const all = L.filter(d => d.w === w).length, wn = (DATA.worlds.find(o => o.id === w) || {}).name || w;
         return `<p class="desc"><b>${wn}</b> · 已发现 ${ids.length} / ${all}</p>` + ids.map(i => this.mjRow(i, "ld")).join("");
       }).join("");
-      return `<div class="card"><h3>${this.mjLabel("ld")}<small>已发现 ${m.found.filter(i => L[i]).length} / ${L.length}</small></h3>
-        ${groups || `<p class="desc">还没有发现灵地。在仙界、冥界、魔界、神界的地图历练、自动探索时，有几率探得灵地消息。</p>`}
-        ${m.found.length ? `<div class="btns"><button class="primary" onclick="G.mjAll('ld')" ${ready ? "" : "disabled"}>一键探索（${ready} 处）</button></div>` : ""}</div>`;
+      return `<div class="card"><h3>四界${this.mjLabel("ld")}<small>已发现 ${m.found.filter(i => L[i]).length} / ${L.length}</small></h3>
+        ${groups || `<p class="desc">还没有发现四界秘境。在仙界、冥界、魔界、神界的地图历练、自动探索时，有几率探得秘境消息。</p>`}
+        ${m.found.length ? `<div class="btns"><button class="primary" ${this._mjModal ? `data-refresh="openMjList"` : ""} onclick="G.mjAll('ld')" ${ready ? "" : "disabled"}>一键探索（${ready} 处）</button></div>` : ""}</div>`;
+    },
+    // 世界页「秘境探索」：已发现的凡界秘境 + 四界秘境列成一行一处（同 自动探索 / 元婴出窍），底部 一键探索 / 关闭
+    //   一键探索 = 全部已发现、已历练通过、今天还没进过的依次自动探索；每处每天一次（config/mijing.js、lingdi.js 的 DAILY）
+    openMjList() {
+      const rows = [];
+      { const m = this.mjState(); m.found.slice().sort((a, b) => a - b).forEach(i => rows.push(this.mjRow(i))); }
+      { const m = this.mjState("ld"), L = (CFG.lingdi || {}).list || [];
+        m.found.filter(i => L[i]).sort((a, b) => ["xian", "ming", "mo", "shen"].indexOf(L[a].w) - ["xian", "ming", "mo", "shen"].indexOf(L[b].w) || this.ldOrd(a) - this.ldOrd(b)).forEach(i => rows.push(this.mjRow(i, "ld"))); }
+      this._mjModal = true; let h; try { h = rows.join(""); } finally { this._mjModal = false; }
+      const n = this.s.explore && this.s.explore.cq ? 0 : this.mjAllList("all").length;
+      this.modal(`<h2>秘境探索</h2>
+        <div class="row small"><span>已发现 ${rows.length} 处 · 今天可一键探索 ${n} 处</span></div>
+        <div class="runlist mj-modal">${h || `<p class="desc" style="text-align:center">还没有发现秘境。</p>`}</div>
+        <div class="btns"><button class="primary" data-refresh="openMjList" onclick="G.mjAll('all')" ${n ? "" : "disabled"}>一键探索</button><button onclick="G.closeModal()">关闭</button></div>`);
     },
     setExploreOpen(v) { this.exploreOpen = v; this.render(); },
     // 信息框显示哪个：cq 出窍 / ex 探索（没选过时：正在走的那个，都没有就探索）
@@ -1394,7 +1417,7 @@ G.module({
         return `<button class="atag${open ? "" : " dim"}${cur ? " cur" : ""}" style="left:${p[0]}%;top:${p[1]}%" onclick="${w.open === false ? "G.log('机缘暂未开放，敬请期待。','sys')" : `G.setWorld('${w.id}')`}"><b>${w.name}</b>${sub ? `<small>${sub}</small>` : ""}</button>`; }).join("");
       const s = this.s, ln = (x, cq) => x ? `<p onclick="G.setExInfo('${cq ? "cq" : "ex"}',1)"><i>${cq ? "出窍中" : x.once ? "历练中" : "探索中"}</i>${this.exName(x)}</p>` : "";
       const top = `<div class="atl-l"><div class="atl-btns"><button class="pill" onclick="G.openRunList('cq')">元婴出窍</button><button class="pill" onclick="G.openRunList('ex')">自动探索</button></div>${ln(s.cq, true)}${ln(s.explore, false)}</div>
-        <button class="pill atl-r" onclick="G.setExInfo('${s.cq && !s.explore ? "cq" : "ex"}',1)">探索信息</button>
+        <div class="atl-r"><button class="pill" onclick="G.openMjList()">秘境探索</button><button class="pill" onclick="G.setExInfo('${s.cq && !s.explore ? "cq" : "ex"}',1)">探索信息</button></div>
 `;   // 战斗、设置已移到修炼页顶部「设置」（战斗设置 / 其他设置）
       return `<div class="atlas"><img src="img/map/atlas.webp?v=2" alt="">${tags}${top}</div>` + this.exOverlay();
     },
@@ -1731,10 +1754,12 @@ G.module({
 
 // 背景主题列表：[id, 名字]，id 为空 = 默认；样式在 style.css 的 html[data-bg="id"]
 const BG_THEMES = [["", "默认"], ["xuanzhi", "宣纸"], ["xinghuang", "杏黄"], ["zhuqing", "竹青"], ["qingci", "青瓷"], ["yunbai", "云白"], ["yuebai", "月白"], ["yanmo", "烟墨"]];
+const BG_DARK = ["yanmo"];   // 深色背景主题（文字保持浅色）；其他非默认主题都按浅色处理
 function applyBg() {
   if (typeof document === "undefined" || !document.documentElement) return;   // 服务器端引擎里没有页面
   let id = ""; try { id = localStorage.getItem("xiu_bg") || ""; } catch (e) {}
   if (!BG_THEMES.some(t => t[0] === id)) id = "";
   if (id) document.documentElement.dataset.bg = id; else delete document.documentElement.dataset.bg;
+  document.documentElement.classList.toggle("bg-light", !!id && !BG_DARK.includes(id));   // 浅色背景：style.css 里 html.bg-light 把写死的浅色字改深
 }
 applyBg();

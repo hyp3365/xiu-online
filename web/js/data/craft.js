@@ -46,7 +46,7 @@ DATA.isSpeedRecipe = type => !!(_AL.recipes[type] && _AL.recipes[type].speed);
 DATA.sgDanBase = type => ((_AL.SHANGGU || {}).PREFIX || "上古") + _AL.recipes[type].name.replace(/丹$/, "") + (_AL.CATS[DATA.danCat(type)] || "丹");
 DATA.danName = (type, g, sg) => DATA.recipeItem(type) ? _AL.recipes[type].name : DATA.JIE[g] + (sg ? DATA.sgDanBase(type) : _AL.recipes[type].name) + (DATA.isSpeedRecipe(type) ? `（${DATA.realmLabel(DATA.pillGrade(type, g))}）` : "");
 // 丹方效果说明
-DATA.recipeEffect = (type, g) => DATA.recipeItem(type) ? "养神用" : DATA.isSpeedRecipe(type) ? `修炼速度+${Math.round(DATA.pillPct(type, DATA.pillGrade(type, g)))}%` : `${_AL.recipes[type].label}+${U.num(_AL.recipes[type].val[g])}`;
+DATA.recipeEffect = (type, g) => DATA.recipeItem(type) ? (_AL.recipes[type].effect || "养神用") : DATA.isSpeedRecipe(type) ? `修炼速度+${Math.round(DATA.pillPct(type, DATA.pillGrade(type, g)))}%` : `${_AL.recipes[type].label}+${U.num(_AL.recipes[type].val[g])}`;
 DATA.danVal = (type, g) => _AL.recipes[type].val[g];
 DATA.danLimit = (type, g) => _AL.recipes[type].limit[g];
 DATA.danRecipe = (type, g) => DATA.parseMats(_AL.recipes[type].herbs[g]);

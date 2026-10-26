@@ -101,8 +101,8 @@ G.module({
       const num = k => `<input type="number" min="0" max="100" value="${b[k] || 0}" onchange="G.bsetSet('${k}',this.value)" style="width:5em">%`;
       const lost = key => key && key !== "auto" && key !== "atk" && !acts.some(a => a.key === key) ? `<small class="q5">已不在法术栏 / 法宝栏</small>` : "";
       const actOpts = acts.map(a => [a.key, a.name]);
-      const FOE = [["mob", "怪物"], ["elite", "精英"], ["boss", "首领"], ["xj", "星君"]];
-      return `<div class="card"><h3>战斗方式<small>按对手类型，优先于下面的回合设置</small></h3>
+      const FOE = [["mob", "怪物"], ["elite", "精英"], ["boss", "首领"]];   // 星君等不受战斗设置影响
+      return `<div class="card"><h3>战斗方式<small>只对探索、出窍、历练生效（考核、试炼塔、测试、天将、星君、界主不受影响）</small></h3>
         ${FOE.map(([k, t]) => `<div class="line"><div>${t}</div>${this.selBox("bs:foe" + k, [["norm", "正常攻击", "c-green"], ["atk", "普通攻击", "c-red"]], b.foe[k] || "norm", v => this.bsetFoe(k, v))}</div>`).join("")}</div>
         <div class="card"><h3>战斗设置</h3>
         ${["第一回合", "第二回合", "第三回合"].map((t, i) => `<div class="line"><div>${t}${lost(b.r[i])}</div>${this.selBox("bs:r" + i, [["auto", "按出手方式"], ["atk", "普通攻击"], ...actOpts], b.r[i], v => this.bsetRound(i, v))}</div>`).join("")}

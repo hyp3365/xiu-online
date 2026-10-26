@@ -605,6 +605,7 @@ G.module({
         if (k in b) b[k] += v; else if (k.startsWith("res_")) b.resEl[k.slice(4)] = (b.resEl[k.slice(4)] || 0) + v; }
       const q = this.qlBonus ? this.qlBonus() : {}; for (const k in q) if (k in b) b[k] += q[k];   // v213 宗主清灵丹
       const jd = this.jdBonus ? this.jdBonus() : {}; for (const k in jd) if (k in b) b[k] += jd[k]; else if (k.startsWith("res_")) b.resEl[k.slice(4)] = (b.resEl[k.slice(4)] || 0) + jd[k];   // 讲道室听讲加的属性
+      const jm = this.jmBonus ? this.jmBonus() : {}; for (const k in jm) if (k in b) b[k] += jm[k]; else if (k.startsWith("res_")) b.resEl[k.slice(4)] = (b.resEl[k.slice(4)] || 0) + jm[k];   // 经脉（jingmai.js）
       return b;
     },
 
@@ -700,7 +701,7 @@ Object.assign(G, {
   // 开始炼丹：弹出全部已学丹方（隐藏的不显示），选一个
   openAlchList() {
     const L = this.danKnown().filter(x => !this.isHidden("dan", x.key));
-    this.modal(`<h2>选择丹方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${this.danInfo(x.t, x.g)}<button class="sm" onclick="G.pickAlch('${x.t}',${x.g})">选择</button></div>`).join("")
+    this.modal(`<h2>选择丹方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${this.danInfo(x.t, x.g)}<button class="sm" onclick="G.openAlchN('${x.t}',${x.g})" ${this.danCanMake(x.t, x.g) ? "" : "disabled"}>选择</button></div>`).join("")
       : `<p class="desc">没有可选的丹方：在门派 → 炼丹房、四界功德司学习，或到「隐藏丹方」取消隐藏。</p>`}</div>
       <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
   },
@@ -757,7 +758,7 @@ Object.assign(G, {
   },
   openForgeList() {
     const L = this.forgeItems().filter(x => !this.isHidden("qi", x.key));
-    this.modal(`<h2>选择配方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${x.info}<button class="sm" onclick="G.pickForge('${x.key}')">选择</button></div>`).join("")
+    this.modal(`<h2>选择配方<small> ${L.length} 个</small></h2><div class="craft-log">${L.length ? L.map(x => `<div class="line">${x.info}<button class="sm" onclick="${x.call}" ${x.ok ? "" : "disabled"}>选择</button></div>`).join("")
       : `<p class="desc">没有可选的配方：炉子图纸在门派宝库兑换，装备图谱、空间石、灵珠在门派炼器室学习，或到「隐藏」取消隐藏。</p>`}</div>
       <div class="btns"><button onclick="G.closeModal()">关闭</button></div>`);
   },
@@ -775,13 +776,19 @@ G.caveViews.alchemy = function () {
       return `<div class="line"><div>${DATA.danImg(DATA.danIcon(x.t), DATA.danCls(x.t, x.g), "li")}${DATA.danName(x.t, x.g)}<span class="tag">${DATA.recipeEffect(x.t, x.g)}</span><small>${e || "不可服用"}</small></div>
         <button class="sm ${hid ? "on" : ""}" onclick="G.toggleHide('dan','${x.key}')">${hid ? "已隐藏" : "隐藏"}</button></div>`; }).join("") : `<p class="desc">还没有学会丹方。</p>`) + `</div>`;
   }
-  h += this.jobCard("alch", a ? `<b>${DATA.danName(a.type, a.g)}</b> ${a.done} / ${a.n}
-      <div class="pg">${this.pgFill(Math.max(0, a.next - Date.now()), a.per)}<span>下一枚 ${U.cd(Math.max(0, a.next - Date.now()) / 1000 + 59)}</span></div>
-      <small>成丹 ${a.ok || 0}${a.extra ? `（+${a.extra}）` : ""} · 失败 ${a.fail || 0} · 成功率 ${this.ratePct(this.danRate(a.type, a.g))} · 约 ${U.cd((Math.max(0, a.next - Date.now()) + Math.max(0, a.n - a.done - 1) * a.per) / 1000 + 59)} 后炼完</small>` : "");
-  const p = this.alchPick && s.recipes.includes(this.alchPick.t + "|" + this.alchPick.g) ? this.alchPick : null;
-  h += p ? `<div class="card"><h3>炼丹<small>已学丹方 ${s.recipes.length}</small></h3><div class="line">${this.danInfo(p.t, p.g)}<button class="sm" onclick="G.openAlchList()">更换</button></div>
-    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="G.openAlchN('${p.t}',${p.g})" ${!this.danCanMake(p.t, p.g) ? "disabled" : ""}>开始炼丹</button></div></div>`
-    : this.craftStartBtn("G.openAlchList()", "开始炼丹");   // 没选配方：按钮在页面中部，选了配方后信息在上、按钮跟着往下
+  // 炼丹信息（正在炼 + 排队）都在「开始炼丹」这个框里，按钮在信息下面；没有信息时按钮在页面中部
+  const now = Date.now(); let acc = a ? Math.max(0, a.next - now) + Math.max(0, a.n - a.done - 1) * a.per : 0;
+  const rows = (a ? [`<div class="line job-row"><div><b>${DATA.danName(a.type, a.g)}</b> ×${a.n}<span class="tag c-green">炼制中</span>
+      <div class="pg">${this.pgFill(Math.max(0, a.next - now), a.per)}<span>${a.done} / ${a.n} · 下一枚 ${U.cd(Math.max(0, a.next - now) / 1000 + 59)}</span></div>
+      <small>成丹 ${a.ok || 0}${a.extra ? `（+${a.extra}）` : ""} · 失败 ${a.fail || 0} · 成功率 ${this.ratePct(this.danRate(a.type, a.g))} · 约 ${U.cd(acc / 1000 + 59)} 后炼完</small></div>
+      <button class="sm on" onclick="G.askStopJob('alch')">停炉</button></div>`] : [])
+    .concat(s.alchQueue.map((x, i) => { const ms = this.danPer(x.type, x.g) * x.n; acc += ms;
+      return `<div class="line job-row"><div><b>${DATA.danName(x.type, x.g)}</b> ×${x.n}<span class="tag">排队</span><small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(acc / 1000 + 59)} 后炼完</small></div>
+        <button class="sm" onclick="G.cancelAlchQ(${i})">取消</button></div>`; })).join("");
+  const full = a && s.alchQueue.length >= CFG.alchemy.QUEUE;
+  h += rows ? `<div class="card"><h3>炼丹<small>排队 ${s.alchQueue.length} / ${CFG.alchemy.QUEUE}</small></h3>${rows}
+    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="G.openAlchList()" ${full ? "disabled" : ""}>${full ? "炼丹队列已满" : "开始炼丹"}</button></div></div>`
+    : this.craftStartBtn("G.openAlchList()", "开始炼丹");
   return h;
 };
 
@@ -790,18 +797,24 @@ G.caveViews.forge = function () {
   const s = this.s, j = s.forgeJob, mode = ["refine", "hide"].includes(this.forgeMode) ? this.forgeMode : "make";
   let h = this.cardRow(this.craftsmanMini("qi"), this.furnaceMini("qi"));
   h += this.roomBtns([["make", "炼器", "G.setForgeMode('make')"], ["refine", "精炼", "G.setForgeMode('refine')"], ["log", "记录", "G.openCraftLog('forgeLog')"], ["hide", "隐藏", "G.setForgeMode('hide')"]], mode);
-  if (mode === "refine") return h + this.jobCard("forge", j ? `<b>${this.jobName(j)}</b><small>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</small>` : "") + `<div class="card"><h3>精炼<small>只需三种矿石</small></h3>${this.refineRows()}</div>`;
+  if (mode === "refine") return h + `<div class="card"><h3>精炼<small>只需三种矿石</small></h3>${this.refineRows()}</div>`;
   const items = this.forgeItems();
   if (mode === "hide") {
     return h + `<div class="card"><h3>已学配方<small>${items.length} 个 · 隐藏后「开始炼器」里不显示</small></h3>` + (items.length ? items.map(x => { const hid = this.isHidden("qi", x.key);
       return `<div class="line">${x.info}<button class="sm ${hid ? "on" : ""}" onclick="G.toggleHide('qi','${x.key}')">${hid ? "已隐藏" : "隐藏"}</button></div>`; }).join("") : `<p class="desc">还没有学会配方。</p>`) + `</div>`;
   }
-  h += this.jobCard("forge", j ? `<b>${this.jobName(j)}</b>
-      <div class="pg">${this.pgFill(Math.max(0, j.end - Date.now()), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - Date.now()) / 1000 + 59)}</span></div>
-      <small>成功率 ${this.ratePct(this.forgeRate(j.kind, j.g))}</small>` : "");
-  const p = items.find(x => x.key === this.forgePickKey);
-  h += p ? `<div class="card"><h3>炼器</h3><div class="line">${p.info}<button class="sm" onclick="G.openForgeList()">更换</button></div>
-    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="${p.call}" ${!p.ok ? "disabled" : ""}>开始炼器</button></div></div>`
+  // 炼器信息（正在炼 + 排队）都在「开始炼器」这个框里，按钮在信息下面；没有信息时按钮在页面中部
+  const now = Date.now(); let acc = j ? Math.max(0, j.end - now) : 0;
+  const rows = (j ? [`<div class="line job-row"><div><b>${this.jobName(j)}</b><span class="tag c-green">炼制中</span>
+      <div class="pg">${this.pgFill(Math.max(0, j.end - now), this.forgePer(j.kind, j.g))}<span>剩余 ${U.cd(Math.max(0, j.end - now) / 1000 + 59)}</span></div>
+      <small>成功率 ${this.ratePct(this.forgeRate(j.kind, j.g))}</small></div>
+      <button class="sm on" onclick="G.askStopJob('forge')">停止</button></div>`] : [])
+    .concat(s.forgeQueue.map((x, i) => { const ms = this.forgePer(x.kind, x.g); acc += ms;
+      return `<div class="line job-row"><div><b>${this.jobName(x)}</b><span class="tag">排队</span><small>需 ${U.dur(ms / 1000)} · 约 ${U.cd(acc / 1000 + 59)} 后完成</small></div>
+        <button class="sm" onclick="G.cancelForgeQ(${i})">取消</button></div>`; })).join("");
+  const full = j && s.forgeQueue.length >= CFG.furnace.QUEUE;
+  h += rows ? `<div class="card"><h3>炼器<small>排队 ${s.forgeQueue.length} / ${CFG.furnace.QUEUE}</small></h3>${rows}
+    <div class="btns"><button class="primary" style="flex-basis:100%" onclick="G.openForgeList()" ${full ? "disabled" : ""}>${full ? "炼器队列已满" : "开始炼器"}</button></div></div>`
     : this.craftStartBtn("G.openForgeList()", "开始炼器");
   return h;
 };

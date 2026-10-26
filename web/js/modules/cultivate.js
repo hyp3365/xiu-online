@@ -100,9 +100,9 @@ G.module({
       let pill = 0;
       for (const t in s.buffs) { const b = s.buffs[t]; if (b && b.left > 0) pill += b.pct; }
       const room = this.freeCultOn() ? this.freeCultPct() : s.room >= 0 && s.sect ? this.roomPct(s.room) : 0;
-      // 所有百分比加成相加后再乘：总速度 = 基础 × (1 + (聚灵阵% + 丹药% + 修炼室%) / 100)，避免数值连乘爆炸
-      const arrPct = (arr - 1) * 100, mfPct = this.mifaBonus().expSpeedPct || 0, svPct = this.servantPct("cult");   // 聚元秘法圆满额外 %、道童辅助修炼 %
-      return { base, arr, pill, room, mifa, mfPct, svPct, total: base * (1 + (arrPct + pill + room + mfPct + svPct) / 100),
+      // 所有百分比加成相加后再乘：总速度 = 基础 × (1 + (聚灵阵% + 丹药% + 修炼室% + 经脉% …) / 100)，避免数值连乘爆炸
+      const arrPct = (arr - 1) * 100, mfPct = this.mifaBonus().expSpeedPct || 0, svPct = this.servantPct("cult"), jm = this.jmFull ? this.jmFull().cult : 0;   // 经脉穴位冲满：直接加数值（jingmai.js）   // 聚元秘法圆满额外 %、道童辅助修炼 %
+      return { base, arr, pill, room, mifa, mfPct, svPct, jm, total: base * (1 + (arrPct + pill + room + mfPct + svPct) / 100) + jm,
         gather: this.gatherAmount() };                                     // 每 10 秒聚灵（开关不影响）
     },
 
@@ -214,7 +214,7 @@ G.module({
     // 顶部「坊市」：直接进凡界坊市（world.js mapSel "shop"）
     // 从修炼页进去的坊市，返回时回到修炼页（world.js backFromShop）
     openFanShop() { this.tab = "world"; this.worldId = "fan"; this.atlasOn = false; this.atlasSub = null; this.setMapSel("shop"); this.shopFromCult = true; this.render(); },
-    /* ---------- 人物形象：存在角色存档（服务器 s.hero，换设备也生效），修炼页、神识、悟道室、头像一起换 ---------- */
+    /* ---------- 人物形象：存在角色存档（服务器 s.hero，换设备也生效），修炼页、神识、悟道室、头像、战斗页（img/bt_形象.webp）一起换 ---------- */
     HEROES: [["", "默认（男修）"], ["f1", "仙子 · 粉裳"], ["f2", "仙子 · 红裳"], ["f3", "魅影 · 黑纱"], ["f4", "狐仙 · 绯蕾"], ["f5", "冰仙 · 蓝蕾"], ["f6", "金冠 · 白衣"], ["f7", "月仙 · 银蓝"], ["f8", "桃仙 · 粉霞"], ["f9", "紫宸 · 仙后"], ["f10", "魅姬 · 黑蕾"], ["f11", "雪莲 · 金纱"], ["f12", "白莲 · 素纱"], ["f13", "魔后 · 赤纱"], ["f14", "星灵 · 幻纱"]],
     heroId() { let k = this.s && typeof this.s.hero === "string" ? this.s.hero : ""; if (!(this.s && "hero" in this.s)) try { k = localStorage.getItem("xiu_hero") || ""; } catch (e) {} return this.HEROES.some(h => h[0] === k) ? k : ""; },
     // where：ys 修炼页 / 神识，wd 悟道室，ava 头像
@@ -271,6 +271,7 @@ G.module({
         <div class="line"><div>聚灵阵<small>${s.array.lv} 级</small></div><b>+${U.num(arrPct)}%</b></div>
         <div class="line"><div>聚元秘法圆满</div><b>+${U.num(sp.mfPct)}%</b></div>
         <div class="line"><div>道童辅助修炼</div><b>+${U.num(sp.svPct)}%</b></div>
+        ${sp.jm ? `<div class="line"><div>经脉</div><b>+${U.fmt(sp.jm)}</b></div>` : ""}
         <div class="line"><div>丹药</div><b>+${Math.round(sp.pill)}%</b></div>
         <div class="line"><div>修炼室<small>${this.freeCultOn() ? `${CFG.sect.freeRoom.name}（剩余 ${s.freeCult.left} 次）` : s.room >= 0 && s.sect ? DATA.rooms[s.room].name : "未使用"}</small></div><b>+${Math.round(sp.room)}%</b></div>
         <h3 style="margin-top:10px">丹药</h3>
@@ -348,6 +349,7 @@ G.module({
     const s = this.s, sp = this.speed(), cap = this.lingCap();
     if (this.cultView === "body") return this.bodyView();   // 修炼肉身（modules/body.js）
     if (this.cultView === "shenshi") return this.shenshiView();   // 神识（modules/shenshi.js）
+    if (this.cultView === "jingmai") return this.jingmaiView();   // 经脉（modules/jingmai.js）
     if (this.cultView === "set") return this.setView();   // 设置（修炼 / 战斗 / 其他）
     this.applyHeroAva();
     const can = this.canBreak(), need = this.needExp(), bodyMax = this.bodyMax(), bodyNeed = bodyMax ? 0 : this.bodyNeed();
@@ -366,7 +368,7 @@ G.module({
     <div class="cult-stage">
       <div class="cult-aura"></div>
       <img class="cult-hero" src="${this.heroImg("ys")}?v=${DATA.IMG_V}" alt="">
-      <div class="cult-dan"><i></i><b></b></div>
+      <div class="cult-dan" onclick="G.openJingmai(true)" title="经脉"><i></i><b></b></div>
       <button class="cult-orb l" onclick="G.openShenshi(true)"><span>神识</span></button>
       <button class="cult-orb r" onclick="G.openBoost()"><span>修炼<br>增幅</span></button>
       <div class="cult-info">
