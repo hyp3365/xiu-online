@@ -1,4 +1,7 @@
-name: Sync Code from A
+
+# 从 GitLab 手动同步代码到本仓库：保留 .github 工作流和仓库名
+# 仅在 Actions 页面手动点击 Run workflow 时执行
+name: 同步GitLab
 
 on:
   workflow_dispatch:
@@ -6,38 +9,38 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: sync-gitlab
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      GITLAB_REPO: https://gitlab.com/hepicpde-group/xiu.git
+      GITLAB_BRANCH: main
 
     steps:
-      - name: Checkout B repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Download A repository content
-        env:
-          SOURCE_REPO: https://github.com/原作者用户名/A仓库名.git
+      - name: 拉取 GitLab 代码并覆盖（保留 .github）
         run: |
-          git clone --depth 1 "$SOURCE_REPO" /tmp/source
+          git clone --depth 1 -b "$GITLAB_BRANCH" "$GITLAB_REPO" /tmp/gl
+          SHA=$(git -C /tmp/gl rev-parse --short HEAD)
+          MSG=$(git -C /tmp/gl log -1 --pretty=%s)
 
-          rsync -av --delete \
-            --exclude='.git' \
-            /tmp/source/ ./
-
-      - name: Commit and push changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rsync -a --delete --exclude .git --exclude .github /tmp/gl/ ./
 
           git add -A
 
           if git diff --cached --quiet; then
-            echo "代码没有变化，无需提交"
+            echo "已是最新（GitLab $SHA）"
             exit 0
           fi
 
-          git commit -m "Sync code from upstream"
-          git push origin HEAD
-          
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "同步 GitLab $SHA：$MSG"
+
+          git push
+          echo "已同步 GitLab $SHA"
