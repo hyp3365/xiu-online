@@ -76,6 +76,7 @@
   "removeQueue",
   "sellItem",
   "setHero",
+  "setHeroSkin",
   "slotSpell",
   "spellAdv",
   "spellFuse",

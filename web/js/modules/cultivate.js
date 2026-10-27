@@ -220,10 +220,21 @@ G.module({
     /* ---------- 人物形象：存在角色存档（服务器 s.hero，换设备也生效），修炼页、神识、悟道室、头像、战斗页（img/bt_形象.webp）一起换 ---------- */
     HEROES: [["", "默认（男修）"], ["f1", "仙子 · 粉裳"], ["f2", "仙子 · 红裳"], ["f3", "魅影 · 黑纱"], ["f4", "狐仙 · 绯蕾"], ["f5", "冰仙 · 蓝蕾"], ["f6", "金冠 · 白衣"], ["f7", "月仙 · 银蓝"], ["f8", "桃仙 · 粉霞"], ["f9", "紫宸 · 仙后"], ["f10", "魅姬 · 黑蕾"], ["f11", "雪莲 · 金纱"], ["f12", "白莲 · 素纱"], ["f13", "魔后 · 赤纱"], ["f14", "星灵 · 幻纱"]],
     heroId() { let k = this.s && typeof this.s.hero === "string" ? this.s.hero : ""; if (!(this.s && "hero" in this.s)) try { k = localStorage.getItem("xiu_hero") || ""; } catch (e) {} return this.HEROES.some(h => h[0] === k) ? k : ""; },
+    // 每位仙子另外 3 套服装：img/hero_形象_s1~s3.webp（打坐）、img/bt_形象_s1~s3.webp（战斗），0 = 原装
+    HERO_SKINS: {
+      f1: ["翠竹 · 青衣", "云鹤 · 黛蓝", "金桂 · 杏黄"], f2: ["雪梅 · 冰蓝", "金莲 · 孔雀蓝", "玄龙 · 赤焰"], f3: ["星月 · 夜蓝", "彼岸 · 绛红", "霜华 · 素白"],
+      f4: ["翠羽 · 鹤影", "夜阑 · 云纹", "紫藤 · 金缕"], f5: ["莲粉 · 牡丹", "墨梅 · 映雪", "紫夜 · 星月"], f6: ["赤焰 · 祥云", "碧空 · 鹤浪", "翡翠 · 金莲"],
+      f7: ["赤羽 · 凤鸣", "翠竹 · 清风", "墨韵 · 山河"], f8: ["碧空 · 鹤影", "碧水 · 金莲", "星河 · 夜阑"], f9: ["朱焰 · 流金", "霜华 · 映雪", "墨翠 · 牡丹"],
+      f10: ["牡丹 · 赤纱", "云鹤 · 青霄", "紫藤 · 幽梦", "雪蕾 · 白纱"], f11: ["霜华 · 冰绡", "樱落 · 绯纱", "凤羽 · 紫霓"], f12: ["青鹤 · 云裳", "牡丹 · 华裳", "紫莲 · 梵衣"],
+      f13: ["碧鳞 · 幽姬", "翡翠 · 魅影", "紫蝶 · 幻魅"], f14: ["樱华 · 月纱", "冰澜 · 雪纱", "金羽 · 曦纱"],
+    },
+    heroSkin(k) { k = k === undefined ? this.heroId() : k; const n = ((this.s && this.s.heroSkin) || {})[k] | 0, L = this.HERO_SKINS[k] || []; return n > 0 && n <= L.length ? n : 0; },
+    heroFile(k) { k = k === undefined ? this.heroId() : k; const n = this.heroSkin(k); return n ? `${k}_s${n}` : k; },
+    setHeroSkin(k, n) { if (!this.s || !this.HERO_SKINS[k]) return; n = n | 0; const S = this.s.heroSkin = this.s.heroSkin || {}; if (n > 0 && n <= this.HERO_SKINS[k].length) S[k] = n; else delete S[k]; this.render(); },
     // where：ys 修炼页 / 神识，wd 悟道室，ava 头像
     heroImg(where) {
       const k = this.heroId();
-      if (k) return where === "ava" ? `img/ava_${k}.webp` : `img/hero_${k}.webp`;
+      if (k) return where === "ava" ? `img/ava_${k}.webp` : `img/hero_${this.heroFile(k)}.webp`;
       return where === "ys" ? "img/ys_hero.webp" : "img/wd_hero.webp";
     },
     applyHeroAva() {
@@ -237,7 +248,13 @@ G.module({
     heroCard() {
       const cur = this.heroId();
       return `<div class="card"><h3>人物形象<small>修炼、神识、悟道室一起更换 · 保存在角色存档</small></h3><div class="hero-grid">${this.HEROES.map(([k, n]) =>
-        `<button class="hero-sw${k === cur ? " on" : ""}" onclick="G.setHero('${k}')"><img src="${k ? `img/hero_${k}.webp` : "img/ys_hero.webp"}?v=${DATA.IMG_V}" alt=""><span>${n}</span></button>`).join("")}</div></div>`;
+        `<button class="hero-sw${k === cur ? " on" : ""}" onclick="G.setHero('${k}')"><img src="${k ? `img/hero_${this.heroFile(k)}.webp` : "img/ys_hero.webp"}?v=${DATA.IMG_V}" alt=""><span>${n}</span></button>`).join("")}</div>${this.heroSkinRow(cur)}</div>`;
+    },
+    heroSkinRow(k) {
+      const L = this.HERO_SKINS[k]; if (!k || !L || !L.length) return "";
+      const cur = this.heroSkin(k), name = (this.HEROES.find(h => h[0] === k) || [])[1] || "";
+      return `<h3 style="margin-top:10px">服装<small>${name}</small></h3><div class="hero-grid">${["原装"].concat(L).map((n, i) =>
+        `<button class="hero-sw${i === cur ? " on" : ""}" onclick="G.setHeroSkin('${k}',${i})"><img src="img/hero_${i ? `${k}_s${i}` : k}.webp?v=${DATA.IMG_V}" alt=""><span>${n}</span></button>`).join("")}</div>`;
     },
     // 修炼肉身界面（modules/body.js）
     openBody(on) { this.cultView = on ? "body" : ""; this.render(); },
@@ -261,8 +278,8 @@ G.module({
     openSettings(tab) { this.cultView = "set"; this.setTab = tab || this.setTab || "cult"; this.closeModal(); this.render(); $("#view").scrollTop = 0; },
     closeSettings() { this.cultView = ""; this.render(); },
     setView() {
-      const T = [["cult", "修炼设置"], ["battle", "战斗设置"], ["other", "其他设置"]], t = T.some(x => x[0] === this.setTab) ? this.setTab : "cult";
-      const body = t === "battle" ? this.bsetView() : t === "other" ? this.otherSetHtml() : `<div class="card">${this.cultSetHtml()}</div>`;
+      const T = [["cult", "修炼设置"], ["battle", "战斗设置"], ["look", "背景设置"], ["other", "其他设置"]], t = T.some(x => x[0] === this.setTab) ? this.setTab : "cult";
+      const body = t === "battle" ? this.bsetView() : t === "look" ? this.heroCard() + this.bgCard() : t === "other" ? this.otherSetHtml() : `<div class="card">${this.cultSetHtml()}</div>`;
       return `<div class="mpage cset"><div class="sub-tabs">${T.map(([k, n]) => `<button class="${k === t ? "active" : ""}" onclick="G.openSettings('${k}')">${n}</button>`).join("")}</div>
         ${body}<div class="fback"><button onclick="G.closeSettings()">返回</button></div></div>`;
     },
