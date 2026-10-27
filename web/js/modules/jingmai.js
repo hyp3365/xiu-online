@@ -20,6 +20,13 @@ G.module({
     jmDone() { return (this.s.jmv || []).reduce((t, v) => t + (+v || 0), 0); },   // 总共已冲层数
     jmStarted(node) { for (let x = 0; x < this.jmXN(); x++) if (this.jmGet(node, x)) return true; return false; },
     jmUsed() { let c = 0; const N = this.jmNodes().length; for (let i = 0; i < N; i++) if (this.jmStarted(i)) c++; return c; },
+    jmReq(node) { const d = this.jmNodes()[node], a = d && d.m.realm; return Array.isArray(a) && a[d.j] !== undefined ? +a[d.j] : -1; },   // 开启需要的境界，-1 = 不限
+    jmCutOf(node) { const d = this.jmNodes()[node], a = d && d.m.gfCut; return Array.isArray(a) ? +a[d.j] || 0 : +a || 0; },   // 冲满后功法修炼时间 −%
+    jmGfCut() { const N = this.jmNodes().length; let t = 0; for (let i = 0; i < N; i++) if (this.jmCur(i) >= this.jmXN()) t += this.jmCutOf(i); return t; },   // 已冲满光点合计
+    jmElOf(node, key) { const d = this.jmNodes()[node], a = d && d.m[key], e = Array.isArray(a) ? a[d.j] : null; return Array.isArray(e) && e[0] ? [e[0], +e[1] || 0] : null; },   // [属性, %]
+    jmEl(key) { const r = {}, N = this.jmNodes().length; for (let i = 0; i < N; i++) { const e = this.jmElOf(i, key); if (e && this.jmCur(i) >= this.jmXN()) r[e[0]] = (r[e[0]] || 0) + e[1]; } return r; },
+    jmElDmg(el) { return el ? this.jmEl("elDmg")[el] || 0 : 0; },   // 自己该系属性伤害 +%
+    jmElCut(el) { return el ? Math.min(100, this.jmEl("elCut")[el] || 0) : 0; },   // 受到该系属性伤害 −%
     jmCap() { const C = CFG.jingmai || {}, r = this.s.mortal ? -1 : this.r(), st = +C.UNLOCK_REALM || 0; return r < st ? 0 : (r - st + 1) * (+C.UNLOCK_PER || 0); },   // 当前境界可开几个光点
     // 每种属性 36 个光点合计：STAT_TOTAL 或 宗门功法 TOTAL × STAT_PCT%（六系抗性按 res）
     jmStatTotal(k) { const C = CFG.jingmai || {}, T = C.STAT_TOTAL || {}; if (T[k] !== undefined) return +T[k] || 0;
@@ -45,6 +52,8 @@ G.module({
       const ly = this.jmLy(), cur = this.jmCur(node), nm = this.jmXue(node, x)[0];
       if (cur >= this.jmXN()) return this.log(`${d.n.name}已全部冲满。`, "sys");
       if (x !== cur) return this.log(x < cur ? `「${nm}」已冲满 ${ly} 层。` : `需先冲满「${this.jmXue(node, cur)[0]}」。`, "sys");
+      const rq = this.jmReq(node);
+      if (!this.jmStarted(node) && rq >= 0 && (this.s.mortal ? -1 : this.r()) < rq) return this.log(`${d.n.name}需要${DATA.realmLabel(rq)}才能开启。`, "sys");
       if (!this.jmStarted(node) && this.jmUsed() >= this.jmCap()) { const C = CFG.jingmai || {};
         return this.log(this.jmCap() ? `当前境界最多开启 ${this.jmCap()} 个光点，突破后可再开 ${+C.UNLOCK_PER || 0} 个。` : `${DATA.realmLabel(+C.UNLOCK_REALM || 0)}才能开启。`, "sys"); }
       const dan = this.jmDan(), lq = this.jmLyNeed();
@@ -70,7 +79,7 @@ G.module({
     openJmSwap() {
       const R = (CFG.jingmai || {}).LY_RATE || {}; this._jmSwapOn = true;
       const rows = Object.keys(R).filter(n => DATA.matByName[n] && DATA.matByName[n].kind === "herb").map(n => { const g = DATA.matByName[n].g, h = this.countMat("herb", g);
-        return `<div class="line${h ? "" : " dimrow"}"><div>${n}<small>拥有 ${U.fmt(h)} · 每个 ${R[n]} 灵液</small></div><div><button class="sm" onclick="G.jmSwap('${n}',10)" ${h ? "" : "disabled"}>10个</button> <button class="sm primary" onclick="G.jmSwap('${n}',-1)" ${h ? "" : "disabled"}>全部</button></div></div>`; });
+        return `<div class="line${h ? "" : " dimrow"}"><div>${n}<small>拥有 ${U.fmt(h)} · 每个 ${R[n]} 灵液</small></div><div>${(CFG.jingmai.SWAP_N || [1, 100, 1000]).map(k => `<button class="sm" onclick="G.jmSwap('${n}',${k})" ${h ? "" : "disabled"}>${U.fmt(k)}</button>`).join(" ")}</div></div>`; });
       this.modal(`<h2>灵液兑换</h2><p class="desc" style="text-align:center">当前灵液 <b>${U.fmt(this.s.lingye || 0)}</b></p><div class="runlist">${rows.join("")}</div>
         <div class="btns"><button onclick="G._jmSwapOn=false;G.closeModal()">关闭</button></div>`);
     },
@@ -95,12 +104,40 @@ G.jingmaiView = function () {
   return `<div class="jm-card"><div class="jm-stage"><svg viewBox="25 -50 350 700" preserveAspectRatio="xMidYMid slice" class="jm-svg">${JM_DEFS}${JM_IMG}<g>${lines.join("")}</g><g>${dots.join("")}</g></svg>
     <button class="sm jm-swap" onclick="G.openJmSwap()">灵液兑换</button>
     ${this.jmCostBar()}</div>
+    ${this.jmSumTxt()}
     <div class="btns jm-btns"><button onclick="G.openJingmai(false)">返回</button></div></div>`;
+};
+
+/* 修炼页身前光球里的小经脉人体（冲过的光点亮起） */
+G.jmMini = function () {
+  const xn = this.jmXN(), ly = this.jmLy(), L = [], D = []; let k = 0;
+  this.jmList().forEach(m => { const N = m.nodes || []; N.forEach((n, j) => { const id = k++; let sum = 0; for (let x = 0; x < xn; x++) sum += this.jmGet(id, x);
+    if (j > 0) L.push(`<line x1="${N[j - 1].x}" y1="${N[j - 1].y}" x2="${n.x}" y2="${n.y}" stroke="${m.color}" stroke-width="4" stroke-opacity=".7"/>`);
+    D.push(`<circle cx="${n.x}" cy="${n.y}" r="9" fill="${sum ? m.color : "#fff3c8"}" fill-opacity="${sum ? 1 : .55}"/>`); }); });
+  return `<svg class="cult-jm" viewBox="20 20 360 430" preserveAspectRatio="xMidYMid meet">${JM_IMG}${L.join("")}${D.join("")}</svg>`;
 };
 
 G.jmCostBar = function () {
   const dan = this.jmDan(), lq = this.jmLyNeed(), hd = this.smCount("cmd"), hl = this.s.lingye || 0;
   return `<div class="jm-cost"><span><img src="${DATA.smIcon("cmd")}" alt="">${DATA.smName("cmd")} <b class="${hd >= dan ? "" : "q5"}">${U.fmt(hd)}/${dan}</b></span><span><img src="${DATA.iconImg("sm_lingye")}" alt="">灵液 <b class="${hl >= lq ? "" : "q5"}">${U.fmt(hl)}/${U.fmt(lq)}</b></span></div>`;
+};
+
+G.jmSumTxt = function () {
+  const en = id => (DATA.elById[id] || {}).name || id, t = [], c = this.jmGfCut(), d = this.jmEl("elDmg"), r = this.jmEl("elCut");
+  if (c) t.push(`功法修炼时间 -${U.num(c)}%`);
+  for (const k in d) t.push(`${en(k)}伤害 +${U.num(d[k])}%`);
+  for (const k in r) t.push(`受${en(k)}伤害 -${U.num(Math.min(100, r[k]))}%`);
+  return t.length ? `<p class="desc jm-info" style="text-align:center">经脉：${t.join(" · ")}</p>` : "";
+};
+
+G.jmNodeInfo = function (node) {
+  const rq = this.jmReq(node), cut = this.jmCutOf(node), full = this.jmCur(node) >= this.jmXN(), r = this.s.mortal ? -1 : this.r(), t = [];
+  if (rq >= 0) t.push(`开启需要 <b class="${r >= rq || this.jmStarted(node) ? "" : "q5"}">${DATA.realmLabel(rq)}</b>`);
+  if (cut) t.push(`全部冲满：功法修炼时间 -${U.num(cut)}%${full ? "（已生效）" : ""}`);
+  const en = id => (DATA.elById[id] || {}).name || id, ed = this.jmElOf(node, "elDmg"), ec = this.jmElOf(node, "elCut");
+  if (ed) t.push(`全部冲满：${en(ed[0])}属性伤害 +${U.num(ed[1])}%${full ? "（已生效）" : ""}`);
+  if (ec) t.push(`全部冲满：受到${en(ec[0])}属性伤害 -${U.num(ec[1])}%${full ? "（已生效）" : ""}`);
+  return t.length ? `<p class="desc jm-info" style="text-align:center">${t.join(" · ")}</p>` : "";
 };
 
 /* 光点页：10 个穴位围成一圈，点穴位冲穴（不显示每个穴位加什么属性） */
@@ -121,5 +158,6 @@ G.jmNodeView = function (node) {
     <div class="ys-pow"><span>${d.m.name}</span><b>${d.n.name}</b></div>
     <button class="sm jm-swap" onclick="G.openJmSwap()">灵液兑换</button>
     ${this.jmCostBar()}</div>
+    ${this.jmNodeInfo(node)}
     <div class="btns jm-btns"><button onclick="G.openJmNode(null)">返回</button></div></div>`;
 };

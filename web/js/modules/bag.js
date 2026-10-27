@@ -285,7 +285,10 @@ G.module({
     /* ---------- 强化（config/forge.js 的 forge.enhance）：每条属性分别强化 ---------- */
     canEnhance(e) { return !!(e && e.attrs); },
     // v152/v153 强化：整件一个等级，没有上限；只要火髓 + 耀石（法宝同属性，装备 / 戒指任意一种）
-    enhCost(e) { const E = DATA.enhCfg(e), k = 1 + (e.enh || 0) * (E.COST_STEP || 0);
+    enhCost(e) { const E = DATA.enhCfg(e), n = e.enh || 0;
+      if (E.UP && E.UP.N > 0) { const k = Math.floor(n / E.UP.N);   // 法宝：每强化 N 级，消耗 + 固定值
+        return { fire: ((E.FIRE || [])[e.g] || 1) + k * (E.UP.FIRE || 0), jj: ((E.SPECIAL || [])[e.g] || 0) + k * (E.UP.SPECIAL || 0), sk: "ys", sf: this.ysFor(e) }; }
+      const k = 1 + n * (E.COST_STEP || 0);
       return { fire: Math.ceil(((E.FIRE || [])[e.g] || 1) * k), jj: Math.ceil(((E.SPECIAL || [])[e.g] || 0) * k), sk: "ys", sf: this.ysFor(e) }; },
     enhHave(c) { return this.fireCount() >= c.fire && this.smCount(c.sk, c.sf) >= c.jj; },
     enhRate(e) { return Math.max(0, this.craftRate("qi", e.g) - (e.enh || 0) * (DATA.enhCfg(e).RATE_DROP || 0) / 100); },
@@ -446,15 +449,17 @@ G.module({
     // v239 法术精研界面：用该系法术心得精研，每次 + 属性伤害（config/gongfa.js 的 JY_DMG / JY_COST）
     openSpellJy(id) {
       const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]); if (!g) return;
-      const have = (s.spXd || {})[g.el.id] || 0, add = DATA.jyStep(g.star, "JY_DMG"), cost = DATA.jyStep(g.star, "JY_COST");
-      this.modal(`<h2 class="q1">《${g.name}》精研</h2><p>已精研 ${U.fmt(g.jy)} 次 · 属性伤害 +${U.fmt(g.jyDmg)}<br>${g.el.name}系法术心得 ${U.fmt(have)} 点<br>每次精研：属性伤害 +${U.fmt(add)}，消耗${g.el.name}系法术心得 ${U.fmt(cost)} 点</p>
-        <div class="btns"><button onclick="G.spellJy('${id}')" ${have < cost ? "disabled" : ""}>精研</button><button onclick="G.closeModal()">关闭</button></div>`);
+      const have = (s.spXd || {})[g.el.id] || 0, add = DATA.jyStep(g.star, "JY_DMG"), c = DATA.jyCost(g.star, g.jy);
+      const ok = have >= c.xd && s.stone >= c.stone;
+      this.modal(`<h2 class="q1">《${g.name}》精研</h2><p>已精研 ${U.fmt(g.jy)} 次 · 属性伤害 +${U.fmt(g.jyDmg)}<br>${g.el.name}系法术心得 ${U.fmt(have)} 点 · 灵石 ${U.fmt(s.stone)}<br>每次精研：属性伤害 +${U.fmt(add)}，消耗${g.el.name}系法术心得 ${U.fmt(c.xd)} 点、灵石 ${U.fmt(c.stone)}</p>
+        <div class="btns"><button onclick="G.spellJy('${id}')" ${ok ? "" : "disabled"}>精研</button><button onclick="G.closeModal()">关闭</button></div>`);
     },
     spellJy(id) {
       const s = this.s, g = DATA.spellInfo(id, s.gongfa[id]); if (!g) return;
-      const cost = DATA.jyStep(g.star, "JY_COST"), X = s.spXd = s.spXd || {};
-      if ((X[g.el.id] || 0) < cost) return this.log(`${g.el.name}系法术心得不足。`, "sys");
-      X[g.el.id] -= cost; (s.spJy = s.spJy || {})[id] = (s.spJy[id] || 0) + 1;
+      const c = DATA.jyCost(g.star, g.jy), X = s.spXd = s.spXd || {};
+      if ((X[g.el.id] || 0) < c.xd) return this.log(`${g.el.name}系法术心得不足。`, "sys");
+      if (s.stone < c.stone) return this.log("灵石不足。", "sys");
+      X[g.el.id] -= c.xd; s.stone -= c.stone; (s.spJy = s.spJy || {})[id] = (s.spJy[id] || 0) + 1;
       this.log(`《${g.name}》精研成功，属性伤害 +${U.fmt(DATA.jyStep(g.star, "JY_DMG"))}。`, "good");
       this.dirty(); this.after(); this.openSpellJy(id);
     },

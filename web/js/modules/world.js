@@ -55,9 +55,10 @@ G.module({
         return tile ? `<div class="rgt${x || q ? " cur" : ""}"><img src="img/map/rg_${map.w === "fan" ? "" : map.w + "_"}${RG[r] || "dong"}.webp" alt=""><b>${d}域</b><small>${info}</small>${btns}</div>`
           : `<div class="line"><div>${d}域<small>${info}</small></div>${btns}</div>`;
       }).join("");
-      return `<div class="card${tile ? " rgcard" : ""}">${noTitle ? "" : `<h3>${map.name}</h3>`}${tile ? `<div class="rggrid">${rows}</div>` : rows}${map.w === "fan" ? this.kuangLine(sel) : ""}</div>`;
+      return `<div class="card${tile ? " rgcard" : ""}">${noTitle ? "" : `<h3>${map.name}</h3>`}${tile ? `<div class="rggrid">${rows}</div>` : rows}${map.w === "fan" && this.kuangOn() ? this.kuangLine(sel) : ""}</div>`;
     },
     /* ---------- 凡界灵矿（config/explore.js 的 KUANG）：不用历练，不遇怪，只挖灵石；探索中 x.kuang = 1、x.reg = -1 ---------- */
+    kuangOn() { return CFG.explore.KUANG.ON !== 0; },   // config/explore.js KUANG.ON
     kuangName(a) { return (CFG.explore.KUANG.NAME || "{map}灵矿").replace("{map}", DATA.maps[a].name); },
     kuangLine(a) {
       const s = this.s, K = CFG.explore.KUANG, x = s.explore && s.explore.kuang && s.explore.map === a ? s.explore : null, q = s.cq && s.cq.kuang && s.cq.map === a ? s.cq : null;
@@ -75,7 +76,7 @@ G.module({
       const s = this.s;
       if (s.explore && s.explore.kuang && !s.explore.cq && s.explore.map === a) { this.stopExplore("停止挖矿"); return this.after(); }
       if (s.trib && !s.trib.result) return this.log("渡劫中，不能外出。", "sys");   // 渡劫中只能停止，不能新开 / 更换
-      if (!this.mapOpen(a)) return;
+      if (!this.kuangOn() || !this.mapOpen(a)) return;   // 灵矿已关闭（KUANG.ON = 0）
       if (s.explore) this.stopExplore("更换");
       if (s.cultSet) s.cultSet.went = false;   // 手动开始的不算修炼设置自动去的（自动去时 cultSetCheck 会再标记）
       s.explore = { map: a, reg: -1, kuang: 1, once: false, start: this.now(), step: 0, count: 0, loot: this.newLoot(), ev: [], last: "", plan: this.kuangPlan(), ms: this.exploreMs() };
@@ -106,7 +107,7 @@ G.module({
           DATA.regionDirs.forEach((d, r) => { if (!this.regionOpen(a, r) || !this.isTrained(a, r)) return;
             const run = cq ? s.cq && !s.cq.kuang && s.cq.map === a && (s.cq.reg || 0) === r : s.explore && !s.explore.once && !s.explore.kuang && s.explore.mj === undefined && s.explore.map === a && (s.explore.reg || 0) === r;
             rows.push({ key: a + "_" + r, name: `${w.name} · ${m.name} · ${d}域`, run, act: cq ? (run ? `G.stopChuqiao(${a},${r})` : `G.openChuqiao(${a},${r})`) : `G.toggleExplore(${a},${r})` }); });
-          if (w.id === "fan" && this.mapOpen(a)) { const run = cq ? s.cq && s.cq.kuang && s.cq.map === a : s.explore && s.explore.kuang && !s.explore.cq && s.explore.map === a;
+          if (w.id === "fan" && this.kuangOn() && this.mapOpen(a)) { const run = cq ? s.cq && s.cq.kuang && s.cq.map === a : s.explore && s.explore.kuang && !s.explore.cq && s.explore.map === a;
             rows.push({ key: a + "_k", name: `${w.name} · ${this.kuangName(a)}`, run, act: cq ? (run ? `G.stopChuqiao(${a},-1)` : `G.openChuqiao(${a},-1)`) : `G.toggleKuang(${a})` }); }
         }); });
       const show = rows.filter(x => this.runShowHid || !hid.includes(x.key)), nh = rows.filter(x => hid.includes(x.key)).length, dis = cq && !s.cqLearn;
@@ -282,6 +283,7 @@ G.module({
       // 出一招：a = acts[j]；res = true 可以动用保留的法力；放不出返回 null
       const usedN = {};   // v152 这场战斗每招已用几次
       let res2 = false;
+      const jmUp = el => 1 + (this.jmElDmg ? this.jmElDmg(el) : 0) / 100, jmDn = el => 1 - (this.jmElCut ? this.jmElCut(el) : 0) / 100;   // 经脉：手部 +% / 腿部 −%（config/jingmai.js elDmg / elCut）
       const cast = (j, res) => {
         const a = acts[j]; if (!a) return null;
         const cost = a.k === 1 ? a.sp.mana : a.fb.mana;
@@ -290,12 +292,12 @@ G.module({
         if ((usedN[j] || 0) >= ((a.k === 1 ? a.sp.uses : a.fb.uses) || 1)) return null;   // v152 每场战斗使用次数用完
         usedN[j] = (usedN[j] || 0) + 1;
         s.mana -= cost;
-        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), EL(sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0), X, sp.el.id, myL)) * (1 + (sp.fuPct || 0) / 100), 1, j);   // 融合：伤害结果 +%
+        if (a.k === 1) { const sp = a.sp, d = roll(st, mE(), X => Math.max(MIN(st), EL(sp.atk * sp.pct / 100 * sp.mul * this.lingenSpell(sp.el.id) + (sp.jyDmg || 0), X, sp.el.id, myL)) * (1 + (sp.fuPct || 0) / 100) * jmUp(sp.el.id), 1, j);   // 融合：伤害结果 +%；经脉该系属性伤害 +%
           if (!opt.test) { const xd = CFG.gongfa.XD_GAIN === undefined ? 1 : CFG.gongfa.XD_GAIN; if (xd > 0) { const X = this.s.spXd = this.s.spXd || {}; X[sp.el.id] = (X[sp.el.id] || 0) + xd; act.x = (act.x || 0) | 256; } }   // v239 法术心得
           return d; }
         const fb = a.fb;
         if (fb.shield) { shield = Object.assign({ el: fb.el }, fb.shield); act = { k: 3, sp: j, f: 0 }; return 0; }
-        let d = roll(fb.hit || fb.critAdd ? Object.assign({}, st, { hit: st.hit + (fb.hit || 0), crit: st.crit + (fb.critAdd || 0) }) : st, mE(), X => fabaoDmg(fb, X), 2, j);   // 刀 / 锤专属：本次攻击额外命中、暴击
+        let d = roll(fb.hit || fb.critAdd ? Object.assign({}, st, { hit: st.hit + (fb.hit || 0), crit: st.crit + (fb.critAdd || 0) }) : st, mE(), X => fabaoDmg(fb, X) * jmUp(fb.el), 2, j);   // 经脉该系属性伤害 +%   // 刀 / 锤专属：本次攻击额外命中、暴击
         if (act.f === 2 && fb.crit) d *= fb.crit / 100;   // 锤：暴击伤害 %
         if (act.f !== 1) {
           if (fb.ding) { m.deb = { speed: fb.ding.speed, hit: fb.ding.hit, dodge: fb.ding.dodge, left: fb.ding.rounds }; act.x = 2; }
@@ -303,7 +305,7 @@ G.module({
         }
         return d;
       };
-      const est = a => a.k === 1 ? Math.max(MIN(st), EL(a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0), m, a.sp.el.id, myL)) * (1 + (a.sp.fuPct || 0) / 100) : a.fb.shield ? -1 : fabaoDmg(a.fb);
+      const est = a => a.k === 1 ? Math.max(MIN(st), EL(a.sp.atk * a.sp.pct / 100 * a.sp.mul * this.lingenSpell(a.sp.el.id) + (a.sp.jyDmg || 0), m, a.sp.el.id, myL)) * (1 + (a.sp.fuPct || 0) / 100) * jmUp(a.sp.el.id) : a.fb.shield ? -1 : fabaoDmg(a.fb) * jmUp(a.fb.el);
       const costOf = a => a.k === 1 ? a.sp.mana : a.fb.mana;
       const jOf = key => acts.findIndex(a => a.key === key);
       const useJ = acts.map((a, j) => j).filter(j => !off.includes(acts[j].key));
@@ -371,7 +373,7 @@ G.module({
         if (!c || m.mana < cost || Math.random() * 100 >= c.chance) return -1;
         m.mana -= cost; k === "spell" ? mSp++ : mFb++;
         const d = roll(mE(), st, X => Math.max(MIN(m), el ? EL(m.atk * c.pct / 100, X, el, mL) : ATK(m.atk * c.pct / 100, X, mL)), k === "spell" ? 1 : 2);
-        return el && d > 0 && tf("lingxing") ? d * (1 + (TL.LINGXING || 0) / 100) : d;   // 天赋灵性：金木水火土雷属性伤害都增加
+        return el && d > 0 ? d * (tf("lingxing") ? 1 + (TL.LINGXING || 0) / 100 : 1) * jmDn(el) : d;   // 天赋灵性：金木水火土雷属性伤害都增加；经脉腿部：受到该系伤害 −%
       };
       const mobHit = () => { let d = mCast("spell", m.el); if (d < 0) d = mCast("fabao", m.el); return d < 0 ? hit(mE(), st) : d; };   // v25：怪物法宝也是属性伤害
       // 每一下记一条：[回合, 谁(0 你 / 1 对方), 方式, 法术名序号, 结果, 伤害, 你的生命, 你的法力, 对方生命, 对方法力]
@@ -1062,6 +1064,7 @@ G.module({
     },
     openChuqiao(a, r) {
       const s = this.s, C = CFG.chuqiao;
+      if (r < 0 && !this.kuangOn()) return;   // 灵矿已关闭
       if (!s.cqLearn) return this.log(`需先在宗门宝库兑换${C.NAME}。`, "sys");
       if (this.cqLeftToday() <= 0) return this.log("今天的出窍次数已用完。", "sys");
       if (!this.realmOK(C.REALM)) return this.log(`出窍需要${DATA.realmLabel(C.REALM)}。`, "sys");

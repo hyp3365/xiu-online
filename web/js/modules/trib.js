@@ -130,6 +130,7 @@ G.module({
         const el = this.tribEl(x.hits);
         let [d, c, dBody] = this.tribHit(x, el.id), ab = 0, brk = false;
         if (el.id === "lei" && this.oriSum && this.oriSum("leiCut")) { const k = Math.max(0, 1 - this.oriSum("leiCut") / 100); d *= k; dBody *= k; }   // 出身「天降异象」
+        if (this.jmElCut && this.jmElCut(el.id)) { const k = Math.max(0, 1 - this.jmElCut(el.id) / 100); d *= k; dBody *= k; }   // 经脉腿部：受到该系属性伤害 −%
         const sh = x.shield;
         if (sh && sh.hp > 0) {   // 护盾：伤害已按盾防御算（tribHit），再减「受到伤害减少%」，剩下先扣护盾值
           const dS = d * (1 - (sh.red || 0) / 100);

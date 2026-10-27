@@ -552,6 +552,7 @@ button small .cd{min-width:0}
 .cult-dan{position:absolute;left:50%;bottom:calc(100px + min(100% - 112px,380px)*.2);width:46px;height:46px;margin-left:-23px;z-index:2;border-radius:50%;
   background:radial-gradient(circle,#fff8d8 0%,#ffd76a 30%,#f0a020 55%,#c0600088 72%,transparent 74%);
   box-shadow:0 0 24px 8px #ffb43a99,0 0 50px 16px #ffd76a55;animation:cult-dan 3s ease-in-out infinite}
+.cult-jm{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);border-radius:50%;mix-blend-mode:screen;opacity:.95;pointer-events:none}
 .cult-dan i{position:absolute;inset:-6px;border-radius:50%;border:2px dashed #ffe7a0cc;animation:cult-spin 9s linear infinite}
 .cult-dan b{position:absolute;inset:8px;border-radius:50%;border:1px solid #fff2c0;opacity:.8;animation:cult-spin 6s linear infinite reverse}
 /* 左右圆钮：神识 / 修炼增幅 */
@@ -895,4 +896,6 @@ html.bg-light{--t-main:#1e1810;--t-sub:#4c4132;--t-dim:#5a4e3c;--t-sub2:#463b2b;
 html.bg-light #toast{background:rgba(252,248,238,.97);color:#1e1810;font-size:14px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 html.bg-light #log p{font-weight:500}
 html.bg-light #tabs button{color:#3e3426;font-weight:600}
+html.bg-light .btv-info{background:rgba(252,248,238,.96);color:#1e1810;border-color:#a8864a;box-shadow:0 4px 14px rgba(0,0,0,.25);font-weight:500}
+html.bg-light .btv-info b{color:#7a4f0e}html.bg-light .btv-info small{color:#4c4132!important;opacity:1}
 

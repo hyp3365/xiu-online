@@ -173,12 +173,13 @@ G.module({
       return b;
     },
     hasGongfa(id) { return !!this.s.gongfa[id]; },
-    // 这一层的修炼时间（秒）= STUDY_MIN × (1 − 宗门秘法「悟法 / 悟道」减少的 %)，最少 STUDY_MIN_SEC（修炼秘法本身不减少）
+    // 这一层的修炼时间（秒）= STUDY_MIN ÷ (1 + 减少%)，最少 STUDY_MIN_SEC（修炼秘法本身不减少）
+    //   功法：悟道秘法 + 经脉光点冲满（jingmai.js jmGfCut）；法术：悟法秘法（经脉不减法术）；减少% 可以超过 100%
     studySec(g) {
       if (g.noEl) return Math.max(1, ((g.studyMin || [])[g.lv - 1] || 1) * 60);   // 开局功法书：config/start.js 的 STUDY_MIN
-      const m = this.mifaBonus(), red = g.kind === "mf" ? 0 : g.kind === "sp" ? m.spStudy : m.gfStudy;
+      const m = this.mifaBonus(), red = g.kind === "mf" ? 0 : g.kind === "sp" ? m.spStudy : m.gfStudy + (this.jmGfCut ? this.jmGfCut() : 0);
       const base = DATA.studyMin[g.lv - 1] * 60;
-      return Math.max(Math.min(CFG.wudao.STUDY_MIN_SEC || 10, base), base * (1 - Math.min(100, red) / 100));
+      return Math.max(Math.min(CFG.wudao.STUDY_MIN_SEC || 10, base), base / (1 + Math.max(0, red) / 100));
     },
     // 是否学会了秘诀（修炼的前提）
     hasMijue() { return this.hasGfStat("cultivate"); },

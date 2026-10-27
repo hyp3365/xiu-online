@@ -112,7 +112,7 @@ G.module({
       const out = [];
       DATA.maps.forEach((m, a) => {
         if (!this.mapOpen(a)) return;
-        out.push([`k:${a}`, this.kuangName(a)]);
+        if (this.kuangOn()) out.push([`k:${a}`, this.kuangName(a)]);
         for (let r = 0; r < DATA.regionCount; r++) if (this.isTrained(a, r)) out.push([`e:${a}:${r}`, DATA.regionName(a, r)]);
       });
       return out;
@@ -120,9 +120,12 @@ G.module({
     cultSetCheck() {
       const s = this.s, c = s.cultSet; if (!c || !c.on || !c.tgt || !s.auto) return;
       if (c.mul === undefined) { c.mul = 10; delete c.pct; }   // 旧存档：「灵气高于 %」改成「灵气高于修炼速度几倍」
+      if (c.tgt[0] === "k" && !this.kuangOn()) { const x0 = s.explore; if (x0 && x0.cs && x0.kuang) { c.went = false; this.stopExplore("灵矿已关闭"); } const T = this.cultTargets(); c.tgt = T.length ? T[0][0] : ""; if (!c.tgt) return; }   // 灵矿关闭后，旧的「前往灵矿」改成第一个可探索区域
       const x = s.explore, p = c.tgt.split(":").map(Number), kuang = c.tgt[0] === "k";
       const mine = x && !x.cq && !x.once && x.map === p[1] && (kuang ? x.kuang : !x.kuang && x.reg === p[2]);
-      if (mine && c.went) {
+      const norm = x && !x.cq && !x.once && x.mj === undefined;   // 普通自动探索 / 挖矿（不含历练、出窍、秘境）
+      // 修炼设置自动去的，或者手动开启的探索：灵气够了都停下回来修炼
+      if (norm && (mine ? true : !(x.cs || c.went))) {
         if (s.ling >= Math.min(this.lingCap(), this.speed().total * Math.max(1, c.mul || 10))) {   // 灵气 ≥ 修炼速度 × 倍数（最多到灵气上限）
           c.went = false; this.stopExplore("灵气已恢复，停止探索");
           this.log("开始修炼。", "sys"); this.dirty();   // v208 不再重置结算计时（会丢聚灵）
@@ -147,8 +150,8 @@ G.module({
       const s = this.s, c = s.cultSet, T = this.cultTargets(), a = s.array;
       if (!c.tgt && T.length) c.tgt = T[0][0];
       return `<h2>修炼设置</h2>
-        <p class="desc">自动修炼时，灵石低于下限且灵气不足，自动去探索或挖矿；灵气恢复到修炼速度（每次修炼消耗）的设定倍数以上，停止探索回来修炼。</p>
-        <div class="line"><div>自动探索 / 挖矿</div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
+        <p class="desc">自动修炼时，灵石低于下限且灵气不足，${this.kuangOn() ? "自动去探索或挖矿" : "自动去探索"}；灵气恢复到修炼速度（每次修炼消耗）的设定倍数以上，停止探索回来修炼。</p>
+        <div class="line"><div>${this.kuangOn() ? "自动探索 / 挖矿" : "自动探索"}<small>手动开启的探索也按这里的条件回来修炼</small></div><button data-refresh="openCultSet" class="sm ${c.on ? "on" : ""}" onclick="G.cultSetSave('on')">${c.on ? "开" : "关"}</button></div>
         <div class="line"><div>灵石低于</div><input id="cs-low" type="number" min="0" value="${c.low}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>灵气高于修炼速度（倍）<small>当前修炼速度 ${U.fmt(this.speed().total)}</small></div><input id="cs-high" type="number" min="1" value="${c.mul === undefined ? 10 : c.mul}" style="width:130px" onchange="G.cultSetSave()"></div>
         <div class="line"><div>前往</div><button class="sm" onclick="G.openAtPick('tgt')">${(T.find(t => t[0] === c.tgt) || T[0] || [0, "暂无可去的地方"])[1]} ▾</button></div>
@@ -368,7 +371,7 @@ G.module({
     <div class="cult-stage">
       <div class="cult-aura"></div>
       <img class="cult-hero" src="${this.heroImg("ys")}?v=${DATA.IMG_V}" alt="">
-      <div class="cult-dan" onclick="G.openJingmai(true)" title="经脉"><i></i><b></b></div>
+      <div class="cult-dan" onclick="G.openJingmai(true)" title="经脉">${this.jmMini ? this.jmMini() : ""}<i></i><b></b></div>
       <button class="cult-orb l" onclick="G.openShenshi(true)"><span>神识</span></button>
       <button class="cult-orb r" onclick="G.openBoost()"><span>修炼<br>增幅</span></button>
       <div class="cult-info">
